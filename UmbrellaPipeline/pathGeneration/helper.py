@@ -1,9 +1,9 @@
+import os
 from typing import List
+
 import openmm as mm
 import openmm.app as app
 import openmm.unit as unit
-import os
-from itertools import product
 
 aa_list = ['ala', 'arg', 'asn', 'asp', 'cys', 'gln', 'glu', 'gly', 'his', 'ile', 'leu', 'lys', 'met', 'phe', 'pro', 'pyl', 'ser', 'sec', 'thr', 'trp', 'tyr', 'val', 'asx', 'glx', 'xaa', 'xle']
 
