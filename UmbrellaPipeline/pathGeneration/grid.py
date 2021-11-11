@@ -42,13 +42,13 @@ class Grid:
             offset (List[unit.Quantity], optional): if gridpoint (0,0,0) does not correspond to the cartesian (0,0,0). Defaults to None.
         """
 
-        if grid:
+        try:
             self.grid = grid
             self.x = grid.shape[0]
             self.y = grid.shape[1]
             self.z = grid.shape[2]
-        else:
-            self.grid = np.zeros(shape=(x, y, z), dtype=bool)
+        except TypeError:
+            self.grid = np.zeros(shape=(x, y, z), dtype=dtype)
             self.x = x
             self.y = y
             self.z = z

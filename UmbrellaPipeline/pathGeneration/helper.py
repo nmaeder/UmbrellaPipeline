@@ -57,6 +57,7 @@ def get_indices(
         else:
             if any(aa.lower() in str(atom).lower() for aa in name):
                 ret.append(i)
+    return ret
 
 
 def getCentroidCoordinates(
