@@ -3,8 +3,7 @@ from typing import List
 
 import gemmi
 import numpy as np
-
-from grid import Grid, Node
+from UmbrellaPipeline.pathGeneration.grid import Grid, Node
 
 
 class AStar3D:

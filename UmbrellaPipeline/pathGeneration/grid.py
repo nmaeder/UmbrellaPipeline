@@ -7,8 +7,12 @@ import numpy as np
 import openmm.app as app
 import openmm.unit as unit
 
-from helper import gen_box, get_indices, getCentroidCoordinates
-from node import Node
+from UmbrellaPipeline.pathGeneration.helper import (
+    gen_box,
+    get_indices,
+    getCentroidCoordinates,
+)
+from UmbrellaPipeline.pathGeneration.node import Node
 
 
 class Grid:
