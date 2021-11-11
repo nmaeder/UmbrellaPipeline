@@ -181,7 +181,6 @@ class AStar3D:
         if not filename.endswith('.ccp4'): filename += '.ccp4'
         print('Hang in there, this can take a while (~1 Minute)')
         pathgrid = np.zeros(shape=(self.grid.x, self.grid.y, self.grid.z), dtype=bool)
-        if not self.backtrace: self.backtracePath()
         for i in self.shortestPath:
             pathgrid[i.getCoordinates()[0]][i.getCoordinates()[1]][i.getCoordinates()[2]] = True
         ccp4_map = gemmi.Ccp4Map()
