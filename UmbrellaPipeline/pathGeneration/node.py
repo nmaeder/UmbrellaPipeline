@@ -1,26 +1,30 @@
 from typing import List
+from openmm import vec3
+import openmm.unit as unit
 
 
 class Node:
     def __init__(
         self,
-        x: int = -1,
-        y: int = -1,
-        z: int = -1,
-        f: float = float("inf"),
-        g: float = float("inf"),
-        h: float = float("inf"),
+        x: float = -1,
+        y: float = -1,
+        z: float = -1,
+        unit: unit.Unit = unit.nanometer,
+        f: float = 0.0,
+        g: float = 0.0,
+        h: float = 0.0,
     ):
         self.x = x
         self.y = y
         self.z = z
+        self.unit = unit
         self.f = f
         self.g = g
         self.h = h
         self.parent: Node = None
 
     @classmethod
-    def fromCoords(cls, coords: List[int]):
+    def fromCoords(cls, coords: List[float], unit: unit.Unit):
         """
         constructor creates node form list of node coordinates
 
@@ -38,13 +42,37 @@ class Node:
         return f"[{self.x},{self.y},{self.z}]"
 
     def __eq__(self, o: object) -> bool:
-        return self.getCoordinates() == o.getCoordinates()
+        return self.getCoordinates() == o.getCoordinates().in_units_of(self.unit)
 
-    def getCoordinates(self) -> List[int]:
+    def getCoordinates(self) -> unit.Quantity:
         """
-        returns list of node coordinates
+        returns Quantity of the Cordinates in the unit the node is
 
         Returns:
-            List[int]: List of node coordinates
+            unit.Quantity: Quantity of the Cordinates in the unit of the node
         """
-        return [self.x, self.y, self.z]
+        return unit.Quantity(vec3(self.x, self.y, self.z), unit=self.unit)
+
+    def getCoordinatesInUnitsOf(self, unit: unit.Unit) -> unit.Quantity:
+        """
+        returns Quantity of the Cordinates in the unit provided
+
+        Returns:
+            unit.Quantity: Quantity of the Cordinates in the unit provided
+        """
+        return unit.Quantity(vec3(self.x, self.y, self.z), unit=self.unit).in_units_of(
+            unit
+        )
+
+    def getCoordinateValuesInUnit(self, unit: unit.Unit) -> List[float]:
+        """
+        returns list of the coordinate values in the provided unit
+
+        Returns:
+            unit.Quantity: coordinate values in the provided unit
+        """
+        return [
+            self.x.value_in_unit(unit),
+            self.y.value_in_unit(unit),
+            self.z.value_in_unit(unit),
+        ]

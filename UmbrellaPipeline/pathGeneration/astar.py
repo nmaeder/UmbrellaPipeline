@@ -20,7 +20,6 @@ class AStar3D:
     ) -> None:
         """
         class that holds all information necessary to generate shortest path.
-
         Args:
             start (NodeorList[int]): start node
             end (NodeorList[int]): destination node
@@ -54,11 +53,9 @@ class AStar3D:
     def estimateDiagonalH(self, node: Node, destination: Node) -> float:
         """
         estimates diagonal distance heuristics between node and destination.
-
         Args:
             node (Node): point a
             destination (Node): point b
-
         Returns:
             float: diagonal distance estimate
         """
@@ -76,11 +73,9 @@ class AStar3D:
     def estimateEuclideanH(self, node: Node, destination: Node) -> float:
         """
         estimates euclidean distance heuristics between node and destination.
-
         Args:
             node (Node): point a
             destination (Node): point b
-
         Returns:
             float: euclidean distance estimate
         """
@@ -93,10 +88,8 @@ class AStar3D:
     def isGoalReached(self, node: Node) -> bool:
         """
         checks if a node has the same coordinates as the end node defined in this class.
-
         Args:
             node (Node): node to be checked
-
         Returns:
             bool: Returns true if input node is the destination.
         """
@@ -105,7 +98,6 @@ class AStar3D:
     def backtracePath(self) -> List[Node]:
         """
         removes all the unsuccesfull path legs and returns the direct path from start to end. Does only make sense to run with or after self.aStar3D
-
         Returns:
             List[Node]: direct path from self.start to self.end
         """
@@ -121,11 +113,9 @@ class AStar3D:
     def generateSuccessors(self, parent: Node, pathsize: int) -> List[Node]:
         """
         generates possible successors for the a star grid
-
         Args:
             parent (Node): parent Node
             pathsize (int): diameter of path that has to be free
-
         Returns:
             List[Node]: list of possible successor nodes
         """
@@ -184,10 +174,8 @@ class AStar3D:
         """
         lets a slightly addapted (greedier) version of the A* star algorithm search for the shortest path between start end end point.
         TODO: adaptive path size.
-
         Args:
             backtrace (bool): set to false if you want the function to return all searched nodes instead of the shortet path: Defaults to True
-
         Returns:
             List[Node]: shortest path from a to b if class settint backtrace is true. else returns all searched nodes.
         """
@@ -232,10 +220,8 @@ class AStar3D:
     def pathToCcp4(self, filename: str):
         """
         Write out CCP4 density map of the path in the grid. good for visualization in VMD/pymol.
-
         Args:
             filename (str): path the file should be written to.
-
         Returns:
             None: Nothing
         """

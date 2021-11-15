@@ -43,7 +43,7 @@ def get_indices(
     Returns a list of indices that correspond to a given residue in the pdb file.
 
     Args:
-        atom_list (app.internal.charmm.topologyobjects.AtomList): atom list that should be searched. 
+        atom_list (app.internal.charmm.topologyobjects.AtomList): atom list that should be searched.
         name (List[str]orstr, optional): residue name. if none is given, the atom list is searched for amino acid residues. Defaults to aa_list.
 
     Returns:
@@ -136,7 +136,8 @@ def get_params(param_directory: str) -> app.charmmparameterset.CharmmParameterSe
 
 
 def gen_box(
-    psf: str or app.CharmmPsfFile, pdb: str or app.PDBFile
+    psf: str or app.CharmmPsfFile,
+    pdb: str or app.PDBFile,
 ) -> List[unit.Quantity]:
     """
     Adapted from charmm_gui readparams. Generates pbc box and adds it to the psf. returns offset of the box from 0,0,0.
