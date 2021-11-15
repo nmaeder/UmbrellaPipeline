@@ -7,12 +7,12 @@ import numpy as np
 import openmm.app as app
 import openmm.unit as unit
 
-from UmbrellaPipeline.pathGeneration.helper import (
+from node import GridNode
+from helper import (
     gen_box,
     get_indices,
     getCentroidCoordinates,
 )
-from UmbrellaPipeline.pathGeneration.node import Node
 
 
 class Grid:
@@ -128,7 +128,7 @@ class Grid:
 
         return cls(grid=grid, boxlengths=[l[0], l[1], l[2]], offset=min_c)
 
-    def nodeFromFiles(self, psf: str, pdb: str, name: str) -> Node:
+    def nodeFromFiles(self, psf: str, pdb: str, name: str) -> GridNode:
         """
         calculates the centroid coordinates of the ligand and returns the grid node closest to the centriod Cordinates.
         Args:
@@ -145,7 +145,7 @@ class Grid:
             psf = app.CharmmPsfFile(psf)
         indices = get_indices(atom_list=psf.atom_list, name=name)
         coordinates = getCentroidCoordinates(positions=pdb.positions, indices=indices)
-        return Node.fromCoords(
+        return GridNode.fromCoords(
             [
                 math.floor((coordinates[0] - self.offset[0]) / self.a),
                 math.floor((coordinates[1] - self.offset[1]) / self.a),
@@ -153,7 +153,9 @@ class Grid:
             ]
         )
 
-    def getGridValue(self, node: Node = None, coordinates: List[int] = None) -> bool:
+    def getGridValue(
+        self, node: GridNode = None, coordinates: List[int] = None
+    ) -> bool:
         """
         returns Value of gridcell.
         Args:
@@ -168,7 +170,9 @@ class Grid:
             else self.grid[coordinates[0]][coordinates[1]][coordinates[2]]
         )
 
-    def positionIsValid(self, node: Node = None, coordinates: List[int] = None) -> bool:
+    def positionIsValid(
+        self, node: GridNode = None, coordinates: List[int] = None
+    ) -> bool:
         """
         Checks if a Node is within the grid
         Args:
@@ -190,7 +194,7 @@ class Grid:
         return False
 
     def positionIsBlocked(
-        self, node: Node = None, coordinates: List[int] = None
+        self, node: GridNode = None, coordinates: List[int] = None
     ) -> bool:
         """Returns true if a gridcell is occupied with a protien atom.
         Args:
@@ -201,35 +205,102 @@ class Grid:
         """
         return self.getGridValue(node=node, coordinates=coordinates)
 
-    def areSurroundingsBlocked(self, node: Node, pathsize: int) -> bool:
+    def estimateDiagonalH(self, node: GridNode, destination: GridNode) -> float:
+        """
+        estimates diagonal distance heuristics between node and destination.
+        Args:
+            node (GridNode): point a
+            destination (GridNode): point b
+        Returns:
+            float: diagonal distance estimate
+        """
+        dx = abs(node.x - destination.x)
+        dy = abs(node.y - destination.y)
+        dz = abs(node.z - destination.z)
+        dmin = min(dx, dy, dz)
+        dmax = max(dx, dy, dz)
+        dmid = dx + dy + dz - dmax - dmin
+        D3 = math.sqrt(3)
+        D2 = math.sqrt(2)
+        D1 = math.sqrt(1)
+        return (D3 - D2) * dmin + (D2 - D1) * dmid + D1 * dmax
+
+    def getDistanceToTrue(self, node: GridNode):
+        for i in range(1, 500, 1):
+            if any(
+                term
+                for term in [
+                    self.grid[node.x + i][node.y][node.z],
+                    self.grid[node.x - i][node.y][node.z],
+                    self.grid[node.x][node.y + i][node.z],
+                    self.grid[node.x][node.y - i][node.z],
+                    self.grid[node.x][node.y][node.z + i],
+                    self.grid[node.x][node.y][node.z - i],
+                ]
+            ):
+                return i
+            d2 = int(i / math.sqrt(2))
+            if any(
+                term
+                for term in [
+                    self.grid[node.x - d2][node.y - d2][node.z],
+                    self.grid[node.x - d2][node.y + d2][node.z],
+                    self.grid[node.x + d2][node.y - d2][node.z],
+                    self.grid[node.x + d2][node.y + d2][node.z],
+                    self.grid[node.x][node.y - d2][node.z - d2],
+                    self.grid[node.x][node.y - d2][node.z + d2],
+                    self.grid[node.x][node.y + d2][node.z - d2],
+                    self.grid[node.x][node.y + d2][node.z + d2],
+                    self.grid[node.x - d2][node.y][node.z - d2],
+                    self.grid[node.x - d2][node.y][node.z + d2],
+                    self.grid[node.x + d2][node.y][node.z - d2],
+                    self.grid[node.x + d2][node.y][node.z + d2],
+                ]
+            ):
+                return i / math.sqrt(2)
+            d3 = int(i / math.sqrt(3))
+            if any(
+                term
+                for term in [
+                    self.grid[node.x - d3][node.y - d3][node.z - d3],
+                    self.grid[node.x - d3][node.y - d3][node.z + d3],
+                    self.grid[node.x - d3][node.y + d3][node.z - d3],
+                    self.grid[node.x - d3][node.y + d3][node.z + d3],
+                    self.grid[node.x + d3][node.y - d3][node.z - d3],
+                    self.grid[node.x + d3][node.y - d3][node.z + d3],
+                    self.grid[node.x + d3][node.y + d3][node.z - d3],
+                    self.grid[node.x + d3][node.y + d3][node.z + d3],
+                ]
+            ):
+                return i / math.sqrt(3)
+        return 0
+
+    def areSurroundingsBlocked(self, node: GridNode, pathsize: int) -> bool:
         """
         checks if surroundigns in a given radius are occupied. only checks the 16 outmost points.
+        DEPRECEATED
         Args:
             node (Node): Node type object
             pathsize (int): Radius in which surroundings are checked.
         Returns:
             bool: True if a surrounding blocv is true
         """
-        for dx, dy, dz in product(
-            [pathsize, int(pathsize / 2)],
-            [pathsize, int(pathsize / 2)],
-            [pathsize, int(pathsize / 2)],
-        ):
+        for dx in [pathsize, int(pathsize / 2)]:
             if not self.positionIsValid(
-                coordinates=[node.x + dx, node.y + dy, node.z + dz]
+                coordinates=[node.x + dx, node.y + dx, node.z + dx]
             ):
                 continue
             if any(
                 term
                 for term in [
-                    self.grid[node.x - dx][node.y - dy][node.z - dz],
-                    self.grid[node.x - dx][node.y - dy][node.z + dz],
-                    self.grid[node.x - dx][node.y + dy][node.z - dz],
-                    self.grid[node.x - dx][node.y + dy][node.z + dz],
-                    self.grid[node.x + dx][node.y - dy][node.z - dz],
-                    self.grid[node.x + dx][node.y - dy][node.z + dz],
-                    self.grid[node.x + dx][node.y + dy][node.z - dz],
-                    self.grid[node.x + dx][node.y + dy][node.z + dz],
+                    self.grid[node.x - dx][node.y - dx][node.z - dx],
+                    self.grid[node.x - dx][node.y - dx][node.z + dx],
+                    self.grid[node.x - dx][node.y + dx][node.z - dx],
+                    self.grid[node.x - dx][node.y + dx][node.z + dx],
+                    self.grid[node.x + dx][node.y - dx][node.z - dx],
+                    self.grid[node.x + dx][node.y - dx][node.z + dx],
+                    self.grid[node.x + dx][node.y + dx][node.z - dx],
+                    self.grid[node.x + dx][node.y + dx][node.z + dx],
                 ]
             ):
                 return True

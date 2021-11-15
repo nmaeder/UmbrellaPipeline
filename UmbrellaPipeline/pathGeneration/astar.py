@@ -1,42 +1,27 @@
 import math
 from typing import List
+import openmm.unit as unit
 
 import gemmi
 import numpy as np
-from UmbrellaPipeline.pathGeneration.grid import Grid, Node
+from grid import Grid
+from tree import Tree
+from node import (
+    TreeNode,
+    GridNode,
+)
 
 
 class AStar3D:
-    """
-    Class that holds and calculates all information as well as the shortest path from start to end by deploying the A* algorithmm
-    """
-
     def __init__(
         self,
-        start: Node or List[int],
-        end: Node or List[int],
-        grid: Grid,
-        method: str = "diagonal",
+        start: GridNode or TreeNode,
+        end: GridNode or TreeNode,
     ) -> None:
-        """
-        class that holds all information necessary to generate shortest path.
-        Args:
-            start (NodeorList[int]): start node
-            end (NodeorList[int]): destination node
-            grid (Grid): grid in which path should be searched
-            method (str, optional): give either diagoal or euclidean. Defaults to 'diagonal'.
-        """
-        self.grid = grid
-        self.start = (
-            Node.fromCoords(start.getCoordinates())
-            if type(start) is not Node
-            else start
-        )
-        self.end = (
-            Node.fromCoords(end.getCoordinates()) if type(end) is not Node else end
-        )
-        self.shortestPath: List[Node] = []
-        self.method = method
+
+        self.start = start
+        self.end = end
+        self.shortestPath = []
 
     def __str__(self) -> str:
         ret = ""
@@ -50,56 +35,33 @@ class AStar3D:
             ret += f"{str(i)}\n"
         return ret
 
-    def estimateDiagonalH(self, node: Node, destination: Node) -> float:
-        """
-        estimates diagonal distance heuristics between node and destination.
-        Args:
-            node (Node): point a
-            destination (Node): point b
-        Returns:
-            float: diagonal distance estimate
-        """
-        dx = abs(node.x - destination.x)
-        dy = abs(node.y - destination.y)
-        dz = abs(node.z - destination.z)
-        dmin = min(dx, dy, dz)
-        dmax = max(dx, dy, dz)
-        dmid = dx + dy + dz - dmax - dmin
-        D3 = math.sqrt(3)
-        D2 = math.sqrt(2)
-        D1 = math.sqrt(1)
-        return (D3 - D2) * dmin + (D2 - D1) * dmid + D1 * dmax
+    def isGoalreached(self, node: GridNode):
+        pass
 
-    def estimateEuclideanH(self, node: Node, destination: Node) -> float:
-        """
-        estimates euclidean distance heuristics between node and destination.
-        Args:
-            node (Node): point a
-            destination (Node): point b
-        Returns:
-            float: euclidean distance estimate
-        """
-        return math.sqrt(
-            (node.x - destination.x) ** 2
-            + (node.y - destination.y) ** 2
-            + (node.z - destination.z) ** 2
-        )
 
-    def isGoalReached(self, node: Node) -> bool:
+class GridAStar(AStar3D):
+    def __init__(
+        self, grid: Grid, start: GridNode, end: GridNode, method: str = "diagonal"
+    ) -> None:
+        super().__init__(start=start, end=end, method=method)
+        self.grid = grid
+        self.method = method
+
+    def isGoalReached(self, node: GridNode) -> bool:
         """
         checks if a node has the same coordinates as the end node defined in this class.
         Args:
-            node (Node): node to be checked
+            node (GridNode): node to be checked
         Returns:
             bool: Returns true if input node is the destination.
         """
         return node == self.end
 
-    def backtracePath(self) -> List[Node]:
+    def backtracePath(self) -> List[GridNode]:
         """
         removes all the unsuccesfull path legs and returns the direct path from start to end. Does only make sense to run with or after self.aStar3D
         Returns:
-            List[Node]: direct path from self.start to self.end
+            List[GridNode]: direct path from self.start to self.end
         """
         self.shortestPath.reverse()
         new = []
@@ -110,105 +72,93 @@ class AStar3D:
         self.shortestPath = new
         return self.shortestPath
 
-    def generateSuccessors(self, parent: Node, pathsize: int) -> List[Node]:
+    def generateSuccessors(self, parent: GridNode, pathsize: int) -> List[GridNode]:
         """
         generates possible successors for the a star grid
         Args:
-            parent (Node): parent Node
+            parent (GridNode): parent Node
             pathsize (int): diameter of path that has to be free
         Returns:
-            List[Node]: list of possible successor nodes
+            List[GridNode]: list of possible successor nodes
         """
         possibleNeighbours = [
             [-1, -1, -1],
-            [0, -1, -1],
-            [1, -1, -1],
-            [-1, 0, -1],
-            [0, 0, -1],
-            [1, 0, -1],
-            [-1, 1, -1],
-            [0, 1, -1],
-            [1, 1, -1],
             [-1, -1, 0],
-            [0, -1, 0],
-            [1, -1, 0],
-            [-1, 0, 0],
-            [1, 0, 0],
-            [-1, 1, 0],
-            [0, 1, 0],
-            [1, 1, 0],
             [-1, -1, 1],
-            [0, -1, 1],
-            [1, -1, 1],
+            [-1, 0, -1],
+            [-1, 0, 0],
             [-1, 0, 1],
-            [0, 0, 1],
-            [1, 0, 1],
+            [-1, 1, -1],
+            [-1, 1, 0],
             [-1, 1, 1],
+            [0, -1, -1],
+            [0, -1, 0],
+            [0, -1, 1],
+            [0, 0, -1],
+            [0, 0, 1],
+            [0, 1, -1],
+            [0, 1, 0],
             [0, 1, 1],
+            [1, -1, -1],
+            [1, -1, 0],
+            [1, -1, 1],
+            [1, 0, -1],
+            [1, 0, 0],
+            [1, 0, 1],
+            [1, 1, -1],
+            [1, 1, 0],
             [1, 1, 1],
         ]
         ret = []
         for neighbour in possibleNeighbours:
-            child = Node.fromCoords(
+            child = GridNode.fromCoords(
                 [a + b for a, b in zip(parent.getCoordinates(), neighbour)]
             )
             if not self.grid.positionIsValid(node=child) or self.grid.positionIsBlocked(
                 node=child
             ):
                 continue
-            if pathsize:
-                self.grid.areSurroundingsBlocked(node=child, pathsize=pathsize)
-            if self.method == "diagonal":
-                child.g = parent.g + self.estimateDiagonalH(parent, child)
-                child.h = self.estimateDiagonalH(child, self.end)
-                child.f = child.g + child.h
-            else:
-                child.g = parent.g + self.estimateEuclideanH(parent, child)
-                child.h = self.estimateEuclideanH(child, self.end)
-                child.f = child.g + child.h
+            child.g = parent.g + self.grid.estimateDiagonalH(
+                node=parent, destination=child
+            )
+            child.h = self.grid.getDistanceToTrue(child)
             child.parent = parent
             ret.append(child)
         return ret
 
-    def aStar3D(self, backtrace: bool = True, pathsize: int = 0) -> List[Node]:
+    def aStar3D(self, backtrace: bool = True, pathsize: int = 0) -> List[GridNode]:
         """
         lets a slightly addapted (greedier) version of the A* star algorithm search for the shortest path between start end end point.
-        TODO: adaptive path size.
         Args:
             backtrace (bool): set to false if you want the function to return all searched nodes instead of the shortet path: Defaults to True
         Returns:
-            List[Node]: shortest path from a to b if class settint backtrace is true. else returns all searched nodes.
+            List[GridNode]: shortest path from a to b if class settint backtrace is true. else returns all searched nodes.
         """
         if self.isGoalReached(node=self.start):
             self.shortestPath.append(self.start)
             return self.shortestPath
         self.start.g = 0
-        self.start.h = (
-            self.estimateDiagonalH(node=self.start, destination=self.end)
-            if self.method == "diagonal"
-            else self.estimateEuclideanH(node=self.start, destination=self.end)
-        )
-        self.start.f = self.start.h
+        self.start.h = self.grid.getDistanceToTrue(self.start)
         openList = [self.start]
         while openList:
             q = openList[0]
             for node in openList:
-                if node.f < q.f and node.h < q.h:
+                if node.h > q.h:
                     q = node
             openList.remove(q)
             children = self.generateSuccessors(parent=q, pathsize=pathsize)
             for child in children:
-                if self.isGoalReached(child):
+                if not self.grid.getDistanceToTrue(child):
                     self.shortestPath.append(q)
                     self.shortestPath.append(child)
                     return self.shortestPath if not backtrace else self.backtracePath()
                 if any(
-                    (listEntry == child and listEntry.f <= child.f)
+                    (listEntry == child and listEntry.g <= child.g)
                     for listEntry in openList
                 ):
                     continue
                 if any(
-                    (listEntry == child and listEntry.f <= child.f)
+                    (listEntry == child and listEntry.g <= child.g)
                     for listEntry in self.shortestPath
                 ):
                     continue
@@ -238,3 +188,123 @@ class AStar3D:
         ccp4_map.update_ccp4_header()
         ccp4_map.write_ccp4_map(filename)
         return None
+
+
+class TreeAStar(AStar3D):
+    def __init__(self, start: TreeNode, end: TreeNode, tree: Tree) -> None:
+        super().__init__(start, end)
+        self.tree = tree
+
+    def estimateEuclideanH(self, node: GridNode, destination: GridNode) -> float:
+        """
+        estimates euclidean distance heuristics between node and destination.
+        Args:
+            node (GridNode): point a
+            destination (GridNode): point b
+        Returns:
+            float: euclidean distance estimate
+        """
+        return math.sqrt(
+            (node.x - destination.x) ** 2
+            + (node.y - destination.y) ** 2
+            + (node.z - destination.z) ** 2
+        )
+
+    def isGoalReached(self, node: TreeNode):
+        return self.tree.distanceToProtein(node=node) > 5 * unit.nanometer
+
+    def generateSuccessors(
+        self, parent: TreeNode, stepsize: unit.Quantity = 0.01 * unit.nanometer
+    ) -> List[TreeNode]:
+        """
+        generates possible successors for the a star grid
+        Args:
+            parent (Node): parent Node
+            pathsize (int): diameter of path that has to be free
+        Returns:
+            List[Node]: list of possible successor nodes
+        """
+        d3 = stepsize / math.sqrt(3)
+        d2 = stepsize / math.sqrt(2)
+        d1 = stepsize / math.sqrt(1)
+        possibleNeighbours = [
+            [d1, 0, 0],
+            [-d1, 0, 0],
+            [0, d1, 0],
+            [0, -d1, 0],
+            [0, 0, d1],
+            [0, 0, -d1],
+            [d2, d2, 0],
+            [-d2, d2, 0],
+            [d2, -d2, 0],
+            [-d2, -d2, 0],
+            [0, d2, d2],
+            [0, -d2, d2],
+            [0, d2, -d2],
+            [0, -d2, -d2],
+            [d2, 0, d2],
+            [-d2, 0, d2],
+            [d2, 0, -d2],
+            [-d2, 0, -d2],
+            [d3, d3, d3],
+            [-d3, d3, d3],
+            [d3, -d3, d3],
+            [d3, d3, -d3],
+            [-d3, -d3, d3],
+            [d3, -d3, -d3],
+            [-d3, d3, -d3],
+            [-d3, -d3, -d3],
+        ]
+        ret = []
+        for num, neighbour in enumerate(possibleNeighbours):
+            child = TreeNode.fromCoords(
+                [
+                    a + b.value_in_units(parent.unit)
+                    for a, b in zip(parent.getCoordinates(), neighbour)
+                ],
+                unit=parent.unit,
+            )
+            dist = self.tree.distanceToProtein(node=child)
+            child.g = parent.g + self.estimateEuclideanH(parent, child)
+            child.h = dist
+            child.parent = parent
+            ret.append(child)
+        return ret
+
+    def aStar3D(self, backtrace: bool = True, pathsize: int = 0) -> List[TreeNode]:
+        """
+        lets a slightly addapted (greedier) version of the A* star algorithm search for the shortest path between start end end point.
+        Args:
+            backtrace (bool): set to false if you want the function to return all searched nodes instead of the shortet path: Defaults to True
+        Returns:
+            List[TreeNode]: shortest path from a to b if class settint backtrace is true. else returns all searched nodes.
+        """
+        self.start.g = 0
+        self.start.h = self.tree.distanceToProtein(node=self.start)
+        openList = [self.start]
+        while openList:
+            q = openList[0]
+            for node in openList:
+                if node.h > q.h:
+                    q = node
+            openList.remove(q)
+            children = self.generateSuccessors(parent=q, pathsize=pathsize)
+            for child in children:
+                if self.isGoalReached(child):
+                    self.shortestPath.append(q)
+                    self.shortestPath.append(child)
+                    return self.shortestPath if not backtrace else self.backtracePath()
+                if any(
+                    (listEntry == child and listEntry.g <= child.g)
+                    for listEntry in openList
+                ):
+                    continue
+                if any(
+                    (listEntry == child and listEntry.g <= child.g)
+                    for listEntry in self.shortestPath
+                ):
+                    continue
+                else:
+                    openList.insert(0, child)
+            self.shortestPath.append(q)
+        return []

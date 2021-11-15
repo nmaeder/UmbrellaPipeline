@@ -1,24 +1,23 @@
-import math
-from itertools import product
-from typing import List
 from scipy.spatial import KDTree
+from typing import List
 
-import gemmi
-import numpy as np
-import openmm.app as app
 import openmm.unit as unit
+import openmm.app as app
+from openmm import vec3
+
 
 from UmbrellaPipeline.pathGeneration.helper import (
-    gen_box,
     get_indices,
     getCentroidCoordinates,
 )
-from UmbrellaPipeline.pathGeneration.node import Node
+from UmbrellaPipeline.pathGeneration.node import (
+    TreeNode,
+)
 
 
-class Grid:
+class Tree:
     """
-    This class stores the grid and all information relevant for writing out coordinates.
+    This class stores the KDTree and all information relevant for writing out coordinates.
     """
 
     def __init__(
@@ -43,8 +42,15 @@ class Grid:
             self.unit = unit
             self.tree = KDTree(coordinates)
 
+        else:
+            self.unit = unit
+            pos = []
+            for i in coordinates:
+                pos.append(list(i.value_in_unit(i.unit)))
+            self.tree = KDTree(pos)
+
     @classmethod
-    def gridFromFiles(
+    def treeFromFiles(
         cls,
         pdb: str or app.PDBFile,
         psf: str or app.CharmmPsfFile,
@@ -75,7 +81,7 @@ class Grid:
 
         return cls(unit=unit, coordinates=coords)
 
-    def nodeFromFiles(self, psf: str, pdb: str, name: str) -> Node:
+    def nodeFromFiles(self, psf: str, pdb: str, name: str) -> TreeNode:
         """
         calculates the centroid coordinates of the ligand and returns the grid node closest to the centriod Cordinates.
 
@@ -100,75 +106,48 @@ class Grid:
 
         indices = get_indices(atom_list=psf.atom_list, name=name)
         coordinates = getCentroidCoordinates(positions=pdb.positions, indices=indices)
-        return Node.fromCoords(
+        return TreeNode.fromCoords(
             [
-                math.floor((coordinates[0] - self.offset[0]) / self.a),
-                math.floor((coordinates[1] - self.offset[1]) / self.a),
-                math.floor((coordinates[2] - self.offset[2]) / self.a),
+                coordinates[0],
+                coordinates[1],
+                coordinates[2],
             ]
         )
 
-    def getGridValue(self, node: Node = None, coordinates: List[int] = None) -> bool:
-        """
-        returns Value of gridcell.
-        Args:
-            node (Node, optional): Node type object. Defaults to None.
-            coordinates (List[int], optional): Node coordinates. Defaults to None.
-
-        Returns:
-            bool: value of gridcell
-        """
-        return (
-            self.grid[node.x][node.y][node.z]
-            if node
-            else self.grid[coordinates[0]][coordinates[1]][coordinates[2]]
-        )
-
-    def positionIsValid(
+    def positionIsBlocked(
         self,
-        node: Node = None,
-        coordinates: List[int] = None,
+        node: TreeNode = None,
+        coordinates: List[float] = None,
+        unit: unit.Unit = unit.nanometer,
         vdwRadius: unit.Quantity = 1.2 * unit.angstrom,
     ) -> bool:
         """
-        Checks if a Node is within the grid
-        depreceated
+        Checks if a Node is the vdwRadius of a protein Atom in the tree
 
         Args:
-            node (Node, optional): Node type object. Defaults to None.
-            coordinates (List[int], optional): grid cell coordinates. Defaults to None.
+            node (TreeNode, optional): TreeNode type object. Defaults to None.
+            coordinates (unit.Wuantity, optional): grid cell coordinates. Defaults to None.
+            unit (unit.Unit, optional): unit of coordinates. Defaults to unit.nanometer.
+            vdwRadius (unit.Quantity): vdwRadius given to each protein atom. Defaults to 1.2 * unit.angstrom
 
         Returns:
             bool: True if Node is within grid
         """
-        if node:
-            return self.tree.query()
-        if coordinates:
-            return (
-                0 <= coordinates[0] < self.x
-                and 0 <= coordinates[1] < self.y
-                and 0 <= coordinates[2] < self.z
+        try:
+            dist, i = self.tree.query(x=node.value_in_units(self.unit), k=1)
+            return dist > vdwRadius
+        except TypeError:
+            coords = unit.Quantity(
+                value=vec3(coordinates[0], coordinates[1], coordinates[2]), unit=unit
             )
-        return False
-
-    def positionIsBlocked(
-        self, node: Node, vdwRadius: unit.Quantity = 1.2 * unit.angstrom
-    ) -> bool:
-        """Returns true if a gridcell is occupied with a protien atom.
-
-        Args:
-            node (Node, optional): Node type object. Defaults to None.
-            coordinates (List[int], optional): grid cell coordinates. Defaults to None.
-
-        Returns:
-            bool: True if position is occupied by protein
-        """
-        dist, key = self.tree.query(x=node.getCoordinateValuesInUnit(self.unit), k=1)
-        return not dist * self.unit > vdwRadius
+            dist, i = self.tree.query(x=coordinates.value_in_units(self.unit))
+            return dist > vdwRadius
 
     def distanceToProtein(
         self,
-        node: Node,
+        node: TreeNode = None,
+        coordinates: List[float] = None,
+        unit: unit.Unit = unit.nanometer,
         vdwRadius: unit.Quantity = 1.2 * unit.angstrom,
     ) -> unit.Quantity:
         """distanceToProtein
@@ -185,83 +164,14 @@ class Grid:
         -------
         unit.Quantity: distance to nearest protein atom
         """
-        dist, key = self.tree.query(x=node.getCoordinateValuesInUnit(self.unit))
-        dist = dist * vdwRadius.unit - vdwRadius
-        return dist.in_units_of(self.unit)
-
-    def areSurroundingsBlocked(self, node: Node, pathsize: int) -> bool:
-        """
-        checks if surroundigns in a given radius are occupied. only checks the 16 outmost points.
-        depreceated
-
-        Args:
-            node (Node): Node type object
-            pathsize (int): Radius in which surroundings are checked.
-
-        Returns:
-            bool: True if a surrounding blocv is true
-        """
-        for dx, dy, dz in product(
-            [pathsize, int(pathsize / 2)],
-            [pathsize, int(pathsize / 2)],
-            [pathsize, int(pathsize / 2)],
-        ):
-            if not self.positionIsValid(
-                coordinates=[node.x + dx, node.y + dy, node.z + dz]
-            ):
-                continue
-            if any(
-                term
-                for term in [
-                    self.grid[node.x - dx][node.y - dy][node.z - dz],
-                    self.grid[node.x - dx][node.y - dy][node.z + dz],
-                    self.grid[node.x - dx][node.y + dy][node.z - dz],
-                    self.grid[node.x - dx][node.y + dy][node.z + dz],
-                    self.grid[node.x + dx][node.y - dy][node.z - dz],
-                    self.grid[node.x + dx][node.y - dy][node.z + dz],
-                    self.grid[node.x + dx][node.y + dy][node.z - dz],
-                    self.grid[node.x + dx][node.y + dy][node.z + dz],
-                ]
-            ):
-                return True
-        return False
-
-    def toCcp4(self, filename: str):
-        """
-        Write out CCP4 density map of the grid. good for visualization in VMD/pymol.
-        depreceatred
-
-        Args:
-            filename (str): path the file should be written to.
-
-        Returns:
-            None: Nothing
-        """
-        if not filename.endswith(".ccp4"):
-            filename += ".ccp4"
-        print("Hang in there, this can take a while (~1 Minute)")
-        ccp4_map = gemmi.Ccp4Map()
-        ccp4_map.grid = gemmi.FloatGrid(self.grid.astype(np.float32))
-        ccp4_map.update_ccp4_header()
-        ccp4_map.write_ccp4_map(filename)
-        return None
-
-    def toXYZCoordinates(self) -> List[float]:
-        """
-        returns list of cartesian coordinates that are true in the grid.
-        depreceated
-
-        Returns:
-            List[float]: List of cartesian coordinates with value true.
-        """
-        ret = []
-        for x, y, z in product(self.x, self.y, self.z):
-            if self.grid[x][y][z]:
-                ret.append(
-                    [
-                        x * self.a + self.offset[0],
-                        y * self.b + self.offset[0],
-                        z * self.c + self.offset[0],
-                    ]
-                )
-        return ret
+        try:
+            dist, i = self.tree.query(x=node.value_in_units(self.unit), k=1)
+            dist = dist * self.unit - vdwRadius
+            return dist.in_units_of(self.unit)
+        except TypeError:
+            coords = unit.Quantity(
+                value=vec3(coordinates[0], coordinates[1], coordinates[2]), unit=unit
+            )
+            dist, i = self.tree.query(x=node.value_in_units(self.unit), k=1)
+            dist = dist * self.unit - vdwRadius
+            return dist.in_units_of(self.unit)
