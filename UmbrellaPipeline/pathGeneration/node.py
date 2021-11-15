@@ -30,9 +30,11 @@ class TreeNode(Node):
         h: float = 0,
         f: float = 0,
         unit: unit.Unit = unit.nanometer,
+        parent = None,
     ):
         super().__init__(x=x, y=y, z=z, g=g, h=h, f=f)
         self.unit = unit
+        self.parent: TreeNode = parent
 
     @classmethod
     def fromCoords(
@@ -65,8 +67,10 @@ class GridNode(Node):
         g: float = 0,
         h: float = 0,
         f: float = 0,
+        parent = None
     ):
         super().__init__(x=x, y=y, z=z, g=g, h=h, f=f)
+        self.parent: GridNode = parent
 
     def __eq__(self, o: object) -> bool:
         return self.getCoordinates() == o.getCoordinates()

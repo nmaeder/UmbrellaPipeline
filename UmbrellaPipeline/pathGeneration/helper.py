@@ -4,6 +4,7 @@ from typing import List
 import openmm as mm
 import openmm.app as app
 import openmm.unit as unit
+from openmm import vec3
 
 aa_list = [
     "ala",
@@ -73,11 +74,10 @@ def getCentroidCoordinates(
     Returns:
         unit.Quantity: Centroid coordinates of the specified atoms
     """
-    ret = [0 * unit.nanometer, 0 * unit.nanometer, 0 * unit.nanometer]
-    for coordinate in range(3):
-        for i in indices:
-            ret[coordinate] += positions[i][coordinate]
-        ret[coordinate] / len(indices)
+    ret = unit.Quantity(value=vec3(0, 0, 0), unit=unit.nanometer)
+    for i in indices:
+        ret[:] = [ret[x] + positions[i][x] for x in range(3)]
+    ret[:] = [ret[x] / len(indices) for x in ret]
     return ret
 
 
@@ -95,15 +95,15 @@ def getCenterOfMassCoordinates(
     Returns:
         unit.Quantity: center of mass coordinates of the specified atoms
     """
-    ret = [0 * unit.nanometer, 0 * unit.nanometer, 0 * unit.nanometer]
+    ret = unit.Quantity(value=vec3(0, 0, 0), unit=unit.nanometer)
     mass = 0 * unit.dalton
-    for coordinate in range(3):
-        for atomnr in indices:
-            ret[coordinate] += positions[atomnr][coordinate] * masses.getParticleMass(
-                atomnr
-            )
-            mass += masses.getParticleMass(atomnr)
-        ret[coordinate] /= mass
+    for atomnr in indices:
+        ret[:] = [
+            ret[x] + positions[atomnr][x] * masses.getParticleMass(atomnr)
+            for x in range(3)
+        ]
+        mass += masses.getParticleMass(atomnr)
+    ret[:] = [ret[x] / len(indices) for x in ret]
 
 
 def get_params(param_directory: str) -> app.charmmparameterset.CharmmParameterSet:
@@ -136,8 +136,7 @@ def get_params(param_directory: str) -> app.charmmparameterset.CharmmParameterSe
 
 
 def gen_box(
-    psf: str or app.CharmmPsfFile,
-    pdb: str or app.PDBFile,
+    psf: str or app.CharmmPsfFile, pdb: str or app.PDBFile,
 ) -> List[unit.Quantity]:
     """
     Adapted from charmm_gui readparams. Generates pbc box and adds it to the psf. returns offset of the box from 0,0,0.
