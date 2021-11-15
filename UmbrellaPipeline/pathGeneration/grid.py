@@ -74,10 +74,14 @@ class Grid:
         Returns:
             Grid: Boolean grid where protein positions are True.
         """
-        if type(pdb) is str:
+        try:
             pdb = app.PDBFile(pdb)
-        if type(psf) is str:
+        except TypeError:
+            pass
+        try:
             psf = app.CharmmPsfFile(psf)
+        except TypeError:
+            pass
 
         inx = get_indices(psf.atom_list)
         min_c = gen_box(psf, pdb)
