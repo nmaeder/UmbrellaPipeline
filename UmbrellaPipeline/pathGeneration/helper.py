@@ -4,7 +4,7 @@ from typing import List
 import openmm as mm
 import openmm.app as app
 import openmm.unit as unit
-from openmm import vec3
+from openmm import Vec3
 
 aa_list = [
     "ala",
@@ -74,11 +74,12 @@ def getCentroidCoordinates(
     Returns:
         unit.Quantity: Centroid coordinates of the specified atoms
     """
-    ret = unit.Quantity(value=vec3(0, 0, 0), unit=unit.nanometer)
-    for i in indices:
-        ret[:] = [ret[x] + positions[i][x] for x in range(3)]
-    ret[:] = [ret[x] / len(indices) for x in ret]
-    return ret
+    ret:unit.Quantity = []
+    for coordinate in range(3):
+        for i in indices:
+            ret[coordinate] += positions[i][coordinate]
+        ret[coordinate] /= (len(indices)*positions.unit)
+    return unit.Quantity(value=Vec3(x=ret[0], y = ret[1], z= ret[2]), unit=positions.unit)
 
 
 def getCenterOfMassCoordinates(
@@ -95,15 +96,16 @@ def getCenterOfMassCoordinates(
     Returns:
         unit.Quantity: center of mass coordinates of the specified atoms
     """
-    ret = unit.Quantity(value=vec3(0, 0, 0), unit=unit.nanometer)
+    ret = unit.Quantity(value=Vec3(0, 0, 0), unit=unit.nanometer)
     mass = 0 * unit.dalton
-    for atomnr in indices:
-        ret[:] = [
-            ret[x] + positions[atomnr][x] * masses.getParticleMass(atomnr)
-            for x in range(3)
-        ]
-        mass += masses.getParticleMass(atomnr)
-    ret[:] = [ret[x] / len(indices) for x in ret]
+    for coordinate in range(3):
+        for atomnr in indices:
+            ret[coordinate] += positions[atomnr][coordinate] * masses.getParticleMass(
+                atomnr
+            )
+            mass += masses.getParticleMass(atomnr)
+        ret[coordinate] /= (mass*positions.unit)
+    return unit.Quantity(value=Vec3(x=ret[0], y = ret[1], z= ret[2]), unit=positions.unit)
 
 
 def get_params(param_directory: str) -> app.charmmparameterset.CharmmParameterSet:
@@ -136,7 +138,8 @@ def get_params(param_directory: str) -> app.charmmparameterset.CharmmParameterSe
 
 
 def gen_box(
-    psf: str or app.CharmmPsfFile, pdb: str or app.PDBFile,
+    psf: str or app.CharmmPsfFile,
+    pdb: str or app.PDBFile,
 ) -> List[unit.Quantity]:
     """
     Adapted from charmm_gui readparams. Generates pbc box and adds it to the psf. returns offset of the box from 0,0,0.

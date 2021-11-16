@@ -1,5 +1,5 @@
 from typing import List
-from openmm import vec3
+from openmm import Vec3
 import openmm.unit as unit
 
 
@@ -30,7 +30,7 @@ class TreeNode(Node):
         h: float = 0,
         f: float = 0,
         unit: unit.Unit = unit.nanometer,
-        parent = None,
+        parent=None,
     ):
         super().__init__(x=x, y=y, z=z, g=g, h=h, f=f)
         self.unit = unit
@@ -55,7 +55,7 @@ class TreeNode(Node):
         return self.getCoordinates() == o.getCoordinates()
 
     def getCoordinates(self) -> unit.Quantity:
-        return unit.Quantity(value=vec3(self.x, self.y, self.z), unit=self.unit)
+        return unit.Quantity(value=Vec3(self.x, self.y, self.z), unit=self.unit)
 
 
 class GridNode(Node):
@@ -67,7 +67,7 @@ class GridNode(Node):
         g: float = 0,
         h: float = 0,
         f: float = 0,
-        parent = None
+        parent=None,
     ):
         super().__init__(x=x, y=y, z=z, g=g, h=h, f=f)
         self.parent: GridNode = parent

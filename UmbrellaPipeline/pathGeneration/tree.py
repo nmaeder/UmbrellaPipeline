@@ -3,14 +3,14 @@ from typing import List
 
 import openmm.unit as unit
 import openmm.app as app
-from openmm import vec3
+from openmm import Vec3
 
 
-from UmbrellaPipeline.pathGeneration.helper import (
+from helper import (
     get_indices,
     getCentroidCoordinates,
 )
-from UmbrellaPipeline.pathGeneration.node import (
+from node import (
     TreeNode,
 )
 
@@ -138,7 +138,7 @@ class Tree:
             return dist > vdwRadius
         except TypeError:
             coords = unit.Quantity(
-                value=vec3(coordinates[0], coordinates[1], coordinates[2]), unit=unit
+                value=Vec3(coordinates[0], coordinates[1], coordinates[2]), unit=unit
             )
             dist, i = self.tree.query(x=coordinates.value_in_units(self.unit))
             return dist > vdwRadius
@@ -170,7 +170,7 @@ class Tree:
             return dist.in_units_of(self.unit)
         except TypeError:
             coords = unit.Quantity(
-                value=vec3(coordinates[0], coordinates[1], coordinates[2]), unit=unit
+                value=Vec3(coordinates[0], coordinates[1], coordinates[2]), unit=unit
             )
             dist, i = self.tree.query(x=node.value_in_units(self.unit), k=1)
             dist = dist * self.unit - vdwRadius
