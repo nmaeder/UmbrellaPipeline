@@ -68,7 +68,7 @@ def testGridSuccessor():
 def testGridPathfinding():
     pdbo = app.PDBFile(pdb)
     psfo = app.CharmmPsfFile(psf)
-    grid = Grid.gridFromFiles(pdb=pdbo, psf=psfo, gridsize=0.5 * unit.angstrom)
+    grid = Grid.gridFromFiles(pdb=pdbo, psf=psfo, gridsize=1 * unit.angstrom)
     node = grid.nodeFromFiles(psf=psfo, pdb=pdbo, name="UNL")
     assert not grid.positionIsBlocked(node)
     astar = GridAStar(grid=grid, start=node)
