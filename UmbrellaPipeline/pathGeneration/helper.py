@@ -52,7 +52,7 @@ def get_indices(
     """
     ret = []
     for i, atom in enumerate(atom_list):
-        if name is str:
+        if type(name) == str:
             if name.lower() in str(atom).lower():
                 ret.append(i)
         else:
@@ -74,12 +74,12 @@ def getCentroidCoordinates(
     Returns:
         unit.Quantity: Centroid coordinates of the specified atoms
     """
-    ret:unit.Quantity = []
+    ret = [0 * positions.unit, 0 * positions.unit, 0 * positions.unit]
     for coordinate in range(3):
         for i in indices:
             ret[coordinate] += positions[i][coordinate]
-        ret[coordinate] /= (len(indices)*positions.unit)
-    return unit.Quantity(value=Vec3(x=ret[0], y = ret[1], z= ret[2]), unit=positions.unit)
+        ret[coordinate] /= len(indices) * positions.unit
+    return unit.Quantity(value=Vec3(x=ret[0], y=ret[1], z=ret[2]), unit=positions.unit)
 
 
 def getCenterOfMassCoordinates(
@@ -96,7 +96,7 @@ def getCenterOfMassCoordinates(
     Returns:
         unit.Quantity: center of mass coordinates of the specified atoms
     """
-    ret = unit.Quantity(value=Vec3(0, 0, 0), unit=unit.nanometer)
+    ret = [0 * positions.unit, 0 * positions.unit, 0 * positions.unit]
     mass = 0 * unit.dalton
     for coordinate in range(3):
         for atomnr in indices:
@@ -104,8 +104,8 @@ def getCenterOfMassCoordinates(
                 atomnr
             )
             mass += masses.getParticleMass(atomnr)
-        ret[coordinate] /= (mass*positions.unit)
-    return unit.Quantity(value=Vec3(x=ret[0], y = ret[1], z= ret[2]), unit=positions.unit)
+        ret[coordinate] /= mass * positions.unit
+    return unit.Quantity(value=Vec3(x=ret[0], y=ret[1], z=ret[2]), unit=positions.unit)
 
 
 def get_params(param_directory: str) -> app.charmmparameterset.CharmmParameterSet:

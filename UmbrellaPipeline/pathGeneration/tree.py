@@ -1,18 +1,16 @@
 from scipy.spatial import KDTree
-from typing import List
+from typing import List, Type
 
 import openmm.unit as unit
 import openmm.app as app
 from openmm import Vec3
 
 
-from helper import (
+from UmbrellaPipeline.pathGeneration.helper import (
     get_indices,
     getCentroidCoordinates,
 )
-from node import (
-    TreeNode,
-)
+from UmbrellaPipeline.pathGeneration.node import TreeNode
 
 
 class Tree:
@@ -23,7 +21,7 @@ class Tree:
     def __init__(
         self,
         coordinates: unit.Quantity or List[unit.Quantity] or List[float],
-        unit: unit.Unit = None,
+        _unit: unit.Unit = None,
     ):
         """
 
@@ -31,23 +29,53 @@ class Tree:
             coordinates (unit.Quantity or List[unit.Quantity] or List[float]): List of coordinates to be added to the tree
             unit (unit.Unit): unit of coordinates if they are given without any.
         """
-        try:
-            self.unit = coordinates.unit
-            pos = []
-            for i in coordinates:
-                pos.append(list(i.value_in_unit(i.unit)))
-            self.tree = KDTree(pos)
-
-        except TypeError:
-            self.unit = unit
-            self.tree = KDTree(coordinates)
-
+        if _unit:
+            try:
+                self.unit = _unit
+                pos = []
+                for i in coordinates:
+                    pos.append(list(i.value_in_unit(i.unit)))
+                self.tree = KDTree(pos)
+            except AttributeError:
+                self.unit = _unit
+                self.tree = KDTree(coordinates)
         else:
-            self.unit = unit
-            pos = []
-            for i in coordinates:
-                pos.append(list(i.value_in_unit(i.unit)))
-            self.tree = KDTree(pos)
+            try:
+                self.unit = coordinates[0].unit
+                pos = []
+                for i in coordinates:
+                    pos.append(list(i.value_in_unit(i.unit)))
+                self.tree = KDTree(pos)
+            except AttributeError:
+                raise ValueError("no _unit provided.")
+        self.possibleNeighbours = [
+            [-1, -1, -1],
+            [-1, -1, 0],
+            [-1, -1, 1],
+            [-1, 0, -1],
+            [-1, 0, 0],
+            [-1, 0, 1],
+            [-1, 1, -1],
+            [-1, 1, 0],
+            [-1, 1, 1],
+            [0, -1, -1],
+            [0, -1, 0],
+            [0, -1, 1],
+            [0, 0, -1],
+            [0, 0, 1],
+            [0, 1, -1],
+            [0, 1, 0],
+            [0, 1, 1],
+            [1, -1, -1],
+            [1, -1, 0],
+            [1, -1, 1],
+            [1, 0, -1],
+            [1, 0, 0],
+            [1, 0, 1],
+            [1, 1, -1],
+            [1, 1, 0],
+            [1, 1, 1],
+        ]
 
     @classmethod
     def treeFromFiles(
@@ -75,11 +103,11 @@ class Tree:
 
         indices = get_indices(psf.atom_list)
         coords = []
-        unit = pdb.position.unit
+        unit = pdb.positions.unit
         for i in indices:
             coords.append(list(pdb.positions[i].value_in_unit(unit)))
 
-        return cls(unit=unit, coordinates=coords)
+        return cls(_unit=unit, coordinates=coords)
 
     def nodeFromFiles(self, psf: str, pdb: str, name: str) -> TreeNode:
         """
@@ -118,7 +146,7 @@ class Tree:
         self,
         node: TreeNode = None,
         coordinates: List[float] = None,
-        unit: unit.Unit = unit.nanometer,
+        _unit: unit.Unit = unit.nanometer,
         vdwRadius: unit.Quantity = 1.2 * unit.angstrom,
     ) -> bool:
         """
@@ -134,20 +162,19 @@ class Tree:
             bool: True if Node is within grid
         """
         try:
-            dist, i = self.tree.query(x=node.value_in_units(self.unit), k=1)
-            return dist > vdwRadius
-        except TypeError:
+            dist, i = self.tree.query(x=node.coordsForQuery(self.unit), k=1)
+        except AttributeError:
             coords = unit.Quantity(
-                value=Vec3(coordinates[0], coordinates[1], coordinates[2]), unit=unit
+                value=Vec3(coordinates[0], coordinates[1], coordinates[2]), unit=_unit
             )
-            dist, i = self.tree.query(x=coordinates.value_in_units(self.unit))
-            return dist > vdwRadius
+            dist, i = self.tree.query(x=coords.value_in_unit(self.unit))
+        return dist * self.unit < vdwRadius
 
     def distanceToProtein(
         self,
         node: TreeNode = None,
         coordinates: List[float] = None,
-        unit: unit.Unit = unit.nanometer,
+        _unit: unit.Unit = unit.nanometer,
         vdwRadius: unit.Quantity = 1.2 * unit.angstrom,
     ) -> unit.Quantity:
         """distanceToProtein
@@ -165,13 +192,11 @@ class Tree:
         unit.Quantity: distance to nearest protein atom
         """
         try:
-            dist, i = self.tree.query(x=node.value_in_units(self.unit), k=1)
-            dist = dist * self.unit - vdwRadius
-            return dist.in_units_of(self.unit)
-        except TypeError:
+            dist, i = self.tree.query(x=node.coordsForQuery(self.unit), k=1)
+        except AttributeError:
             coords = unit.Quantity(
-                value=Vec3(coordinates[0], coordinates[1], coordinates[2]), unit=unit
+                value=Vec3(coordinates[0], coordinates[1], coordinates[2]), unit=_unit
             )
-            dist, i = self.tree.query(x=node.value_in_units(self.unit), k=1)
-            dist = dist * self.unit - vdwRadius
-            return dist.in_units_of(self.unit)
+            dist, i = self.tree.query(x=coords.value_in_unit(self.unit), k=1)
+        dist = dist * self.unit - vdwRadius.in_units_of(self.unit)
+        return dist

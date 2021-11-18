@@ -7,12 +7,12 @@ import numpy as np
 import openmm.app as app
 import openmm.unit as unit
 
-from node import GridNode
-from helper import (
+from UmbrellaPipeline.pathGeneration.helper import (
     gen_box,
     get_indices,
     getCentroidCoordinates,
 )
+from UmbrellaPipeline.pathGeneration.node import GridNode
 
 
 class Grid:
@@ -46,13 +46,48 @@ class Grid:
             self.x = grid.shape[0]
             self.y = grid.shape[1]
             self.z = grid.shape[2]
-        except TypeError:
+            self.dtype = grid.dtype
+        except AttributeError:
+            if any(i < 0 for i in [x, y, z]):
+                raise ValueError("Grid shape must be nonnegative!")
             self.grid = np.zeros(shape=(x, y, z), dtype=dtype)
             self.x = x
             self.y = y
             self.z = z
-        self.a, self.b, self.c = boxlengths[0], boxlengths[1], boxlengths[2]
+            self.dtype = dtype
+        try:
+            self.a, self.b, self.c = boxlengths[0], boxlengths[1], boxlengths[2]
+        except TypeError:
+            self.a, self.b, self.c = boxlengths, boxlengths, boxlengths
         self.offset = offset
+        self.possibleNeighbours = [
+            [-1, -1, -1],
+            [-1, -1, 0],
+            [-1, -1, 1],
+            [-1, 0, -1],
+            [-1, 0, 0],
+            [-1, 0, 1],
+            [-1, 1, -1],
+            [-1, 1, 0],
+            [-1, 1, 1],
+            [0, -1, -1],
+            [0, -1, 0],
+            [0, -1, 1],
+            [0, 0, -1],
+            [0, 0, 1],
+            [0, 1, -1],
+            [0, 1, 0],
+            [0, 1, 1],
+            [1, -1, -1],
+            [1, -1, 0],
+            [1, -1, 1],
+            [1, 0, -1],
+            [1, 0, 0],
+            [1, 0, 1],
+            [1, 1, -1],
+            [1, 1, 0],
+            [1, 1, 1],
+        ]
 
     @classmethod
     def gridFromFiles(
@@ -178,7 +213,8 @@ class Grid:
         self, node: GridNode = None, coordinates: List[int] = None
     ) -> bool:
         """
-        Checks if a Node is within the grid
+        Checks if a Node is within the grid.
+        NOT USED
         Args:
             node (Node, optional): Node type object. Defaults to None.
             coordinates (List[int], optional): grid cell coordinates. Defaults to None.
@@ -186,9 +222,7 @@ class Grid:
             bool: True if Node is within grid
         """
         if node:
-            return (
-                0 <= node.x < self.x and 0 <= node.y < self.y and 0 <= node.z < self.z
-            )
+            return node.x < self.x and node.y < self.y and node.z < self.z
         if coordinates:
             return (
                 0 <= coordinates[0] < self.x
@@ -229,86 +263,28 @@ class Grid:
         D1 = math.sqrt(1)
         return (D3 - D2) * dmin + (D2 - D1) * dmid + D1 * dmax
 
-    def getDistanceToTrue(self, node: GridNode):
-        for i in range(1, 500, 1):
-            if any(
-                term
-                for term in [
-                    self.grid[node.x + i][node.y][node.z],
-                    self.grid[node.x - i][node.y][node.z],
-                    self.grid[node.x][node.y + i][node.z],
-                    self.grid[node.x][node.y - i][node.z],
-                    self.grid[node.x][node.y][node.z + i],
-                    self.grid[node.x][node.y][node.z - i],
-                ]
-            ):
-                return i
-            d2 = int(i / math.sqrt(2))
-            if any(
-                term
-                for term in [
-                    self.grid[node.x - d2][node.y - d2][node.z],
-                    self.grid[node.x - d2][node.y + d2][node.z],
-                    self.grid[node.x + d2][node.y - d2][node.z],
-                    self.grid[node.x + d2][node.y + d2][node.z],
-                    self.grid[node.x][node.y - d2][node.z - d2],
-                    self.grid[node.x][node.y - d2][node.z + d2],
-                    self.grid[node.x][node.y + d2][node.z - d2],
-                    self.grid[node.x][node.y + d2][node.z + d2],
-                    self.grid[node.x - d2][node.y][node.z - d2],
-                    self.grid[node.x - d2][node.y][node.z + d2],
-                    self.grid[node.x + d2][node.y][node.z - d2],
-                    self.grid[node.x + d2][node.y][node.z + d2],
-                ]
-            ):
-                return i / math.sqrt(2)
-            d3 = int(i / math.sqrt(3))
-            if any(
-                term
-                for term in [
-                    self.grid[node.x - d3][node.y - d3][node.z - d3],
-                    self.grid[node.x - d3][node.y - d3][node.z + d3],
-                    self.grid[node.x - d3][node.y + d3][node.z - d3],
-                    self.grid[node.x - d3][node.y + d3][node.z + d3],
-                    self.grid[node.x + d3][node.y - d3][node.z - d3],
-                    self.grid[node.x + d3][node.y - d3][node.z + d3],
-                    self.grid[node.x + d3][node.y + d3][node.z - d3],
-                    self.grid[node.x + d3][node.y + d3][node.z + d3],
-                ]
-            ):
-                return i / math.sqrt(3)
-        return 0
-
-    def areSurroundingsBlocked(self, node: GridNode, pathsize: int) -> bool:
+    def getDistanceToTrue(self, node: GridNode) -> float:
         """
-        checks if surroundigns in a given radius are occupied. only checks the 16 outmost points.
-        DEPRECEATED
         Args:
-            node (Node): Node type object
-            pathsize (int): Radius in which surroundings are checked.
+            node (GridNode): [description]
+
         Returns:
-            bool: True if a surrounding blocv is true
+            [type]: [description]
+
         """
-        for dx in [pathsize, int(pathsize / 2)]:
-            if not self.positionIsValid(
-                coordinates=[node.x + dx, node.y + dx, node.z + dx]
-            ):
-                continue
-            if any(
-                term
-                for term in [
-                    self.grid[node.x - dx][node.y - dx][node.z - dx],
-                    self.grid[node.x - dx][node.y - dx][node.z + dx],
-                    self.grid[node.x - dx][node.y + dx][node.z - dx],
-                    self.grid[node.x - dx][node.y + dx][node.z + dx],
-                    self.grid[node.x + dx][node.y - dx][node.z - dx],
-                    self.grid[node.x + dx][node.y - dx][node.z + dx],
-                    self.grid[node.x + dx][node.y + dx][node.z - dx],
-                    self.grid[node.x + dx][node.y + dx][node.z + dx],
-                ]
-            ):
-                return True
-        return False
+        for i in range(1, min(self.x, self.y, self.z), 1):
+            for n in self.possibleNeighbours:
+                x, y, z = node.x + n[0] * i, node.y + n[1] * i, node.z + n[2] * i
+                try:
+                    node2 = GridNode(x, y, z)
+                except ValueError:
+                    continue
+                try:
+                    if self.getGridValue(node=node2):
+                        return self.estimateDiagonalH(node=node, destination=node2)
+                except IndexError:
+                    continue
+        return 0
 
     def toCcp4(self, filename: str):
         """
@@ -334,13 +310,13 @@ class Grid:
             List[float]: List of cartesian coordinates with value true.
         """
         ret = []
-        for x, y, z in product(self.x, self.y, self.z):
+        for x, y, z in product(range(self.x), range(self.y), range(self.z)):
             if self.grid[x][y][z]:
                 ret.append(
                     [
                         x * self.a + self.offset[0],
-                        y * self.b + self.offset[0],
-                        z * self.c + self.offset[0],
+                        y * self.b + self.offset[1],
+                        z * self.c + self.offset[2],
                     ]
                 )
         return ret

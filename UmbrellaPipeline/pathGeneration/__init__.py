@@ -2,7 +2,8 @@
 
 # Add imports here
 from .astar import (
-    AStar3D,
+    GridAStar,
+    TreeAStar,
 )
 from .grid import (
     Grid,
@@ -19,3 +20,7 @@ from .node import (
     TreeNode,
     GridNode,
 )
+from .tree import (
+    Tree,
+)
+
