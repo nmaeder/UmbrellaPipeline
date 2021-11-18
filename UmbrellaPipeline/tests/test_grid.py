@@ -9,8 +9,8 @@ import numpy as np
 import math
 import os
 
-pdb = "../UmbrellaPipeline/data/step5_input.pdb"
-psf = "../UmbrellaPipeline/data/step5_input.psf"
+pdb = "UmbrellaPipeline/data/step5_input.pdb"
+psf = "UmbrellaPipeline/data/step5_input.psf"
 
 
 def testGridAndNodeFromFiles():

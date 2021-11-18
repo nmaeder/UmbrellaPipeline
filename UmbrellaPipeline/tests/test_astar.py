@@ -14,8 +14,8 @@ import openmm.app as app
 from openmm import Vec3
 import math
 
-pdb = "../UmbrellaPipeline/data/step5_input.pdb"
-psf = "../UmbrellaPipeline/data/step5_input.psf"
+pdb = "UmbrellaPipeline/data/step5_input.pdb"
+psf = "UmbrellaPipeline/data/step5_input.psf"
 
 
 def testGridAStarBasic():

@@ -7,8 +7,8 @@ import openmm.unit as unit
 from openmm import Vec3
 import openmm.app as app
 
-pdb = "../UmbrellaPipeline/data/step5_input.pdb"
-psf = "../UmbrellaPipeline/data/step5_input.psf"
+pdb = "UmbrellaPipeline/data/step5_input.pdb"
+psf = "UmbrellaPipeline/data/step5_input.psf"
 
 
 def testTreeGenration():
