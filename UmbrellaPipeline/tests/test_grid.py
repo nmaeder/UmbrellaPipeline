@@ -1,13 +1,9 @@
-from UmbrellaPipeline.pathGeneration import (
-    Grid,
-    GridNode,
-)
-
-import openmm.unit as unit
-import openmm.app as app
-import numpy as np
-import math
 import os
+
+import numpy as np
+import openmm.app as app
+import openmm.unit as unit
+from UmbrellaPipeline.pathGeneration import Grid, GridNode
 
 pdb = "UmbrellaPipeline/data/step5_input.pdb"
 psf = "UmbrellaPipeline/data/step5_input.psf"

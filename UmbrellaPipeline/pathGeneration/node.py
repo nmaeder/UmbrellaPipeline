@@ -1,6 +1,7 @@
-from typing import List, Type
-from openmm import Vec3
+from typing import List
+
 import openmm.unit as unit
+from openmm import Vec3
 
 
 class Node:

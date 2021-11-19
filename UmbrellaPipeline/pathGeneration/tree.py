@@ -1,15 +1,10 @@
-from scipy.spatial import KDTree
-from typing import List, Type
+from typing import List
 
-import openmm.unit as unit
 import openmm.app as app
+import openmm.unit as unit
 from openmm import Vec3
-
-
-from UmbrellaPipeline.pathGeneration.helper import (
-    get_indices,
-    getCentroidCoordinates,
-)
+from scipy.spatial import KDTree
+from UmbrellaPipeline.pathGeneration.helper import get_indices, getCentroidCoordinates
 from UmbrellaPipeline.pathGeneration.node import TreeNode
 
 
@@ -79,9 +74,7 @@ class Tree:
 
     @classmethod
     def treeFromFiles(
-        cls,
-        pdb: str or app.PDBFile,
-        psf: str or app.CharmmPsfFile,
+        cls, pdb: str or app.PDBFile, psf: str or app.CharmmPsfFile,
     ):
         """
         Constructor for grid. takes in psf and pdb files generated from charmmgui and generates a grid where all points with a protein atom are true. every other gridpoint is False.
@@ -134,13 +127,7 @@ class Tree:
 
         indices = get_indices(atom_list=psf.atom_list, name=name)
         coordinates = getCentroidCoordinates(positions=pdb.positions, indices=indices)
-        return TreeNode.fromCoords(
-            [
-                coordinates[0],
-                coordinates[1],
-                coordinates[2],
-            ]
-        )
+        return TreeNode.fromCoords([coordinates[0], coordinates[1], coordinates[2],])
 
     def positionIsBlocked(
         self,

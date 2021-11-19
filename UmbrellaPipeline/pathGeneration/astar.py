@@ -1,15 +1,12 @@
 import math
 from typing import List
-import openmm.unit as unit
 
 import gemmi
 import numpy as np
-from UmbrellaPipeline.pathGeneration.tree import Tree
+import openmm.unit as unit
 from UmbrellaPipeline.pathGeneration.grid import Grid
-from UmbrellaPipeline.pathGeneration.node import (
-    TreeNode,
-    GridNode,
-)
+from UmbrellaPipeline.pathGeneration.node import GridNode, TreeNode
+from UmbrellaPipeline.pathGeneration.tree import Tree
 
 
 class AStar3D:

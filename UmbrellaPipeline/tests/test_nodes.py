@@ -1,11 +1,6 @@
-from UmbrellaPipeline.pathGeneration import (
-    Node,
-    TreeNode,
-    GridNode,
-)
-
-from openmm import Vec3
 import openmm.unit as unit
+from openmm import Vec3
+from UmbrellaPipeline.pathGeneration import GridNode, Node, TreeNode
 
 
 def testGenerate_baseNode():

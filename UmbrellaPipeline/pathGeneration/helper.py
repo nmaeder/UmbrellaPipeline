@@ -138,8 +138,7 @@ def get_params(param_directory: str) -> app.charmmparameterset.CharmmParameterSe
 
 
 def gen_box(
-    psf: str or app.CharmmPsfFile,
-    pdb: str or app.PDBFile,
+    psf: str or app.CharmmPsfFile, pdb: str or app.PDBFile,
 ) -> List[unit.Quantity]:
     """
     Adapted from charmm_gui readparams. Generates pbc box and adds it to the psf. returns offset of the box from 0,0,0.

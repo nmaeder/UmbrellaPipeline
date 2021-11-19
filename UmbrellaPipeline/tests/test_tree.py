@@ -1,11 +1,7 @@
-from UmbrellaPipeline.pathGeneration import (
-    Tree,
-    TreeNode,
-)
-
+import openmm.app as app
 import openmm.unit as unit
 from openmm import Vec3
-import openmm.app as app
+from UmbrellaPipeline.pathGeneration import Tree, TreeNode
 
 pdb = "UmbrellaPipeline/data/step5_input.pdb"
 psf = "UmbrellaPipeline/data/step5_input.psf"

@@ -1,18 +1,15 @@
-from UmbrellaPipeline.pathGeneration import (
-    GridAStar,
-    TreeAStar,
-    Tree,
-    Grid,
-    TreeNode,
-    GridNode,
-    gen_box,
-    node,
-)
 import numpy as np
-import openmm.unit as unit
 import openmm.app as app
+import openmm.unit as unit
 from openmm import Vec3
-import math
+from UmbrellaPipeline.pathGeneration import (
+    Grid,
+    GridAStar,
+    GridNode,
+    Tree,
+    TreeAStar,
+    TreeNode,
+)
 
 pdb = "UmbrellaPipeline/data/step5_input.pdb"
 psf = "UmbrellaPipeline/data/step5_input.psf"
