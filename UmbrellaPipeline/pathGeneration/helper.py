@@ -4,6 +4,7 @@ from typing import List
 import openmm as mm
 import openmm.app as app
 import openmm.unit as unit
+from openmm import Vec3
 
 aa_list = [
     "ala",
@@ -43,7 +44,7 @@ def get_indices(
     Returns a list of indices that correspond to a given residue in the pdb file.
 
     Args:
-        atom_list (app.internal.charmm.topologyobjects.AtomList): atom list that should be searched. 
+        atom_list (app.internal.charmm.topologyobjects.AtomList): atom list that should be searched.
         name (List[str]orstr, optional): residue name. if none is given, the atom list is searched for amino acid residues. Defaults to aa_list.
 
     Returns:
@@ -51,7 +52,7 @@ def get_indices(
     """
     ret = []
     for i, atom in enumerate(atom_list):
-        if name is str:
+        if isinstance(name, str):
             if name.lower() in str(atom).lower():
                 ret.append(i)
         else:
@@ -73,12 +74,12 @@ def getCentroidCoordinates(
     Returns:
         unit.Quantity: Centroid coordinates of the specified atoms
     """
-    ret = [0 * unit.nanometer, 0 * unit.nanometer, 0 * unit.nanometer]
+    ret = [0 * positions.unit, 0 * positions.unit, 0 * positions.unit]
     for coordinate in range(3):
         for i in indices:
             ret[coordinate] += positions[i][coordinate]
-        ret[coordinate] / len(indices)
-    return ret
+        ret[coordinate] /= len(indices) * positions.unit
+    return unit.Quantity(value=Vec3(x=ret[0], y=ret[1], z=ret[2]), unit=positions.unit)
 
 
 def getCenterOfMassCoordinates(
@@ -95,7 +96,7 @@ def getCenterOfMassCoordinates(
     Returns:
         unit.Quantity: center of mass coordinates of the specified atoms
     """
-    ret = [0 * unit.nanometer, 0 * unit.nanometer, 0 * unit.nanometer]
+    ret = [0 * positions.unit, 0 * positions.unit, 0 * positions.unit]
     mass = 0 * unit.dalton
     for coordinate in range(3):
         for atomnr in indices:
@@ -103,7 +104,8 @@ def getCenterOfMassCoordinates(
                 atomnr
             )
             mass += masses.getParticleMass(atomnr)
-        ret[coordinate] /= mass
+        ret[coordinate] /= mass * positions.unit
+    return unit.Quantity(value=Vec3(x=ret[0], y=ret[1], z=ret[2]), unit=positions.unit)
 
 
 def get_params(param_directory: str) -> app.charmmparameterset.CharmmParameterSet:
@@ -136,7 +138,7 @@ def get_params(param_directory: str) -> app.charmmparameterset.CharmmParameterSe
 
 
 def gen_box(
-    psf: str or app.CharmmPsfFile, pdb: str or app.PDBFile
+    psf: str or app.CharmmPsfFile, pdb: str or app.PDBFile,
 ) -> List[unit.Quantity]:
     """
     Adapted from charmm_gui readparams. Generates pbc box and adds it to the psf. returns offset of the box from 0,0,0.

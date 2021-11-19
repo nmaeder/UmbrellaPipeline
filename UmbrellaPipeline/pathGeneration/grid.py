@@ -6,13 +6,12 @@ import gemmi
 import numpy as np
 import openmm.app as app
 import openmm.unit as unit
-
 from UmbrellaPipeline.pathGeneration.helper import (
     gen_box,
     get_indices,
     getCentroidCoordinates,
 )
-from UmbrellaPipeline.pathGeneration.node import Node
+from UmbrellaPipeline.pathGeneration.node import GridNode
 
 
 class Grid:
@@ -31,7 +30,6 @@ class Grid:
         offset: List[unit.Quantity] = None,
     ):
         """
-
         Args:
             x (int, optional): number of grid cells in x direction. Defaults to 0.
             y (int, optional): number of grid cells in x direction. Defaults to 0.
@@ -41,19 +39,53 @@ class Grid:
             boxlengths (unit.Quantity or List[unit.Quantity], optional): gridcell size. Defaults to None.
             offset (List[unit.Quantity], optional): if gridpoint (0,0,0) does not correspond to the cartesian (0,0,0). Defaults to None.
         """
-
         try:
             self.grid = grid
             self.x = grid.shape[0]
             self.y = grid.shape[1]
             self.z = grid.shape[2]
-        except TypeError:
+            self.dtype = grid.dtype
+        except AttributeError:
+            if any(i < 0 for i in [x, y, z]):
+                raise ValueError("Grid shape must be nonnegative!")
             self.grid = np.zeros(shape=(x, y, z), dtype=dtype)
             self.x = x
             self.y = y
             self.z = z
-        self.a, self.b, self.c = boxlengths[0], boxlengths[1], boxlengths[2]
+            self.dtype = dtype
+        try:
+            self.a, self.b, self.c = boxlengths[0], boxlengths[1], boxlengths[2]
+        except TypeError:
+            self.a, self.b, self.c = boxlengths, boxlengths, boxlengths
         self.offset = offset
+        self.possibleNeighbours = [
+            [-1, -1, -1],
+            [-1, -1, 0],
+            [-1, -1, 1],
+            [-1, 0, -1],
+            [-1, 0, 0],
+            [-1, 0, 1],
+            [-1, 1, -1],
+            [-1, 1, 0],
+            [-1, 1, 1],
+            [0, -1, -1],
+            [0, -1, 0],
+            [0, -1, 1],
+            [0, 0, -1],
+            [0, 0, 1],
+            [0, 1, -1],
+            [0, 1, 0],
+            [0, 1, 1],
+            [1, -1, -1],
+            [1, -1, 0],
+            [1, -1, 1],
+            [1, 0, -1],
+            [1, 0, 0],
+            [1, 0, 1],
+            [1, 1, -1],
+            [1, 1, 0],
+            [1, 1, 1],
+        ]
 
     @classmethod
     def gridFromFiles(
@@ -66,21 +98,34 @@ class Grid:
     ):
         """
         Constructor for grid. takes in psf and pdb files generated from charmmgui and generates a grid where all points with a protein atom are true. every other gridpoint is False.
-
         Args:
             pdbfile (str): give either path to pdb file as string or an openmm.app.PDBFile object.
             psffile (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
             gridsize (unit.QuantityorList[unit.Quantity], optional): [description]. Defaults to .1*unit.angstrom.
             vdwradius (unit.Quantity, optional): VDW radius of the protein atoms in the grid. Defaults to 1.2*unit.angstrom.
             addVDW (bool, optional): Whether or not the protein atoms should have a VDW radius in the grid. Defaults to True.
-
         Returns:
             Grid: Boolean grid where protein positions are True.
         """
-        if type(pdb) is str:
+        try:
             pdb = app.PDBFile(pdb)
-        if type(psf) is str:
+        except TypeError:
+            if not isinstance(pdb, app.PDBFile):
+                raise ValueError("pdb cannot be None!")
+        except ValueError:
+            pdb = input("Enter absolute path to pdb file: ")
+            pdb = app.PDBFile(pdb)
+                
+        try:
             psf = app.CharmmPsfFile(psf)
+        except TypeError:
+            if not isinstance(psf, app.CharmmPsfFile):
+                raise ValueError("psf cannot be None!")
+        except ValueError:
+            psf = input("Enter absolute path to psf file: ")
+            psf = app.CharmmPsfFile(psf)
+            
+
 
         inx = get_indices(psf.atom_list)
         min_c = gen_box(psf, pdb)
@@ -131,18 +176,15 @@ class Grid:
 
         return cls(grid=grid, boxlengths=[l[0], l[1], l[2]], offset=min_c)
 
-    def nodeFromFiles(self, psf: str, pdb: str, name: str) -> Node:
+    def nodeFromFiles(self, psf: str, pdb: str, name: str) -> GridNode:
         """
         calculates the centroid coordinates of the ligand and returns the grid node closest to the centriod Cordinates.
-
         Args:
             psf (str): give either path to pdb file as string or an openmm.app.PDBFile object.
             pdb (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
             name (str): name of the residue that is the starting point.
-
         Returns:
             Node: grid node closest to ligand centroid.
-
         TODO: add support for center of mass -> more complicated since it needs an initialized system.
         """
         if type(pdb) is str:
@@ -151,7 +193,7 @@ class Grid:
             psf = app.CharmmPsfFile(psf)
         indices = get_indices(atom_list=psf.atom_list, name=name)
         coordinates = getCentroidCoordinates(positions=pdb.positions, indices=indices)
-        return Node.fromCoords(
+        return GridNode.fromCoords(
             [
                 math.floor((coordinates[0] - self.offset[0]) / self.a),
                 math.floor((coordinates[1] - self.offset[1]) / self.a),
@@ -159,13 +201,14 @@ class Grid:
             ]
         )
 
-    def getGridValue(self, node: Node = None, coordinates: List[int] = None) -> bool:
+    def getGridValue(
+        self, node: GridNode = None, coordinates: List[int] = None
+    ) -> bool:
         """
         returns Value of gridcell.
         Args:
             node (Node, optional): Node type object. Defaults to None.
             coordinates (List[int], optional): Node coordinates. Defaults to None.
-
         Returns:
             bool: value of gridcell
         """
@@ -175,21 +218,20 @@ class Grid:
             else self.grid[coordinates[0]][coordinates[1]][coordinates[2]]
         )
 
-    def positionIsValid(self, node: Node = None, coordinates: List[int] = None) -> bool:
+    def positionIsValid(
+        self, node: GridNode = None, coordinates: List[int] = None
+    ) -> bool:
         """
-        Checks if a Node is within the grid
-
+        Checks if a Node is within the grid.
+        NOT USED
         Args:
             node (Node, optional): Node type object. Defaults to None.
             coordinates (List[int], optional): grid cell coordinates. Defaults to None.
-
         Returns:
             bool: True if Node is within grid
         """
         if node:
-            return (
-                0 <= node.x < self.x and 0 <= node.y < self.y and 0 <= node.z < self.z
-            )
+            return node.x < self.x and node.y < self.y and node.z < self.z
         if coordinates:
             return (
                 0 <= coordinates[0] < self.x
@@ -199,62 +241,65 @@ class Grid:
         return False
 
     def positionIsBlocked(
-        self, node: Node = None, coordinates: List[int] = None
+        self, node: GridNode = None, coordinates: List[int] = None
     ) -> bool:
         """Returns true if a gridcell is occupied with a protien atom.
-
         Args:
             node (Node, optional): Node type object. Defaults to None.
             coordinates (List[int], optional): grid cell coordinates. Defaults to None.
-
         Returns:
             bool: True if position is occupied by protein
         """
         return self.getGridValue(node=node, coordinates=coordinates)
 
-    def areSurroundingsBlocked(self, node: Node, pathsize: int) -> bool:
+    def estimateDiagonalH(self, node: GridNode, destination: GridNode) -> float:
         """
-        checks if surroundigns in a given radius are occupied. only checks the 16 outmost points.
-
+        estimates diagonal distance heuristics between node and destination.
         Args:
-            node (Node): Node type object
-            pathsize (int): Radius in which surroundings are checked.
+            node (GridNode): point a
+            destination (GridNode): point b
+        Returns:
+            float: diagonal distance estimate
+        """
+        dx = abs(node.x - destination.x)
+        dy = abs(node.y - destination.y)
+        dz = abs(node.z - destination.z)
+        dmin = min(dx, dy, dz)
+        dmax = max(dx, dy, dz)
+        dmid = dx + dy + dz - dmax - dmin
+        D3 = math.sqrt(3)
+        D2 = math.sqrt(2)
+        D1 = math.sqrt(1)
+        return (D3 - D2) * dmin + (D2 - D1) * dmid + D1 * dmax
+
+    def getDistanceToTrue(self, node: GridNode) -> float:
+        """
+        Args:
+            node (GridNode): [description]
 
         Returns:
-            bool: True if a surrounding blocv is true
+            [type]: [description]
+
         """
-        for dx, dy, dz in product(
-            [pathsize, int(pathsize / 2)],
-            [pathsize, int(pathsize / 2)],
-            [pathsize, int(pathsize / 2)],
-        ):
-            if not self.positionIsValid(
-                coordinates=[node.x + dx, node.y + dy, node.z + dz]
-            ):
-                continue
-            if any(
-                term
-                for term in [
-                    self.grid[node.x - dx][node.y - dy][node.z - dz],
-                    self.grid[node.x - dx][node.y - dy][node.z + dz],
-                    self.grid[node.x - dx][node.y + dy][node.z - dz],
-                    self.grid[node.x - dx][node.y + dy][node.z + dz],
-                    self.grid[node.x + dx][node.y - dy][node.z - dz],
-                    self.grid[node.x + dx][node.y - dy][node.z + dz],
-                    self.grid[node.x + dx][node.y + dy][node.z - dz],
-                    self.grid[node.x + dx][node.y + dy][node.z + dz],
-                ]
-            ):
-                return True
-        return False
+        for i in range(1, min(self.x, self.y, self.z), 1):
+            for n in self.possibleNeighbours:
+                x, y, z = node.x + n[0] * i, node.y + n[1] * i, node.z + n[2] * i
+                try:
+                    node2 = GridNode(x, y, z)
+                except ValueError:
+                    continue
+                try:
+                    if self.getGridValue(node=node2):
+                        return self.estimateDiagonalH(node=node, destination=node2)
+                except IndexError:
+                    continue
+        return 0
 
     def toCcp4(self, filename: str):
         """
         Write out CCP4 density map of the grid. good for visualization in VMD/pymol.
-
         Args:
             filename (str): path the file should be written to.
-
         Returns:
             None: Nothing
         """
@@ -270,18 +315,17 @@ class Grid:
     def toXYZCoordinates(self) -> List[float]:
         """
         returns list of cartesian coordinates that are true in the grid.
-
         Returns:
             List[float]: List of cartesian coordinates with value true.
         """
         ret = []
-        for x, y, z in product(self.x, self.y, self.z):
+        for x, y, z in product(range(self.x), range(self.y), range(self.z)):
             if self.grid[x][y][z]:
                 ret.append(
                     [
                         x * self.a + self.offset[0],
-                        y * self.b + self.offset[0],
-                        z * self.c + self.offset[0],
+                        y * self.b + self.offset[1],
+                        z * self.c + self.offset[2],
                     ]
                 )
         return ret

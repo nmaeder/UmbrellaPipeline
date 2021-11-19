@@ -9,6 +9,7 @@ dependencies:
   - numpy
   - gemmi
   - openmm
+  - scipy
 
     # Testing
   - pytest
