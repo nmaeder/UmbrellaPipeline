@@ -39,7 +39,6 @@ class Grid:
             boxlengths (unit.Quantity or List[unit.Quantity], optional): gridcell size. Defaults to None.
             offset (List[unit.Quantity], optional): if gridpoint (0,0,0) does not correspond to the cartesian (0,0,0). Defaults to None.
         """
-
         try:
             self.grid = grid
             self.x = grid.shape[0]
@@ -111,11 +110,22 @@ class Grid:
         try:
             pdb = app.PDBFile(pdb)
         except TypeError:
-            pass
+            if not isinstance(pdb, app.PDBFile):
+                raise ValueError("pdb cannot be None!")
+        except ValueError:
+            pdb = input("Enter absolute path to pdb file: ")
+            pdb = app.PDBFile(pdb)
+                
         try:
             psf = app.CharmmPsfFile(psf)
         except TypeError:
-            pass
+            if not isinstance(psf, app.CharmmPsfFile):
+                raise ValueError("psf cannot be None!")
+        except ValueError:
+            psf = input("Enter absolute path to psf file: ")
+            psf = app.CharmmPsfFile(psf)
+            
+
 
         inx = get_indices(psf.atom_list)
         min_c = gen_box(psf, pdb)

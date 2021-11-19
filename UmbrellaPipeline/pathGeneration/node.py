@@ -78,7 +78,7 @@ class TreeNode(Node):
 
     def __round__(self, decimals: int = 3) -> unit.Quantity:
         return unit.Quantity(
-            value=Vec3(round(self.x, 3), round(self.y, 3), round(self.z, 3)),
+            value=Vec3(round(self.x, decimals), round(self.y, decimals), round(self.z, decimals)),
             unit=self.unit,
         )
 

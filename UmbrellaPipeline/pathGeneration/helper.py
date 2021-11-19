@@ -52,7 +52,7 @@ def get_indices(
     """
     ret = []
     for i, atom in enumerate(atom_list):
-        if type(name) == str:
+        if isinstance(name, str):
             if name.lower() in str(atom).lower():
                 ret.append(i)
         else:

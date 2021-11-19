@@ -36,7 +36,7 @@ class AStar3D:
 
     def isEndReached(self, node: TreeNode or GridNode = None):
         """
-        Deprecated
+        Not in use at the moment. Plan is to add support, so one can give a specific endpoint for the path.
 
         Args:
             node (TreeNodeorGridNode, optional): [description]. Defaults to None.
@@ -62,18 +62,22 @@ class GridAStar(AStar3D):
         self.shortestPath: List[GridNode] = []
 
     def isGoalReached(
-        self, node: GridNode, distance: unit.Quantity = 2 * unit.nanometer
+        self, node: GridNode, distance: unit.Quantity = None
     ) -> bool:
         """
-        checks if a node has the same coordinates as the end node defined in this class.
+        Checks wether the given node has the distance to the neares True grid point.
+        node.h is in "node units" so the distance is divided by the gridcell size to get its value in "grid units" as well.
+        If no distance is given, the end point is reached when node is outside the grid
         Args:
             node (GridNode): node to be checked
         Returns:
             bool: Returns true if input node is the destination.
         """
-        if node.h > distance / self.grid.a:
-            return True
-        return not self.grid.positionIsValid(node)
+        try: 
+            if node.h > distance / self.grid.a:
+                return True
+        except TypeError:    
+            return not self.grid.positionIsValid(node)
 
     def backtracePath(self) -> List[GridNode]:
         """
@@ -119,15 +123,16 @@ class GridAStar(AStar3D):
             ret.append(child)
         return ret
 
-    def aStar3D(self, backtrace: bool = True) -> List[GridNode]:
+    def aStar3D(self, backtrace: bool = True, distance:unit.Quantity = 2*unit.nanometer) -> List[GridNode]:
         """
         lets a slightly addapted (greedier) version of the A* star algorithm search for the shortest path between start end end point.
         Args:
             backtrace (bool): set to false if you want the function to return all searched nodes instead of the shortet path: Defaults to True
+            distance (unit.Quantity): If this distance is reached, the algorithm is terminated. if none is given a path is searched until the path leaves the pbc box: Defaults to 2*unit.nanometer
         Returns:
             List[GridNode]: shortest path from a to b if class settint backtrace is true. else returns all searched nodes.
         """
-        if self.isGoalReached(node=self.start):
+        if self.isGoalReached(node=self.start, distance=distance):
             self.shortestPath.append(self.start)
             return self.shortestPath
         self.start.g = 0
@@ -136,14 +141,16 @@ class GridAStar(AStar3D):
         while openList:
             q = openList[0]
             for node in openList:
+                # prioritize the node that is the fartest from any protein atom. -> will eventually lead out of the case as long as the goal distance is alrge enough.
                 if node.h > q.h:
                     q = node
+                # if two nodes are equally large apart from the protein, take the one that took less traveling to get there.
                 if node.h == q.h and node.g < q.g:
                     q = node
             openList.remove(q)
             children = self.generateSuccessors(parent=q)
             for child in children:
-                if self.isGoalReached(child):
+                if self.isGoalReached(node=child, distance=distance):
                     self.shortestPath.append(q)
                     return self.backtracePath() if backtrace else self.shortestPath
                 if any(
@@ -219,7 +226,7 @@ class TreeAStar(AStar3D):
         self,
         node: TreeNode,
         box: unit.Quantity = None,
-        dist_to_protein: unit.Quantity = 2 * unit.nanometer,
+        distance:unit.Quantity = None,
     ):
         """
         Checks if the end is reached. either reached when distance bigger than dist_to_protein or, if box is given, when path is outside the box.
@@ -233,20 +240,18 @@ class TreeAStar(AStar3D):
             [type]: [description]
         """
         try:
-            if node.h >= dist_to_protein:
+            if node.h >= distance:
                 return True
-        except TypeError:
+        except AttributeError:
             pass
         try:
             return (
-                True
-                if (node.x * node.unit < box[0] or node.x * node.unit > box[1])
+                (node.x * node.unit < box[0] or node.x * node.unit > box[1])
                 or (node.y * node.unit < box[2] or node.y * node.unit > box[3])
-                or (node.z * node.unit < box[4] or node.z * node.unit > box[5])
-                else False
+                or (node.z * node.unit < box[4] or node.z * node.unit > box[5]) 
             )
-        except TypeError:
-            raise ValueError("Either give distance_to_protein or box mins and maxes!")
+        except (TypeError):
+            raise TypeError("Either give distance_to_protein or box mins and maxes!")
 
     def generateSuccessors(
         self,
@@ -293,7 +298,7 @@ class TreeAStar(AStar3D):
         self.shortestPath = new
         return self.shortestPath
 
-    def aStar3D(self, box=unit.Quantity, backtrace: bool = True) -> List[TreeNode]:
+    def aStar3D(self, backtrace: bool = True, distance:unit.Quantity = None, box:List[unit.Quantity] = None) -> List[TreeNode]:
         """
         lets a slightly addapted (greedier) version of the A* star algorithm search for the shortest path between start end end point.
         Args:
@@ -314,7 +319,7 @@ class TreeAStar(AStar3D):
             openList.remove(q)
             children = self.generateSuccessors(parent=q)
             for child in children:
-                if self.isGoalReached(node=child, box=box):
+                if self.isGoalReached(node=child, box=box, distance=distance):
                     self.shortestPath.append(q)
                     return self.shortestPath if not backtrace else self.backtracePath()
                 if any(
