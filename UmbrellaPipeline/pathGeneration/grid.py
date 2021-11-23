@@ -6,7 +6,7 @@ import gemmi
 import numpy as np
 import openmm.app as app
 import openmm.unit as unit
-from UmbrellaPipeline.pathGeneration.helper import (
+from UmbrellaPipeline.pathGeneration.pathHelper import (
     gen_box,
     get_indices,
     getCentroidCoordinates,

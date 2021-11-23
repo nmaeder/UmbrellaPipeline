@@ -4,7 +4,7 @@ import openmm.app as app
 import openmm.unit as unit
 from openmm import Vec3
 from scipy.spatial import KDTree
-from UmbrellaPipeline.pathGeneration.helper import get_indices, getCentroidCoordinates
+from UmbrellaPipeline.pathGeneration.pathHelper import get_indices, getCentroidCoordinates
 from UmbrellaPipeline.pathGeneration.node import TreeNode
 
 
