@@ -31,7 +31,7 @@ class UmbrellaSimulation:
         psf: str or app.CharmmPsfFile = None,
         pdb: str or app.PDBFile = None,
         ligandName: str = None,
-        trajOutputPath: str = None
+        trajOutputPath: str = None,
     ) -> None:
         self.temp = temp
         self.p = p
@@ -89,31 +89,34 @@ class UmbrellaSimulation:
             platformProperties=self.platformProperties,
         )
         simulation.context.setPositions(self.pdb.positions)
-        
+
         if not isinstance(self.tOutput, str):
             self.tOutput = os.getcwd()
 
-        if not self.tOutput.endswith("/"): 
+        if not self.tOutput.endswith("/"):
             self.tOutput += "/"
 
         orgCoords = open(f"{self.tOutput}coordinates.dat")
         orgCoords.write("nwin, x0, y0, z0\n")
-        
+
         for window in range(self.nWin):
-            orgCoords.write(f"{self.nwin}, {simulation.context.getParameter('x0')}, {simulation.context.getParameter('y0')}, {simulation.context.getParameter('z0')}\n")
+            orgCoords.write(
+                f"{self.nwin}, {simulation.context.getParameter('x0')}, {simulation.context.getParameter('y0')}, {simulation.context.getParameter('z0')}\n"
+            )
             simulation.minimizeEnergy()
             simulation.context.setVelocities(self.temp)
             simulation.step(self.nEq)
             fileHandle = open("f{self.tOutput}/traj_{window}.dcd")
             dcdFile = app.DCDFile(fileHandle, self.psf.topology, dt=self.dt)
-            for i in tqdm(range(int(self.nProd/self.freq))):
+            for i in tqdm(range(int(self.nProd / self.freq))):
                 simulation.step(self.freq)
-                dcdFile.writeModel(simulation.context.getState(getPositions=True).getPositions())
+                dcdFile.writeModel(
+                    simulation.context.getState(getPositions=True).getPositions()
+                )
             fileHandle.close()
-            simulation.context.setParameter('x0', self.path[window].x)
-            simulation.context.setParameter('y0', self.path[window].x)
-            simulation.context.setParameter('z0', self.path[window].x)
-
+            simulation.context.setParameter("x0", self.path[window].x)
+            simulation.context.setParameter("y0", self.path[window].x)
+            simulation.context.setParameter("z0", self.path[window].x)
 
 
 class SimulationsHydra(UmbrellaSimulation):
@@ -155,6 +158,40 @@ class SimulationsHydra(UmbrellaSimulation):
 
 
 class SimulationsLSF(UmbrellaSimulation):
-    def __init__(self, temp: unit.Quantity = 310 * unit.kelvin, p: unit.Quantity = 1 * unit.bar, iofreq: int = 2500, dt: unit.Quantity = 2 * unit.femtosecond, nWin: int = 20, nProd: int = 500000, nEq: int = 50000, method: str = "pulling", path: List[Node] = None, forceK: unit.Quantity = 100 * unit.kilocalorie_per_mole / (unit.angstrom ** 2), fric: unit.Quantity = 1 / unit.picosecond, system: mm.openmm.System = None, psf: str or app.CharmmPsfFile = None, pdb: str or app.PDBFile = None, ligandName: str = None, trajOutputPath: str = None) -> None:
-        super().__init__(temp=temp, p=p, iofreq=iofreq, dt=dt, nWin=nWin, nProd=nProd, nEq=nEq, method=method, path=path, forceK=forceK, fric=fric, system=system, psf=psf, pdb=pdb, ligandName=ligandName, trajOutputPath=trajOutputPath)
-    
+    def __init__(
+        self,
+        temp: unit.Quantity = 310 * unit.kelvin,
+        p: unit.Quantity = 1 * unit.bar,
+        iofreq: int = 2500,
+        dt: unit.Quantity = 2 * unit.femtosecond,
+        nWin: int = 20,
+        nProd: int = 500000,
+        nEq: int = 50000,
+        method: str = "pulling",
+        path: List[Node] = None,
+        forceK: unit.Quantity = 100 * unit.kilocalorie_per_mole / (unit.angstrom ** 2),
+        fric: unit.Quantity = 1 / unit.picosecond,
+        system: mm.openmm.System = None,
+        psf: str or app.CharmmPsfFile = None,
+        pdb: str or app.PDBFile = None,
+        ligandName: str = None,
+        trajOutputPath: str = None,
+    ) -> None:
+        super().__init__(
+            temp=temp,
+            p=p,
+            iofreq=iofreq,
+            dt=dt,
+            nWin=nWin,
+            nProd=nProd,
+            nEq=nEq,
+            method=method,
+            path=path,
+            forceK=forceK,
+            fric=fric,
+            system=system,
+            psf=psf,
+            pdb=pdb,
+            ligandName=ligandName,
+            trajOutputPath=trajOutputPath,
+        )

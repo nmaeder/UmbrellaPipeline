@@ -336,3 +336,11 @@ class TreeAStar(AStar3D):
                     openList.insert(0, child)
             self.shortestPath.append(q)
         return []
+    
+    def getPathForSampling(self, stepsize:unit.Quantity = 1*unit.angstrom) -> List[TreeNode]:
+        iterator = iter(self.shortestPath)
+        current = next(iterator)
+        endReached = False
+        while not endReached:
+            new = next(iterator)
+
