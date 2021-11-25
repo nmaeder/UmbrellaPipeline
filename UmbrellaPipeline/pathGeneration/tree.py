@@ -1,3 +1,4 @@
+import math
 from typing import List
 
 import openmm.app as app
@@ -187,3 +188,39 @@ class Tree:
             dist, i = self.tree.query(x=coords.value_in_unit(self.unit), k=1)
         dist = dist * self.unit - vdwRadius.in_units_of(self.unit)
         return dist
+        
+    def estimateEuclideanH(self, node: TreeNode, destination: TreeNode) -> float:
+        """
+        estimates euclidean distance heuristics between node and destination.
+        NOT USED
+        Args:
+            node (TreeNode): point a
+            destination (TreeNode): point b
+        Returns:
+            float: euclidean distance estimate
+        """
+        return math.sqrt(
+            (node.x - destination.x) ** 2
+            + (node.y - destination.y) ** 2
+            + (node.z - destination.z) ** 2
+        )
+
+    def estimateDiagonalH(self, node:TreeNode, destination: TreeNode) -> float:
+        """
+        estimates diagonal distance heuristics between node and destination.
+        Args:
+            node (TreeNode): point a
+            destination (TreeNode): point b
+        Returns:
+            float: diagonal distance estimate
+        """
+        dx = abs(node.x - destination.x)
+        dy = abs(node.y - destination.y)
+        dz = abs(node.z - destination.z)
+        dmin = min(dx, dy, dz)
+        dmax = max(dx, dy, dz)
+        dmid = dx + dy + dz - dmax - dmin
+        D3 = math.sqrt(3)
+        D2 = math.sqrt(2)
+        D1 = math.sqrt(1)
+        return (D3 - D2) * dmin + (D2 - D1) * dmid + D1 * dmax

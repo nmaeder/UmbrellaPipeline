@@ -8,7 +8,7 @@ from .astar import (
 from .grid import (
     Grid,
 )
-from .helper import (
+from .pathHelper import (
     gen_box,
     get_indices,
     get_params,

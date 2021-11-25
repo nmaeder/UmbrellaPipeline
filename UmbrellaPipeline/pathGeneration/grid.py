@@ -1,6 +1,7 @@
 import math
 from itertools import product
 from typing import List
+from openmm import Vec3
 
 import gemmi
 import numpy as np
@@ -27,7 +28,7 @@ class Grid:
         dtype: type = bool,
         grid: np.array = None,
         boxlengths: unit.Quantity or List[unit.Quantity] = None,
-        offset: List[unit.Quantity] = None,
+        offset: unit.Quantity = unit.Quantity(Vec3(0,0,0),unit=unit.nanometer),
     ):
         """
         Args:

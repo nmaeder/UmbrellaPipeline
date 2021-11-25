@@ -1,3 +1,5 @@
+import math
+from sys import path
 import numpy as np
 import openmm.app as app
 import openmm.unit as unit
@@ -73,6 +75,49 @@ def testGridPathfinding():
     assert path != []
 
 
+"""def testGridPathPartitioning():
+
+    #Generate grid and a star objects
+
+    path1, path2 = [], []
+    goal1, goal2 = [], []
+    sq3 = 1/math.sqrt(3)
+    sq2 = 1/math.sqrt(2)
+    grid1 = Grid(grid=np.zeros(shape=(10, 10, 10), dtype=bool), boxlengths=unit.Quantity(value=Vec3(1,1,1),unit=unit.angstrom))
+    grid2 = Grid(grid=np.zeros(shape=(10, 10, 10), dtype=bool), boxlengths=unit.Quantity(value=Vec3(2,2,2),unit=unit.angstrom), offset=Vec3(-9,-5,-6)*unit.angstrom)
+
+    for i in range(5):
+        path1.append(GridNode(x=i, y=i, z=i))
+        path2.append(GridNode(x=i, y=i, z=1))
+
+    astar1 = GridAStar(grid=grid1, start=GridNode(x=0, y=0, z=0))
+    astar2 = GridAStar(grid=grid2, start=GridNode(x=0, y=0, z=0))
+
+    #Generate paths
+    
+    astar1.shortestPath = path1
+    astar2.shortestPath = path2
+    
+    path1 = astar1.getPathForSampling(0.05 * unit.nanometer)
+    path2 = astar2.getPathForSampling(0.5 * unit.angstrom)
+
+    #Generate desired outcomes
+    
+    for i in range(len(path1)):
+        goal1.append(unit.Quantity(Vec3(x=i*sq3/2, y=i*sq3/2, z=i*sq3/2), unit = unit.angstrom))
+
+    for i in range(len(path2)):
+        goal2.append(unit.Quantity(Vec3(x=i*sq2/2, y=i*sq2/2, z=1), unit=unit.angstrom))
+
+    #Check generated paths for tested outcome
+
+    for i in range(len(path1)):
+        assert round(path1[i], 5) == round(goal1[i], 5)
+    for i in range(1,len(path2)):
+        assert round(path2[i], 5) == round(goal2[i], 5)
+"""
+
+
 def testTreeSuccessor():
     nodes = []
     for i in range(5):
@@ -109,3 +154,56 @@ def testTreePathfinding():
     astar = TreeAStar(tree=tree, start=node, stepsize=0.5 * unit.angstrom)
     path = astar.aStar3D(box=box)
     assert path != []
+
+
+def testTreePathPartitioning():
+
+    # Generate trees and a star objects
+
+    path1, path2 = [], []
+    goal1, goal2 = [], []
+    sq3 = 1 / math.sqrt(3)
+    sq2 = 1 / math.sqrt(2)
+    tree = Tree([[0, 0, 0]], unit.angstrom)
+
+    for i in range(5):
+        path1.append(TreeNode(x=i, y=i, z=i, _unit=unit.angstrom))
+        path2.append(TreeNode(x=i, y=-i, z=1, _unit=unit.angstrom))
+
+    astar1 = TreeAStar(tree=tree, start=TreeNode(x=0, y=0, z=0))
+    astar2 = TreeAStar(tree=tree, start=TreeNode(x=0, y=0, z=0))
+
+    # Generate paths
+
+    astar1.shortestPath = path1
+    astar2.shortestPath = path2
+
+    path1 = astar1.getPathForSampling(0.05 * unit.nanometer)
+    path2 = astar2.getPathForSampling(0.5 * unit.angstrom)
+
+    # Generate desired outcomes
+
+    for i in range(len(path1)):
+        goal1.append(
+            unit.Quantity(
+                Vec3(x=i * sq3 / 2, y=i * sq3 / 2, z=i * sq3 / 2), unit=unit.angstrom
+            )
+        )
+
+    for i in range(len(path2)):
+        goal2.append(
+            unit.Quantity(Vec3(x=i * sq2 / 2, y=-i * sq2 / 2, z=1), unit=unit.angstrom)
+        )
+
+    # Check generated paths for tested outcome
+
+    for i in range(len(path1)):
+        for j in range(3):
+            assert round(path1[i][j].value_in_unit(path1[i].unit), 5) == round(
+                goal1[i][j].value_in_unit(path1[i].unit), 5
+            )
+    for i in range(len(path2)):
+        for j in range(3):
+            assert round(path2[i][j].value_in_unit(path2[i].unit), 5) == round(
+                goal2[i][j].value_in_unit(path2[i].unit), 5
+            )

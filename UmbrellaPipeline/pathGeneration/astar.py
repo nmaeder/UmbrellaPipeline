@@ -1,9 +1,10 @@
-import math
+import copy
 from typing import List
 
 import gemmi
 import numpy as np
 import openmm.unit as unit
+from openmm import Vec3
 from UmbrellaPipeline.pathGeneration.grid import Grid
 from UmbrellaPipeline.pathGeneration.node import GridNode, TreeNode
 from UmbrellaPipeline.pathGeneration.tree import Tree
@@ -61,9 +62,7 @@ class GridAStar(AStar3D):
         self.grid = grid
         self.shortestPath: List[GridNode] = []
 
-    def isGoalReached(
-        self, node: GridNode, distance: unit.Quantity = None
-    ) -> bool:
+    def isGoalReached(self, node: GridNode, distance: unit.Quantity = None) -> bool:
         """
         Checks wether the given node has the distance to the neares True grid point.
         node.h is in "node units" so the distance is divided by the gridcell size to get its value in "grid units" as well.
@@ -73,10 +72,10 @@ class GridAStar(AStar3D):
         Returns:
             bool: Returns true if input node is the destination.
         """
-        try: 
+        try:
             if node.h > distance / self.grid.a:
                 return True
-        except TypeError:    
+        except TypeError:
             return not self.grid.positionIsValid(node)
 
     def backtracePath(self) -> List[GridNode]:
@@ -123,7 +122,9 @@ class GridAStar(AStar3D):
             ret.append(child)
         return ret
 
-    def aStar3D(self, backtrace: bool = True, distance:unit.Quantity = 2*unit.nanometer) -> List[GridNode]:
+    def aStar3D(
+        self, backtrace: bool = True, distance: unit.Quantity = 2 * unit.nanometer
+    ) -> List[GridNode]:
         """
         lets a slightly addapted (greedier) version of the A* star algorithm search for the shortest path between start end end point.
         Args:
@@ -190,6 +191,71 @@ class GridAStar(AStar3D):
         ccp4_map.write_ccp4_map(filename)
         return None
 
+    """    
+    def getPathForSampling(
+        self, stepsize: unit.Quantity = 1 * unit.angstrom
+    ) -> List[unit.Quantity]:
+        
+        Generates path of evenly spaced nodes for the sampling. Tree uses grid where diagonal jumps are bigger than nondiagonal jumps, hence this function is needed.
+        It can also be used if you want to generated differently spaced paths
+
+        Args:
+            stepsize (unit.Quantity, optional): Stepsite of the path you want. Defaults to 1*unit.angstrom.
+
+        Returns:
+            List[unit.Quantity]: list of Coordinates.
+        
+        ret = []
+        dx, dy, dz = 0, 0, 0
+        path = copy.deepcopy(self.shortestPath)
+        iterator = iter(path)
+        current = next(iterator)
+        new = next(iterator)
+        ret.append(
+            unit.Quantity(
+                value=Vec3(
+                    x=current.x * self.grid.a + self.grid.offset[0],
+                    y=current.y * self.grid.b + self.grid.offset[1],
+                    z=current.z * self.grid.c + self.grid.offset[2],
+                ),
+                unit=self.grid.a.unit,
+            )
+        )
+        endReached = False
+        diff = self.grid.estimateDiagonalH(current, new)
+        stepsizev = stepsize.value_in_unit(self.grid.a.unit)
+        while not endReached:
+            try:
+                newstep = stepsize
+                while diff < stepsize:
+                    dx -= diff
+                    dy -= diff
+                    dz -= diff
+                    current = new
+                    new = next(iterator)
+                    newstep -= diff
+                    diff = self.grid.estimateDiagonalH(current, new) * self.grid.unit
+                factor = newstep / diff
+                dx += factor
+                dy += factor
+                dz += factor
+                diff -= stepsize
+                ret.append(
+                    unit.Quantity(
+                        Vec3(
+                            x=(dx + current.x) * self.grid.a + self.grid.offset[0],
+                            y=(dy + current.y) * self.grid.b + self.grid.offset[1],
+                            z=(dz + current.z) * self.grid.c + self.grid.offset[2],
+                        ),
+                        unit=self.grid.a.unit,
+                    )
+                )
+            except StopIteration:
+                endReached = True
+        del path
+        return ret
+    """
+
 
 class TreeAStar(AStar3D):
     def __init__(
@@ -206,27 +272,11 @@ class TreeAStar(AStar3D):
         self.pathsize = pathsize
         self.stepsize = stepsize
 
-    def estimateEuclideanH(self, node: GridNode, destination: GridNode) -> float:
-        """
-        estimates euclidean distance heuristics between node and destination.
-        NOT USED
-        Args:
-            node (GridNode): point a
-            destination (GridNode): point b
-        Returns:
-            float: euclidean distance estimate
-        """
-        return math.sqrt(
-            (node.x - destination.x) ** 2
-            + (node.y - destination.y) ** 2
-            + (node.z - destination.z) ** 2
-        )
-
     def isGoalReached(
         self,
         node: TreeNode,
         box: unit.Quantity = None,
-        distance:unit.Quantity = None,
+        distance: unit.Quantity = None,
     ):
         """
         Checks if the end is reached. either reached when distance bigger than dist_to_protein or, if box is given, when path is outside the box.
@@ -248,7 +298,7 @@ class TreeAStar(AStar3D):
             return (
                 (node.x * node.unit < box[0] or node.x * node.unit > box[1])
                 or (node.y * node.unit < box[2] or node.y * node.unit > box[3])
-                or (node.z * node.unit < box[4] or node.z * node.unit > box[5]) 
+                or (node.z * node.unit < box[4] or node.z * node.unit > box[5])
             )
         except (TypeError):
             raise TypeError("Either give distance_to_protein or box mins and maxes!")
@@ -278,7 +328,9 @@ class TreeAStar(AStar3D):
             dist = self.tree.distanceToProtein(node=child)
             if dist < self.pathsize:
                 continue
-            child.g = parent.g + self.estimateEuclideanH(node=parent, destination=child)
+            child.g = parent.g + self.tree.estimateDiagonalH(
+                node=parent, destination=child
+            )
             child.h = dist
             ret.append(child)
         return ret
@@ -298,7 +350,12 @@ class TreeAStar(AStar3D):
         self.shortestPath = new
         return self.shortestPath
 
-    def aStar3D(self, backtrace: bool = True, distance:unit.Quantity = None, box:List[unit.Quantity] = None) -> List[TreeNode]:
+    def aStar3D(
+        self,
+        backtrace: bool = True,
+        distance: unit.Quantity = None,
+        box: List[unit.Quantity] = None,
+    ) -> List[TreeNode]:
         """
         lets a slightly addapted (greedier) version of the A* star algorithm search for the shortest path between start end end point.
         Args:
@@ -336,11 +393,54 @@ class TreeAStar(AStar3D):
                     openList.insert(0, child)
             self.shortestPath.append(q)
         return []
-    
-    def getPathForSampling(self, stepsize:unit.Quantity = 1*unit.angstrom) -> List[TreeNode]:
-        iterator = iter(self.shortestPath)
+
+    def getPathForSampling(
+        self, stepsize: unit.Quantity = 1 * unit.angstrom
+    ) -> List[unit.Quantity]:
+        """
+        Generates path of evenly spaced nodes for the sampling. Tree uses grid where diagonal jumps are bigger than nondiagonal jumps, hence this function is needed.
+        It can also be used if you want to generated differently spaced paths
+
+        Args:
+            stepsize (unit.Quantity, optional): Stepsite of the path you want. Defaults to 1*unit.angstrom.
+
+        Returns:
+            List[TreeNode]: list of path nodes.
+        """
+        ret = []
+        path = copy.deepcopy(self.shortestPath)
+        iterator = iter(path)
         current = next(iterator)
+        new = next(iterator)
+        ret.append(unit.Quantity(value=Vec3(x=current.x, y=current.y, z=current.z), unit=current.unit))
         endReached = False
         while not endReached:
-            new = next(iterator)
-
+            try:
+                newstep = stepsize
+                diff = self.tree.estimateDiagonalH(current, new) * self.tree.unit
+                while diff < stepsize:
+                    current = new
+                    new = next(iterator)
+                    newstep -= diff
+                    diff = self.tree.estimateDiagonalH(current, new) * self.tree.unit
+                factor = newstep / diff
+                dx = (new.x - current.x) * factor
+                dy = (new.y - current.y) * factor
+                dz = (new.z - current.z) * factor
+                ret.append(
+                    unit.Quantity(
+                        value=Vec3(
+                            x=dx + current.x,
+                            y=dy + current.y,
+                            z=dz + current.z,
+                    ),
+                        unit=current.unit,
+                    )
+                )
+                current.x += dx
+                current.y += dy
+                current.z += dz
+            except StopIteration:
+                endReached = True
+        del path
+        return ret
