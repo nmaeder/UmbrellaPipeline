@@ -8,7 +8,6 @@ from typing import List
 from UmbrellaPipeline.sampling.samplingHelper import addHarmonicRestraint
 from UmbrellaPipeline.pathGeneration.node import Node
 from UmbrellaPipeline.pathGeneration.pathHelper import (
-    getCenterOfMassCoordinates,
     get_indices,
 )
 
@@ -74,12 +73,14 @@ class UmbrellaSimulation:
         self.platformProperties = {"Precision": "Single"}
 
     def runUmbrellaSampling(self):
+        
         ligandIndices = get_indices(self.psf.atom_list, self.ligName)
         addHarmonicRestraint(
             system=self.system,
             atomGroup=ligandIndices,
             values=[self.forceK, self.path[0].x, self.path[0].y, self.path[0].z],
         )
+        
         integrator = mm.LangevinIntegrator(self.temp, self.fric, self.dt)
         simulation = app.Simulation(
             topology=self.psf.topology,
