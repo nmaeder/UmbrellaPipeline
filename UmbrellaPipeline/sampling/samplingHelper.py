@@ -27,7 +27,6 @@ def addHarmonicRestraint(
 
 
 class ScriptWriter:
-    
     def __init__(
         self,
         nWin: int,
@@ -38,13 +37,15 @@ class ScriptWriter:
         cwd: bool = True,
         condaEnv: str = "openmm",
         positions: unit.Quantity = None,
-        temperature: unit.Quantity = 310*unit.kelvin,
+        temperature: unit.Quantity = 310 * unit.kelvin,
         nEq: int = 50000,
         nProd: int = 5000000,
         frec: int = 2500,
-        fric: unit.Quantity = 1/unit.picosecond,
-        forceK: unit.Quantity = 100*unit.kilocalorie_per_mole/(unit.angstrom**2),
+        fric: unit.Quantity = 1 / unit.picosecond,
+        forceK: unit.Quantity = 100 * unit.kilocalorie_per_mole / (unit.angstrom ** 2),
         ligandIndices: List[int] = None,
+        platform: mm.openmm.Platform = mm.Platform.getPlatformByName("CUDA"),
+        platformProperties: dict = {"Precision": "single"},
     ) -> None:
         self.nWin = nWin
         self.scriptPath = scriptPath
@@ -61,8 +62,10 @@ class ScriptWriter:
         self.fric = fric
         self.forceK = forceK
         self.ligandIndices = ligandIndices
+        self.platform = platform
+        self.platformProperties = platformProperties
         self.execCommand += ""
-    
+
     def writeHydraScripts(self):
         if not self.scriptPath.endswith("/"):
             self.scriptPath += "/"
@@ -85,6 +88,3 @@ class ScriptWriter:
         command += self.execCommand
         f.write(command)
         f.close()
-
-
-
