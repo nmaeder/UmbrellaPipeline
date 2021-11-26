@@ -5,7 +5,10 @@ import openmm.app as app
 import openmm.unit as unit
 from openmm import Vec3
 from scipy.spatial import KDTree
-from UmbrellaPipeline.pathGeneration.pathHelper import get_indices, getCentroidCoordinates
+from UmbrellaPipeline.pathGeneration.pathHelper import (
+    getIndices,
+    getCentroidCoordinates,
+)
 from UmbrellaPipeline.pathGeneration.node import TreeNode
 
 
@@ -75,7 +78,9 @@ class Tree:
 
     @classmethod
     def treeFromFiles(
-        cls, pdb: str or app.PDBFile, psf: str or app.CharmmPsfFile,
+        cls,
+        pdb: str or app.PDBFile,
+        psf: str or app.CharmmPsfFile,
     ):
         """
         Constructor for grid. takes in psf and pdb files generated from charmmgui and generates a grid where all points with a protein atom are true. every other gridpoint is False.
@@ -95,7 +100,7 @@ class Tree:
         except TypeError:
             psf = psf
 
-        indices = get_indices(psf.atom_list)
+        indices = getIndices(psf.atom_list)
         coords = []
         unit = pdb.positions.unit
         for i in indices:
@@ -103,7 +108,9 @@ class Tree:
 
         return cls(_unit=unit, coordinates=coords)
 
-    def nodeFromFiles(self, psf: str, pdb: str, name: str) -> TreeNode:
+    def nodeFromFiles(
+        self, psf: str, pdb: str, name: str, includeHydrogens: bool = True
+    ) -> TreeNode:
         """
         calculates the centroid coordinates of the ligand and returns the grid node closest to the centriod Cordinates.
 
@@ -126,9 +133,17 @@ class Tree:
         except TypeError:
             psf = psf
 
-        indices = get_indices(atom_list=psf.atom_list, name=name)
+        indices = getIndices(
+            atom_list=psf.atom_list, name=name, includeHydrogens=includeHydrogens
+        )
         coordinates = getCentroidCoordinates(positions=pdb.positions, indices=indices)
-        return TreeNode.fromCoords([coordinates[0], coordinates[1], coordinates[2],])
+        return TreeNode.fromCoords(
+            [
+                coordinates[0],
+                coordinates[1],
+                coordinates[2],
+            ]
+        )
 
     def positionIsBlocked(
         self,
@@ -188,7 +203,7 @@ class Tree:
             dist, i = self.tree.query(x=coords.value_in_unit(self.unit), k=1)
         dist = dist * self.unit - vdwRadius.in_units_of(self.unit)
         return dist
-        
+
     def estimateEuclideanH(self, node: TreeNode, destination: TreeNode) -> float:
         """
         estimates euclidean distance heuristics between node and destination.
@@ -205,7 +220,7 @@ class Tree:
             + (node.z - destination.z) ** 2
         )
 
-    def estimateDiagonalH(self, node:TreeNode, destination: TreeNode) -> float:
+    def estimateDiagonalH(self, node: TreeNode, destination: TreeNode) -> float:
         """
         estimates diagonal distance heuristics between node and destination.
         Args:

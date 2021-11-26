@@ -8,8 +8,8 @@ import numpy as np
 import openmm.app as app
 import openmm.unit as unit
 from UmbrellaPipeline.pathGeneration.pathHelper import (
-    gen_box,
-    get_indices,
+    genBox,
+    getIndices,
     getCentroidCoordinates,
 )
 from UmbrellaPipeline.pathGeneration.node import GridNode
@@ -28,7 +28,7 @@ class Grid:
         dtype: type = bool,
         grid: np.array = None,
         boxlengths: unit.Quantity or List[unit.Quantity] = None,
-        offset: unit.Quantity = unit.Quantity(Vec3(0,0,0),unit=unit.nanometer),
+        offset: unit.Quantity = unit.Quantity(Vec3(0, 0, 0), unit=unit.nanometer),
     ):
         """
         Args:
@@ -116,7 +116,7 @@ class Grid:
         except ValueError:
             pdb = input("Enter absolute path to pdb file: ")
             pdb = app.PDBFile(pdb)
-                
+
         try:
             psf = app.CharmmPsfFile(psf)
         except TypeError:
@@ -125,11 +125,10 @@ class Grid:
         except ValueError:
             psf = input("Enter absolute path to psf file: ")
             psf = app.CharmmPsfFile(psf)
-            
 
-
-        inx = get_indices(psf.atom_list)
-        min_c = gen_box(psf, pdb)
+        inx = getIndices(psf.atom_list)
+        if psf.boxVectors == None:
+            min_c = genBox(psf, pdb)
 
         n = [
             round(psf.boxLengths[0] / gridsize),
@@ -192,7 +191,7 @@ class Grid:
             pdb = app.PDBFile(pdb)
         if type(psf) is str:
             psf = app.CharmmPsfFile(psf)
-        indices = get_indices(atom_list=psf.atom_list, name=name)
+        indices = getIndices(atom_list=psf.atom_list, name=name)
         coordinates = getCentroidCoordinates(positions=pdb.positions, indices=indices)
         return GridNode.fromCoords(
             [

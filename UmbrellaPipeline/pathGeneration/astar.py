@@ -1,4 +1,5 @@
 import copy
+import math
 from typing import List
 
 import gemmi
@@ -12,7 +13,7 @@ from UmbrellaPipeline.pathGeneration.tree import Tree
 
 class AStar3D:
     """
-    Bass class for the AStar3D class
+    Base class for the AStar3D class
     """
 
     def __init__(
@@ -191,11 +192,29 @@ class GridAStar(AStar3D):
         ccp4_map.write_ccp4_map(filename)
         return None
 
-    """    
+    def getDiff(self, node1: GridNode, node2: GridNode) -> unit.Quantity:
+        """
+        Helper function for getPathForSampling(). Returns the true distance between two grid points.
+
+        Args:
+            node1 (GridNode):
+            node2 (GridNode):
+
+        Returns:
+            [type]: distance between two grid points in units the gridcellsizes have.
+        """
+        u = self.grid.a.unit
+        ret = math.sqrt(
+            ((node2.x - node1.x) * self.grid.a.value_in_unit(u)) ** 2
+            + ((node2.y - node1.y) * self.grid.b.value_in_unit(u)) ** 2
+            + ((node2.z - node1.z) * self.grid.c.value_in_unit(u)) ** 2
+        )
+        return unit.Quantity(value=ret, unit=u)
+
     def getPathForSampling(
         self, stepsize: unit.Quantity = 1 * unit.angstrom
     ) -> List[unit.Quantity]:
-        
+        """
         Generates path of evenly spaced nodes for the sampling. Tree uses grid where diagonal jumps are bigger than nondiagonal jumps, hence this function is needed.
         It can also be used if you want to generated differently spaced paths
 
@@ -204,9 +223,9 @@ class GridAStar(AStar3D):
 
         Returns:
             List[unit.Quantity]: list of Coordinates.
-        
+        """
         ret = []
-        dx, dy, dz = 0, 0, 0
+        stride = 1
         path = copy.deepcopy(self.shortestPath)
         iterator = iter(path)
         current = next(iterator)
@@ -214,47 +233,53 @@ class GridAStar(AStar3D):
         ret.append(
             unit.Quantity(
                 value=Vec3(
-                    x=current.x * self.grid.a + self.grid.offset[0],
-                    y=current.y * self.grid.b + self.grid.offset[1],
-                    z=current.z * self.grid.c + self.grid.offset[2],
+                    x=current.x * self.grid.a.value_in_unit(self.grid.a.unit)
+                    + self.grid.offset[0].value_in_unit(self.grid.a.unit),
+                    y=current.y * self.grid.b.value_in_unit(self.grid.a.unit)
+                    + self.grid.offset[1].value_in_unit(self.grid.a.unit),
+                    z=current.z * self.grid.c.value_in_unit(self.grid.a.unit)
+                    + self.grid.offset[2].value_in_unit(self.grid.a.unit),
                 ),
                 unit=self.grid.a.unit,
             )
         )
+        while min(self.grid.a, self.grid.b, self.grid.c) >= stepsize:
+            stepsize /= 2
+            stride *= 2
         endReached = False
-        diff = self.grid.estimateDiagonalH(current, new)
-        stepsizev = stepsize.value_in_unit(self.grid.a.unit)
         while not endReached:
             try:
                 newstep = stepsize
+                diff = self.getDiff(node1=new, node2=current)
                 while diff < stepsize:
-                    dx -= diff
-                    dy -= diff
-                    dz -= diff
                     current = new
                     new = next(iterator)
                     newstep -= diff
-                    diff = self.grid.estimateDiagonalH(current, new) * self.grid.unit
+                    diff = self.getDiff(node1=new, node2=current)
                 factor = newstep / diff
-                dx += factor
-                dy += factor
-                dz += factor
-                diff -= stepsize
+                dx = (new.x - current.x) * factor
+                dy = (new.y - current.y) * factor
+                dz = (new.z - current.z) * factor
                 ret.append(
                     unit.Quantity(
-                        Vec3(
-                            x=(dx + current.x) * self.grid.a + self.grid.offset[0],
-                            y=(dy + current.y) * self.grid.b + self.grid.offset[1],
-                            z=(dz + current.z) * self.grid.c + self.grid.offset[2],
+                        value=Vec3(
+                            x=(dx + current.x)
+                            * self.grid.a.value_in_unit(self.grid.a.unit)
+                            + self.grid.offset[0].value_in_unit(self.grid.a.unit),
+                            y=(dy + current.y)
+                            * self.grid.b.value_in_unit(self.grid.a.unit)
+                            + self.grid.offset[0].value_in_unit(self.grid.a.unit),
+                            z=(dz + current.z)
+                            * self.grid.c.value_in_unit(self.grid.a.unit)
+                            + self.grid.offset[0].value_in_unit(self.grid.a.unit),
                         ),
-                        unit=self.grid.a.unit,
+                        unit=current.unit,
                     )
                 )
+                diff -= newstep
             except StopIteration:
                 endReached = True
-        del path
-        return ret
-    """
+        return ret[::stride]
 
 
 class TreeAStar(AStar3D):
@@ -407,13 +432,21 @@ class TreeAStar(AStar3D):
         Returns:
             List[TreeNode]: list of path nodes.
         """
+        stride = 1
         ret = []
         path = copy.deepcopy(self.shortestPath)
         iterator = iter(path)
         current = next(iterator)
         new = next(iterator)
-        ret.append(unit.Quantity(value=Vec3(x=current.x, y=current.y, z=current.z), unit=current.unit))
+        ret.append(
+            unit.Quantity(
+                value=Vec3(x=current.x, y=current.y, z=current.z), unit=current.unit
+            )
+        )
         endReached = False
+        while stepsize >= self.stepsize:
+            stepsize /= 2
+            stride *= 2
         while not endReached:
             try:
                 newstep = stepsize
@@ -433,7 +466,7 @@ class TreeAStar(AStar3D):
                             x=dx + current.x,
                             y=dy + current.y,
                             z=dz + current.z,
-                    ),
+                        ),
                         unit=current.unit,
                     )
                 )
@@ -443,4 +476,4 @@ class TreeAStar(AStar3D):
             except StopIteration:
                 endReached = True
         del path
-        return ret
+        return ret[::stride]

@@ -9,9 +9,9 @@ from .grid import (
     Grid,
 )
 from .pathHelper import (
-    gen_box,
-    get_indices,
-    get_params,
+    genBox,
+    getIndices,
+    getParams,
     getCenterOfMassCoordinates,
     getCentroidCoordinates,
 )
@@ -23,4 +23,3 @@ from .node import (
 from .tree import (
     Tree,
 )
-

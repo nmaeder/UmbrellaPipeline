@@ -1,0 +1,7 @@
+* dihedral setup for symmetric unit
+*
+
+set ndihe = 2
+set diheatom1 = C5 C4 C7 C8
+set diheatom2 = C9 C8 C7 C4
+set consatom = C3 C2 C1 C7 C6 C5 C4 C9 C8 C13 C12 C11 C10 C7

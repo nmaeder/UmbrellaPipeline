@@ -32,6 +32,7 @@ def testTreeGenerationFromFiles():
 def testNodeFromFiles():
     tree = Tree.treeFromFiles(pdb=pdb, psf=psf)
     node = tree.nodeFromFiles(psf=psf, pdb=pdb, name="UNL")
+    node = tree.nodeFromFiles(psf=psf, pdb=pdb, name="UNL", includeHydrogens=False)
 
 
 def testFunctions():

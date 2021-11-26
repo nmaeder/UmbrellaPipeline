@@ -26,8 +26,12 @@ def testTreeNodeGenerations():
     )
     treeNode4 = TreeNode.fromCoords(coords=[4, 34.1, 23.2], _unit=unit.angstrom)
     assert treeNode4.x == 4
-    assert treeNode4.getCoordinates() == unit.Quantity(value=Vec3(4,34.1,23.2), unit=unit.angstrom)
-    assert treeNode4.getCoordinates() != unit.Quantity(value=Vec3(4,34.1,23.2), unit=unit.nanometer)
+    assert treeNode4.getCoordinates() == unit.Quantity(
+        value=Vec3(4, 34.1, 23.2), unit=unit.angstrom
+    )
+    assert treeNode4.getCoordinates() != unit.Quantity(
+        value=Vec3(4, 34.1, 23.2), unit=unit.nanometer
+    )
 
 
 def testTeeNodeEquality():
