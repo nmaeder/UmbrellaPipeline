@@ -66,7 +66,7 @@ def testGridSuccessor():
 def testGridPathfinding():
     pdbo = app.PDBFile(pdb)
     psfo = app.CharmmPsfFile(psf)
-    grid = Grid.gridFromFiles(pdb=pdbo, psf=psfo, gridsize=1 * unit.angstrom)
+    grid = Grid.gridFromFiles(pdb=pdbo, psf=psfo, gridsize=3 * unit.angstrom)
     node = grid.nodeFromFiles(psf=psfo, pdb=pdbo, name="UNL")
     assert not grid.positionIsBlocked(node)
     astar = GridAStar(grid=grid, start=node)
@@ -80,11 +80,11 @@ def testGridPathPartitioning():
 
     path1, path2 = [], []
     goal1, goal2 = [], []
-    sq3 = 1 / math.sqrt(3)
-    sq2 = 1 / math.sqrt(2)
+    sq3 = 0.5 / math.sqrt(3)
     grid1 = Grid(
         grid=np.zeros(shape=(10, 10, 10), dtype=bool),
         boxlengths=unit.Quantity(value=Vec3(1, 1, 1), unit=unit.angstrom),
+        offset=Vec3(0,0,0) * unit.angstrom,
     )
     grid2 = Grid(
         grid=np.zeros(shape=(10, 10, 10), dtype=bool),
@@ -112,13 +112,13 @@ def testGridPathPartitioning():
     for i in range(len(path1)):
         goal1.append(
             unit.Quantity(
-                Vec3(x=i * sq3 / 2, y=i * sq3 / 2, z=i * sq3 / 2), unit=unit.angstrom
+                Vec3(x=i * sq3 , y=i * sq3 , z=i * sq3 ), unit=unit.angstrom
             )
         )
 
     for i in range(len(path2)):
         goal2.append(
-            unit.Quantity(Vec3(x=2 * i / 2 - 9, y=0 - 5, z=2 - 6), unit=unit.angstrom)
+            unit.Quantity(Vec3(x=i/2 - 9, y= 0 - 5, z=2 - 6), unit=unit.angstrom)
         )
 
     # Check generated paths for tested outcome
@@ -126,13 +126,13 @@ def testGridPathPartitioning():
     for i in range(len(path1)):
         for j in range(3):
             assert round(path1[i][j].value_in_unit(path1[i].unit), 5) == round(
-                goal1[i][j].value_in_unit(path1[i].unit), 5
+                goal1[i][j].value_in_unit(goal1[i].unit), 5
             )
     for i in range(len(path2)):
         for j in range(3):
             print(i, j)
             assert round(path2[i][j].value_in_unit(path2[i].unit), 5) == round(
-                goal2[i][j].value_in_unit(path2[i].unit), 5
+                goal2[i][j].value_in_unit(goal2[i].unit), 5
             )
 
 

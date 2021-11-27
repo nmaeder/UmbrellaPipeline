@@ -1,4 +1,3 @@
-import copy
 import openmm.unit as unit
 from openmm import Vec3
 from UmbrellaPipeline.pathGeneration import (
@@ -34,15 +33,14 @@ def testProteinIndices():
 
 
 def testgenBox():
-    newpsf = copy.deepcopy(psf)
-    assert newpsf.boxVectors == None
-    minC = genBox(psf=newpsf, pdb=pdb)
+    assert psf.boxVectors == None
+    minC = genBox(psf=psf, pdb=pdb)
     assert minC == [
         unit.Quantity(value=-0.5613, unit=unit.nanometer),
         unit.Quantity(value=-0.46090000000000003, unit=unit.nanometer),
         unit.Quantity(value=-0.0634, unit=unit.nanometer),
     ]
-    assert newpsf.boxVectors == unit.Quantity(
+    assert psf.boxVectors == unit.Quantity(
         value=(
             Vec3(x=11.071, y=0.0, z=0.0),
             Vec3(x=0.0, y=10.882600000000002, z=0.0),
@@ -72,19 +70,18 @@ def testCentroidCoords():
 
 
 def testCOMCoords():
-    newpsf = copy.deepcopy(psf)
-    genBox(newpsf)
+    genBox(pdb=pdb, psf=psf)
     params = getParams(
         topparDirectory="UmbrellaPipeline/data/toppar", topparStrFile="toppar.str"
     )
-    system = newpsf.createSystem(
+    system = psf.createSystem(
         params=params,
         nonbondedMethod=app.PME,
         nonbondedCutoff=1.2 * unit.nanometers,
         constraints=app.HBonds,
         rigidWater=True,
     )
-    ind = getIndices(atom_list=newpsf.atom_list, name="unl")
+    ind = getIndices(atom_list=psf.atom_list, name="unl")
     assert getCenterOfMassCoordinates(
         positions=pdb.positions, indices=ind, masses=system, includeHydrogens=True
     ) == unit.Quantity(

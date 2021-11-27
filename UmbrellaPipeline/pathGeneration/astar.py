@@ -224,7 +224,7 @@ class GridAStar(AStar3D):
         Returns:
             List[unit.Quantity]: list of Coordinates.
         """
-        ret = []
+        ret:list[unit.Quantity] = []
         stride = 1
         path = copy.deepcopy(self.shortestPath)
         iterator = iter(path)
@@ -243,20 +243,17 @@ class GridAStar(AStar3D):
                 unit=self.grid.a.unit,
             )
         )
-        while min(self.grid.a, self.grid.b, self.grid.c) >= stepsize:
+        while min(self.grid.a, self.grid.b, self.grid.c) <= stepsize:
             stepsize /= 2
             stride *= 2
         endReached = False
+        diff = self.getDiff(node1=new, node2=current)
+        diffo = self.getDiff(node1=new, node2=current)
+        factor = stepsize/diff
+        newstep = stepsize
         while not endReached:
             try:
-                newstep = stepsize
-                diff = self.getDiff(node1=new, node2=current)
-                while diff < stepsize:
-                    current = new
-                    new = next(iterator)
-                    newstep -= diff
-                    diff = self.getDiff(node1=new, node2=current)
-                factor = newstep / diff
+                diff -= newstep
                 dx = (new.x - current.x) * factor
                 dy = (new.y - current.y) * factor
                 dz = (new.z - current.z) * factor
@@ -268,15 +265,23 @@ class GridAStar(AStar3D):
                             + self.grid.offset[0].value_in_unit(self.grid.a.unit),
                             y=(dy + current.y)
                             * self.grid.b.value_in_unit(self.grid.a.unit)
-                            + self.grid.offset[0].value_in_unit(self.grid.a.unit),
+                            + self.grid.offset[1].value_in_unit(self.grid.a.unit),
                             z=(dz + current.z)
                             * self.grid.c.value_in_unit(self.grid.a.unit)
-                            + self.grid.offset[0].value_in_unit(self.grid.a.unit),
+                            + self.grid.offset[2].value_in_unit(self.grid.a.unit),
                         ),
-                        unit=current.unit,
+                        unit=self.grid.a.unit,
                     )
                 )
-                diff -= newstep
+                if newstep < stepsize:
+                    newstep = stepsize
+                factor += stepsize/diffo
+                if diff < stepsize:
+                    newstep = stepsize - diff
+                    current = new
+                    new = next(iterator)
+                    diff, diffo = self.getDiff(node1=new, node2=current), self.getDiff(node1=new, node2=current)
+                    factor = newstep / diffo
             except StopIteration:
                 endReached = True
         return ret[::stride]
@@ -451,7 +456,7 @@ class TreeAStar(AStar3D):
             try:
                 newstep = stepsize
                 diff = self.tree.estimateDiagonalH(current, new) * self.tree.unit
-                while diff < stepsize:
+                if diff < stepsize:
                     current = new
                     new = next(iterator)
                     newstep -= diff

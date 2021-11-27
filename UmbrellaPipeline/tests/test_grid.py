@@ -11,7 +11,7 @@ psf = "UmbrellaPipeline/data/step5_input.psf"
 
 def testGridAndNodeFromFiles():
     grid = Grid.gridFromFiles(
-        pdb=pdb, psf=psf, gridsize=1 * unit.angstrom, vdwradius=1.2 * unit.angstrom
+        pdb=pdb, psf=psf, gridsize=4 * unit.angstrom, vdwradius=1.2 * unit.angstrom
     )
     node = grid.nodeFromFiles(pdb=pdb, psf=psf, name="UNL")
     del grid
@@ -19,7 +19,7 @@ def testGridAndNodeFromFiles():
     pdbo = app.PDBFile(pdb)
     psfo = app.CharmmPsfFile(psf)
     grid = Grid.gridFromFiles(
-        pdb=pdbo, psf=psfo, gridsize=1 * unit.angstrom, vdwradius=1.2 * unit.angstrom
+        pdb=pdbo, psf=psfo, gridsize=4 * unit.angstrom, vdwradius=1.2 * unit.angstrom
     )
     node = grid.nodeFromFiles(pdb=pdb, psf=psf, name="UNL")
 
