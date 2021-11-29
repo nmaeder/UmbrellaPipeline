@@ -10,6 +10,7 @@ dependencies:
   - gemmi
   - openmm
   - scipy
+  - torch
 
     # Testing
   - pytest
