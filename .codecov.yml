@@ -13,4 +13,4 @@ comment:
   flags: null
   paths: null
 ignore:
-  - "UmbrellaSampling/data"
+  - "UmbrellaPipeline/data"
