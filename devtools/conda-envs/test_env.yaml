@@ -2,6 +2,7 @@ name: test
 channels:
   - conda-forge
   - defaults
+  - pytorch
 dependencies:
     # Base depends
   - python
@@ -10,8 +11,7 @@ dependencies:
   - gemmi
   - openmm
   - scipy
-  - torch
-
+  - pytorch
     # Testing
   - pytest
   - pytest-cov
