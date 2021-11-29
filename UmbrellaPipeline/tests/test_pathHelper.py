@@ -1,4 +1,5 @@
 import openmm.unit as unit
+import os
 from openmm import Vec3
 from UmbrellaPipeline.pathGeneration import (
     genBox,
@@ -9,14 +10,20 @@ from UmbrellaPipeline.pathGeneration import (
 )
 import openmm.app as app
 
-pdb = "UmbrellaPipeline/data/step5_input.pdb"
-psf = "UmbrellaPipeline/data/step5_input.psf"
+pdb = "data/step5_input.pdb"
+psf = "data/step5_input.psf"
 
-pdb = app.PDBFile(pdb)
-psf = app.CharmmPsfFile(psf)
+def readPDB(pdb:str = pdb) -> app.PDBFile:
+    return app.PDBFile(pdb)
+
+def readPSF(psf:str = psf) -> app.CharmmPsfFile:
+    return app.CharmmPsfFile(psf)
+
+
 
 
 def testLigandIndices():
+    psf = readPSF()
     indices = getIndices(psf.atom_list, name="unl")
     goal = list(range(8478, 8514, 1))
     assert indices == goal
@@ -27,12 +34,15 @@ def testLigandIndices():
 
 
 def testProteinIndices():
+    psf = readPSF()
     indices = getIndices(psf.atom_list)
     goal = list(range(0, 8478, 1))
     assert indices == goal
 
 
 def testgenBox():
+    psf = readPSF()
+    pdb = readPDB()
     assert psf.boxVectors == None
     minC = genBox(psf=psf, pdb=pdb)
     assert minC == [
@@ -49,14 +59,15 @@ def testgenBox():
         unit=unit.nanometer,
     )
 
-
 def testGetParams():
     params = getParams(
-        topparDirectory="UmbrellaPipeline/data/toppar", topparStrFile="toppar.str"
+        topparDirectory="data/toppar", topparStrFile="toppar.str"
     )
 
 
 def testCentroidCoords():
+    psf = readPSF()
+    pdb = readPDB()
     ind1 = getIndices(atom_list=psf.atom_list, name="unl")
     ind2 = getIndices(atom_list=psf.atom_list, name="unl", includeHydrogens=False)
     assert getCentroidCoordinates(pdb.positions, ind1) == unit.Quantity(
@@ -70,9 +81,11 @@ def testCentroidCoords():
 
 
 def testCOMCoords():
+    pdb = readPDB()
+    psf = readPSF()
     genBox(pdb=pdb, psf=psf)
     params = getParams(
-        topparDirectory="UmbrellaPipeline/data/toppar", topparStrFile="toppar.str"
+        topparDirectory="data/toppar", topparStrFile="toppar.str"
     )
     system = psf.createSystem(
         params=params,

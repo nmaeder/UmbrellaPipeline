@@ -17,7 +17,7 @@ from UmbrellaPipeline.pathGeneration.pathHelper import (
 )
 
 
-logo = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class UmbrellaSimulation:
@@ -58,7 +58,7 @@ class UmbrellaSimulation:
         self.integrator: mm.openmm.Integrator
 
         if not isinstance(self.tOutput, str):
-            logo.warning(
+            logger.warning(
                 "No trajectory output was given. All generated trajectories are now stored in the current working directory"
             )
             self.tOutput = os.getcwd()
@@ -136,10 +136,6 @@ class UmbrellaSimulation:
 
         orgCoords.close()
 
-    def prepAndRun(self):
-        self.prepareSystem()
-        self.runUmbrellaSampling()
-
 
 class SimulationsHydra(UmbrellaSimulation):
     def __init__(
@@ -190,7 +186,7 @@ class SimulationsHydra(UmbrellaSimulation):
         self.gpu = gpu
         self.condaEnv = condaEnv
         if not isinstance(hydraWorkingDirectoryPath, str):
-            logo.warning(
+            logger.warning(
                 "No hydra directory was given. Now everything is carried out in the current working directory. Ignore this warning if you are in /cluster/projects/..."
             )
             self.tOutput = os.getcwd()

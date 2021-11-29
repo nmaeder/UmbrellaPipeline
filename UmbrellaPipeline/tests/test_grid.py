@@ -5,8 +5,14 @@ import openmm.app as app
 import openmm.unit as unit
 from UmbrellaPipeline.pathGeneration import Grid, GridNode
 
-pdb = "UmbrellaPipeline/data/step5_input.pdb"
-psf = "UmbrellaPipeline/data/step5_input.psf"
+pdb = "data/step5_input.pdb"
+psf = "data/step5_input.psf"
+
+def readPDB(pdb:str = pdb) -> app.PDBFile:
+    return app.PDBFile(pdb)
+
+def readPSF(psf:str = psf) -> app.CharmmPsfFile:
+    return app.CharmmPsfFile(psf)
 
 
 def testGridAndNodeFromFiles():
@@ -16,8 +22,8 @@ def testGridAndNodeFromFiles():
     node = grid.nodeFromFiles(pdb=pdb, psf=psf, name="UNL")
     del grid
     del node
-    pdbo = app.PDBFile(pdb)
-    psfo = app.CharmmPsfFile(psf)
+    pdbo = readPDB()
+    psfo = readPSF()
     grid = Grid.gridFromFiles(
         pdb=pdbo, psf=psfo, gridsize=4 * unit.angstrom, vdwradius=1.2 * unit.angstrom
     )

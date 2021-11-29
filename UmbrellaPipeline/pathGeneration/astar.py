@@ -1,4 +1,5 @@
 import copy
+import logging
 import math
 from typing import List
 
@@ -10,6 +11,7 @@ from UmbrellaPipeline.pathGeneration.grid import Grid
 from UmbrellaPipeline.pathGeneration.node import GridNode, TreeNode
 from UmbrellaPipeline.pathGeneration.tree import Tree
 
+logger = logging.getLogger(__name__)
 
 class AStar3D:
     """
@@ -62,6 +64,7 @@ class GridAStar(AStar3D):
         super().__init__(start=start, end=end)
         self.grid = grid
         self.shortestPath: List[GridNode] = []
+        logger.warning(msg="You are using the grid Version. This is not encouraged. Try to use the tree version whenever possible.")
 
     def isGoalReached(self, node: GridNode, distance: unit.Quantity = None) -> bool:
         """
@@ -224,7 +227,7 @@ class GridAStar(AStar3D):
         Returns:
             List[unit.Quantity]: list of Coordinates.
         """
-        ret:list[unit.Quantity] = []
+        ret: list[unit.Quantity] = []
         stride = 1
         path = copy.deepcopy(self.shortestPath)
         iterator = iter(path)
@@ -249,7 +252,7 @@ class GridAStar(AStar3D):
         endReached = False
         diff = self.getDiff(node1=new, node2=current)
         diffo = self.getDiff(node1=new, node2=current)
-        factor = stepsize/diff
+        factor = stepsize / diff
         newstep = stepsize
         while not endReached:
             try:
@@ -275,12 +278,14 @@ class GridAStar(AStar3D):
                 )
                 if newstep < stepsize:
                     newstep = stepsize
-                factor += stepsize/diffo
+                factor += stepsize / diffo
                 if diff < stepsize:
                     newstep = stepsize - diff
                     current = new
                     new = next(iterator)
-                    diff, diffo = self.getDiff(node1=new, node2=current), self.getDiff(node1=new, node2=current)
+                    diff, diffo = self.getDiff(node1=new, node2=current), self.getDiff(
+                        node1=new, node2=current
+                    )
                     factor = newstep / diffo
             except StopIteration:
                 endReached = True

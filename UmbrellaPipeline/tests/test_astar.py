@@ -12,8 +12,14 @@ from UmbrellaPipeline.pathGeneration import (
     TreeNode,
 )
 
-pdb = "UmbrellaPipeline/data/step5_input.pdb"
-psf = "UmbrellaPipeline/data/step5_input.psf"
+pdb = "data/step5_input.pdb"
+psf = "data/step5_input.psf"
+
+def readPDB(pdb:str = pdb) -> app.PDBFile:
+    return app.PDBFile(pdb)
+
+def readPSF(psf:str = psf) -> app.CharmmPsfFile:
+    return app.CharmmPsfFile(psf)
 
 
 def testGridAStarBasic():
@@ -64,10 +70,10 @@ def testGridSuccessor():
 
 
 def testGridPathfinding():
-    pdbo = app.PDBFile(pdb)
-    psfo = app.CharmmPsfFile(psf)
-    grid = Grid.gridFromFiles(pdb=pdbo, psf=psfo, gridsize=3 * unit.angstrom)
-    node = grid.nodeFromFiles(psf=psfo, pdb=pdbo, name="UNL")
+    pdb = readPDB()
+    psf = readPSF()
+    grid = Grid.gridFromFiles(pdb=pdb, psf=psf, gridsize=3 * unit.angstrom)
+    node = grid.nodeFromFiles(psf=psf, pdb=pdb, name="UNL")
     assert not grid.positionIsBlocked(node)
     astar = GridAStar(grid=grid, start=node)
     path = astar.aStar3D()
@@ -84,7 +90,7 @@ def testGridPathPartitioning():
     grid1 = Grid(
         grid=np.zeros(shape=(10, 10, 10), dtype=bool),
         boxlengths=unit.Quantity(value=Vec3(1, 1, 1), unit=unit.angstrom),
-        offset=Vec3(0,0,0) * unit.angstrom,
+        offset=Vec3(0, 0, 0) * unit.angstrom,
     )
     grid2 = Grid(
         grid=np.zeros(shape=(10, 10, 10), dtype=bool),
@@ -111,14 +117,12 @@ def testGridPathPartitioning():
 
     for i in range(len(path1)):
         goal1.append(
-            unit.Quantity(
-                Vec3(x=i * sq3 , y=i * sq3 , z=i * sq3 ), unit=unit.angstrom
-            )
+            unit.Quantity(Vec3(x=i * sq3, y=i * sq3, z=i * sq3), unit=unit.angstrom)
         )
 
     for i in range(len(path2)):
         goal2.append(
-            unit.Quantity(Vec3(x=i/2 - 9, y= 0 - 5, z=2 - 6), unit=unit.angstrom)
+            unit.Quantity(Vec3(x=i / 2 - 9, y=0 - 5, z=2 - 6), unit=unit.angstrom)
         )
 
     # Check generated paths for tested outcome
@@ -160,15 +164,15 @@ def testTreeSuccessor():
 
 
 def testTreePathfinding():
-    pdbo = app.PDBFile(pdb)
-    psfo = app.CharmmPsfFile(psf)
-    tree = Tree.treeFromFiles(pdb=pdbo, psf=psfo)
-    node = tree.nodeFromFiles(psf=psfo, pdb=pdbo, name="UNL")
+    pdb = readPDB()
+    psf = readPSF()
+    tree = Tree.treeFromFiles(pdb=pdb, psf=psf)
+    node = tree.nodeFromFiles(psf=psf, pdb=pdb, name="UNL")
     assert not tree.positionIsBlocked(node=node)
     box = []
     for i in range(3):
-        box.append(min([row[i] for row in pdbo.positions]))
-        box.append(max([row[i] for row in pdbo.positions]))
+        box.append(min([row[i] for row in pdb.positions]))
+        box.append(max([row[i] for row in pdb.positions]))
     astar = TreeAStar(tree=tree, start=node, stepsize=0.5 * unit.angstrom)
     path = astar.aStar3D(box=box)
     assert path != []

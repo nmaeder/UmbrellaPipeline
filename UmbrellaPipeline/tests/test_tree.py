@@ -3,9 +3,14 @@ import openmm.unit as unit
 from openmm import Vec3
 from UmbrellaPipeline.pathGeneration import Tree, TreeNode
 
-pdb = "UmbrellaPipeline/data/step5_input.pdb"
-psf = "UmbrellaPipeline/data/step5_input.psf"
+pdb = "data/step5_input.pdb"
+psf = "data/step5_input.psf"
 
+def readPDB(pdb:str = pdb) -> app.PDBFile:
+    return app.PDBFile(pdb)
+
+def readPSF(psf:str = psf) -> app.CharmmPsfFile:
+    return app.CharmmPsfFile(psf)
 
 def testTreeGenration():
     nodes = []
@@ -24,8 +29,8 @@ def testTreeGenration():
 
 def testTreeGenerationFromFiles():
     tree = Tree.treeFromFiles(pdb=pdb, psf=psf)
-    pdbo = app.PDBFile(pdb)
-    psfo = app.CharmmPsfFile(psf)
+    pdbo = readPDB()
+    psfo = readPSF()
     tree = Tree.treeFromFiles(pdb=pdbo, psf=psfo)
 
 
