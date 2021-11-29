@@ -10,8 +10,8 @@ from UmbrellaPipeline.pathGeneration import (
 )
 import openmm.app as app
 
-pdb = "data/step5_input.pdb"
-psf = "data/step5_input.psf"
+pdb = "UmbrellaPipeline/data/step5_input.pdb"
+psf = "UmbrellaPipeline/data/step5_input.psf"
 
 def readPDB(pdb:str = pdb) -> app.PDBFile:
     return app.PDBFile(pdb)
@@ -61,7 +61,7 @@ def testgenBox():
 
 def testGetParams():
     params = getParams(
-        topparDirectory="data/toppar", topparStrFile="toppar.str"
+        topparDirectory="UmbrellaPipeline/data/toppar", topparStrFile="toppar.str"
     )
 
 
@@ -85,7 +85,7 @@ def testCOMCoords():
     psf = readPSF()
     genBox(pdb=pdb, psf=psf)
     params = getParams(
-        topparDirectory="data/toppar", topparStrFile="toppar.str"
+        topparDirectory="UmbrellaPipeline/data/toppar", topparStrFile="toppar.str"
     )
     system = psf.createSystem(
         params=params,

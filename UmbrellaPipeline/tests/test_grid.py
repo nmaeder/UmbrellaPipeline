@@ -5,8 +5,8 @@ import openmm.app as app
 import openmm.unit as unit
 from UmbrellaPipeline.pathGeneration import Grid, GridNode
 
-pdb = "data/step5_input.pdb"
-psf = "data/step5_input.psf"
+pdb = "UmbrellaPipeline/data/step5_input.pdb"
+psf = "UmbrellaPipeline/data/step5_input.psf"
 
 def readPDB(pdb:str = pdb) -> app.PDBFile:
     return app.PDBFile(pdb)
