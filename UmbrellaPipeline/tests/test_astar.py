@@ -15,7 +15,8 @@ from UmbrellaPipeline.pathGeneration import (
 pdb = "UmbrellaPipeline/data/step5_input.pdb"
 psf = "UmbrellaPipeline/data/step5_input.psf"
 
-def readPDB(pdb:str = pdb) -> app.PDBFile:
+
+def readPDB(pdb: str = pdb) -> app.PDBFile:
     return app.PDBFile(pdb)
 
 

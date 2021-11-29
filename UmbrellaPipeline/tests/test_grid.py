@@ -8,10 +8,12 @@ from UmbrellaPipeline.pathGeneration import Grid, GridNode
 pdb = "UmbrellaPipeline/data/step5_input.pdb"
 psf = "UmbrellaPipeline/data/step5_input.psf"
 
-def readPDB(pdb:str = pdb) -> app.PDBFile:
+
+def readPDB(pdb: str = pdb) -> app.PDBFile:
     return app.PDBFile(pdb)
 
-def readPSF(psf:str = psf) -> app.CharmmPsfFile:
+
+def readPSF(psf: str = psf) -> app.CharmmPsfFile:
     return app.CharmmPsfFile(psf)
 
 

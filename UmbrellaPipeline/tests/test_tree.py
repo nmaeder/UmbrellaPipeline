@@ -7,11 +7,14 @@ from UmbrellaPipeline.pathGeneration import Tree, TreeNode
 pdb = "UmbrellaPipeline/data/step5_input.pdb"
 psf = "UmbrellaPipeline/data/step5_input.psf"
 
-def readPDB(pdb:str = pdb) -> app.PDBFile:
+
+def readPDB(pdb: str = pdb) -> app.PDBFile:
     return app.PDBFile(pdb)
 
-def readPSF(psf:str = psf) -> app.CharmmPsfFile:
+
+def readPSF(psf: str = psf) -> app.CharmmPsfFile:
     return app.CharmmPsfFile(psf)
+
 
 def testTreeGenration():
     nodes = []

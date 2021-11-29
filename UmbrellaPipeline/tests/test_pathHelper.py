@@ -13,13 +13,13 @@ import openmm.app as app
 pdb = "UmbrellaPipeline/data/step5_input.pdb"
 psf = "UmbrellaPipeline/data/step5_input.psf"
 
-def readPDB(pdb:str = pdb) -> app.PDBFile:
+
+def readPDB(pdb: str = pdb) -> app.PDBFile:
     return app.PDBFile(pdb)
 
-def readPSF(psf:str = psf) -> app.CharmmPsfFile:
+
+def readPSF(psf: str = psf) -> app.CharmmPsfFile:
     return app.CharmmPsfFile(psf)
-
-
 
 
 def testLigandIndices():
@@ -58,6 +58,7 @@ def testgenBox():
         ),
         unit=unit.nanometer,
     )
+
 
 def testGetParams():
     params = getParams(

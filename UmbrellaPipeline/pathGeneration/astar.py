@@ -13,6 +13,7 @@ from UmbrellaPipeline.pathGeneration.tree import Tree
 
 logger = logging.getLogger(__name__)
 
+
 class AStar3D:
     """
     Base class for the AStar3D class
@@ -64,7 +65,9 @@ class GridAStar(AStar3D):
         super().__init__(start=start, end=end)
         self.grid = grid
         self.shortestPath: List[GridNode] = []
-        logger.warning(msg="You are using the grid Version. This is not encouraged. Try to use the tree version whenever possible.")
+        logger.warning(
+            msg="You are using the grid Version. This is not encouraged. Try to use the tree version whenever possible."
+        )
 
     def isGoalReached(self, node: GridNode, distance: unit.Quantity = None) -> bool:
         """
