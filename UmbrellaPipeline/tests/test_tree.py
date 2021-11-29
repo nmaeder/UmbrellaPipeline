@@ -1,5 +1,6 @@
 import openmm.app as app
 import openmm.unit as unit
+import pytest
 from openmm import Vec3
 from UmbrellaPipeline.pathGeneration import Tree, TreeNode
 
@@ -21,10 +22,8 @@ def testTreeGenration():
     tree = Tree(coordinates=nodes)
     tree = Tree(coordinates=nodes, _unit=unit.angstrom)
     tree = Tree(coordinates=nodesnu, _unit=unit.angstrom)
-    try:
+    with pytest.raises(ValueError):
         tree = Tree(coordinates=nodesnu)
-    except ValueError:
-        pass
 
 
 def testTreeGenerationFromFiles():

@@ -18,9 +18,6 @@ psf = "data/step5_input.psf"
 def readPDB(pdb:str = pdb) -> app.PDBFile:
     return app.PDBFile(pdb)
 
-def readPSF(psf:str = psf) -> app.CharmmPsfFile:
-    return app.CharmmPsfFile(psf)
-
 
 def testGridAStarBasic():
     grid = Grid(grid=np.zeros(shape=(10, 10, 10), dtype=bool))
@@ -70,8 +67,6 @@ def testGridSuccessor():
 
 
 def testGridPathfinding():
-    pdb = readPDB()
-    psf = readPSF()
     grid = Grid.gridFromFiles(pdb=pdb, psf=psf, gridsize=3 * unit.angstrom)
     node = grid.nodeFromFiles(psf=psf, pdb=pdb, name="UNL")
     assert not grid.positionIsBlocked(node)
@@ -165,7 +160,6 @@ def testTreeSuccessor():
 
 def testTreePathfinding():
     pdb = readPDB()
-    psf = readPSF()
     tree = Tree.treeFromFiles(pdb=pdb, psf=psf)
     node = tree.nodeFromFiles(psf=psf, pdb=pdb, name="UNL")
     assert not tree.positionIsBlocked(node=node)
