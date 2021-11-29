@@ -1,5 +1,6 @@
+from openmm.openmm import XmlSerializer
 import torch
-import os
+import os, time
 import logging
 import openmm.unit as unit
 import openmm as mm
@@ -12,6 +13,7 @@ from typing import (
 
 from UmbrellaPipeline.sampling.samplingHelper import addHarmonicRestraint
 from UmbrellaPipeline.pathGeneration.node import Node
+from UmbrellaPipeline.utils.bash import executeBashCommand
 from UmbrellaPipeline.pathGeneration.pathHelper import (
     getIndices,
 )
@@ -21,6 +23,10 @@ logger = logging.getLogger(__name__)
 
 
 class UmbrellaSimulation:
+    """
+    Class for the sampling part of the Umbrella Pipeline. Holds all information necessary for the Umbrella Sampling.
+    """
+
     def __init__(
         self,
         temp: unit.Quantity = 310 * unit.kelvin,
@@ -31,7 +37,7 @@ class UmbrellaSimulation:
         nProd: int = 500000,
         nEq: int = 50000,
         method: str = "pulling",
-        path: List[Node] = None,
+        path: List[unit.Quantity] = None,
         forceK: unit.Quantity = 100 * unit.kilocalorie_per_mole / (unit.angstrom ** 2),
         fric: unit.Quantity = 1 / unit.picosecond,
         system: mm.openmm.System = None,
@@ -40,6 +46,25 @@ class UmbrellaSimulation:
         ligandName: str = None,
         trajOutputPath: str = None,
     ) -> None:
+        """
+        Args:
+            temp (unit.Quantity, optional): Simulation Temperature. Defaults to 310*unit.kelvin.
+            p (unit.Quantity, optional): Simulation pressure, if 0 NVT is sampled instead of NPT, not encouraged. Defaults to 1*unit.bar.
+            iofreq (int, optional): Interval after which a snapshot is saved to the trajectory. Defaults to 2500.
+            dt (unit.Quantity, optional): simulation timestep. Defaults to 2*unit.femtosecond.
+            nWin (int, optional): number of simulation windows. Defaults to 20.
+            nProd (int, optional): Number of production steps per window. Defaults to 500000.
+            nEq (int, optional): Number of Equilibration steps per window. Defaults to 50000.
+            method (str, optional): whether to "pull" the ligand or to let it appear in new position. Defaults to "pulling".
+            path (List[unit.Quantity], optional): path for the ligand. Defaults to None.
+            forceK (unit.Quantity, optional): force constant used in the ligand restraint.. Defaults to 100*unit.kilocalorie_per_mole/(unit.angstrom ** 2).
+            fric (unit.Quantity, optional): friction coefficient for the LangevinIntegrator. Defaults to 1/unit.picosecond.
+            system (mm.openmm.System, optional): openmm System. Defaults to None.
+            psf (str or app.CharmmPsfFile, optional): psf objector path to psf file. path preffered. Defaults to None.
+            pdb (str or app.PDBFile, optional: pdb object or path to pdb file. Defaults to None.
+            ligandName (str, optional): name of the ligand to be pulled out. Defaults to None.
+            trajOutputPath (str, optional): path to where the trajectories are stored. Defaults to None.
+        """
         self.temp = temp
         self.p = p
         self.freq = iofreq
@@ -59,7 +84,7 @@ class UmbrellaSimulation:
 
         if not isinstance(self.tOutput, str):
             logger.warning(
-                "No trajectory output was given. All generated trajectories are now stored in the current working directory"
+                "No trajectory output was given. All generated trajectories are now stored in the current working directory. This can get messy! :/"
             )
             self.tOutput = os.getcwd()
 
@@ -91,15 +116,32 @@ class UmbrellaSimulation:
         )
         self.platformProperties = {"Precision": "Single"}
 
-    def prepareSystem(self) -> Tuple[mm.openmm.Integrator, app.simulation.Simulation]:
+    def prepareSystem(self) -> mm.openmm.Integrator:
+        """
+        Adds a harmonic restraint to the residue with the name given in self.name to the first position in self.path.
+        Also changes self.integrator so it can be used on self.system.
+
+        Returns:
+            mm.openmm.Integrator: Integrator for the system. it changes self.integrator.
+        """
+
         ligandIndices = getIndices(self.psf.atom_list, self.ligName)
         addHarmonicRestraint(
             system=self.system,
             atomGroup=ligandIndices,
             values=[self.forceK, self.path[0].x, self.path[0].y, self.path[0].z],
         )
-
         self.integrator = mm.LangevinIntegrator(self.temp, self.fric, self.dt)
+
+        return self.integrator
+
+    def runUmbrellaSampling(self):
+        """
+        runs the actual umbrella sampling.
+        """
+        orgCoords = open(f"{self.tOutput}coordinates.dat")
+        orgCoords.write("nwin, x0, y0, z0\n")
+
         self.simulation = app.Simulation(
             topology=self.psf.topology,
             system=self.system,
@@ -108,12 +150,6 @@ class UmbrellaSimulation:
             platformProperties=self.platformProperties,
         )
         self.simulation.context.setPositions(self.pdb.positions)
-        return (self.integrator, self.simulation)
-
-    def runUmbrellaSampling(self):
-
-        orgCoords = open(f"{self.tOutput}coordinates.dat")
-        orgCoords.write("nwin, x0, y0, z0\n")
 
         for window in range(self.nWin):
             orgCoords.write(
@@ -123,17 +159,19 @@ class UmbrellaSimulation:
             self.simulation.context.setVelocities(self.temp)
             self.simulation.step(self.nEq)
             fileHandle = open("f{self.tOutput}/traj_{window}.dcd")
-            dcdFile = app.DCDFile(fileHandle, self.psf.topology, dt=self.dt)
+            dcdFile = app.DCDFile(fileHandle, self.simulation.topology, dt=self.dt)
             for i in tqdm(range(int(self.nProd / self.freq))):
                 self.simulation.step(self.freq)
                 dcdFile.writeModel(
                     self.simulation.context.getState(getPositions=True).getPositions()
                 )
             fileHandle.close()
-            self.simulation.context.setParameter("x0", self.path[window].x)
-            self.simulation.context.setParameter("y0", self.path[window].x)
-            self.simulation.context.setParameter("z0", self.path[window].x)
-
+            try:
+                self.simulation.context.setParameter("x0", self.path[window + 1].x)
+                self.simulation.context.setParameter("y0", self.path[window + 1].x)
+                self.simulation.context.setParameter("z0", self.path[window + 1].x)
+            except StopIteration:
+                pass
         orgCoords.close()
 
 
@@ -180,6 +218,7 @@ class SimulationsHydra(UmbrellaSimulation):
             ligandName=ligandName,
             trajOutputPath=trajOutputPath,
         )
+        self.psfPath = psf
         self.hydraWorkingDirectoryPath = hydraWorkingDirectoryPath
         self.mail = mail
         self.log = log
@@ -194,12 +233,17 @@ class SimulationsHydra(UmbrellaSimulation):
         if not self.tOutput("/"):
             self.tOutput += "/"
 
-    def writeHydraScripts(self):
-        "TODO"
+        if not isinstance(self.psfPath, str):
+            logger.warning("For serialization purposes, the PSF file path is needed.")
+            self.psfPath = input("Absolute path for PSF file that is used: ")
+
+    def writeHydraScripts(
+        self, window: int, serializedSystem: str, serializedIntegrator: str
+    ):
         if not self.hydraWorkingDirectoryPath.endswith("/"):
             self.hydraWorkingDirectoryPath += "/"
 
-        f = open(f"{self.hydraWorkingDirectoryPath}run_umbrella_{self.nWin}.sh", "w")
+        f = open(f"{self.hydraWorkingDirectoryPath}run_umbrella_{window}.sh", "w")
         command = "#$ -S /bin/bash\n#$ -m e"
         if self.mail:
             command += f"#$ -M {self.mail}\n"
@@ -213,18 +257,34 @@ class SimulationsHydra(UmbrellaSimulation):
             command += "#$ -cwd\n"
         command += "\n"
         command += f"conda activate {self.condaEnv}\n"
-        command += "python simulationHydra.py "
-        command += self.execCommand
+        command += "python UmbrellaPipeline/sampling/simulationHydra.py "
+        command += f"-psf {self.psfPath} -sys {serializedSystem} -int {serializedIntegrator} -to {self.tOutput} -ne {self.nEq} -np {self.nProd} -nw {window} -io"
         f.write(command)
         f.close()
+        return f"{self.hydraWorkingDirectoryPath}run_umbrella_{window}.sh"
+
+    def prepareSimulatiojns(self):
+        super().prepareSystem()
+        serializedSystem = mm.openmm.XmlSerializer.serialize(self.system)
+        serializedIntegrator = mm.openmm.XmlSerializer.serialize(self.integrator)
+        for window in range(self.nWin):
+            newfile = self.writeHydraScripts(
+                window=window,
+                serializedSystem=serializedSystem,
+                serializedIntegrator=serializedIntegrator,
+            )
+            logger.info(f"File written: {newfile}")
 
     def runUmbrellaSampling(self):
-        "TODO"
-        self.writeHydraScripts()
-
-    def prepAndRun(self):
-        super().prepareSystem()
-        self.runUmbrellaSampling
+        for window in range(self.nWin):
+            try:
+                executeBashCommand(
+                    f"qsub {self.hydraWorkingDirectoryPath}run_umbrella_{window}.sh"
+                )
+            except FileNotFoundError:
+                raise FileNotFoundError(
+                    "Oops, something went wrong. Make sure you are logged in on the Hydra cluster and all the paths you specified are in acceptance with the best practice manual."
+                )
 
 
 class SimulationsLSF(UmbrellaSimulation):
