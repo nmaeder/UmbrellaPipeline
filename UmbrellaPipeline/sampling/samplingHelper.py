@@ -2,15 +2,16 @@ import openmm as mm
 import openmm.unit as unit
 from typing import List
 
-harmonicFormula = (
-    "0.5 * k * (dx^2 + dy^2 + dz^2) ; dx=abs(x1-x0) ; dy=abs(y1-y0) ; dz=abs(z1-z0)",
+HARMONIC_FORMULA = (
+    "0.5 * k * (dx^2 + dy^2 + dz^2); dx=abs(x1-x0); dy=abs(y1-y0); dz=abs(z1-z0)"
 )
-harmonicParams = ["k", "x0", "y0", "z0"]
+
+HARMONIC_PARAMS = ["k", "x0", "y0", "z0"]
 
 
-def addHarmonicRestraint(
+def add_harmonic_restraint(
     system: mm.openmm.System,
-    atomGroup: List[int],
+    atom_group: List[int],
     values: List[unit.Quantity],
 ) -> mm.openmm.System:
     """
@@ -18,7 +19,7 @@ def addHarmonicRestraint(
 
     Args:
         system (mm.openmm.System): System the force should be added to.
-        atomGroup (List[int]): list of atoms that are restrained
+        atom_group (List[int]): list of atoms that are restrained
         values (unit.Quantity): position of the restraint
 
     Raises:
@@ -27,12 +28,12 @@ def addHarmonicRestraint(
     Returns:
         mm.openmm.System: system with added force.
     """
-    if len(values) != len(harmonicParams):
+    if len(values) != len(HARMONIC_PARAMS):
         raise IndexError("Give same number of parameters and values!")
-    force = mm.CustomCentroidBondForce(1, harmonicFormula)
-    for i in values:
-        force.addGlobalParameter(harmonicParams[i], i)
-    force.addGroup(atomGroup)
+    force = mm.CustomCentroidBondForce(1, HARMONIC_FORMULA)
+    for i, val in enumerate(values):
+        force.addGlobalParameter(HARMONIC_PARAMS[i], val)
+    force.addGroup(atom_group)
     force.addBond([0])
     system.addForce(force)
     return system

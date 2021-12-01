@@ -9,11 +9,11 @@ from .grid import (
     Grid,
 )
 from .pathHelper import (
-    genBox,
-    getIndices,
-    getParams,
-    getCenterOfMassCoordinates,
-    getCentroidCoordinates,
+    gen_pbc_box,
+    get_residue_indices,
+    parse_params,
+    get_center_of_mass_coordinates,
+    get_centroid_coordinates,
 )
 from .node import (
     Node,

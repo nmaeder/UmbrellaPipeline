@@ -22,7 +22,7 @@ class Node:
     def __repr__(self) -> str:
         return f"[{self.x},{self.y},{self.z}]"
 
-    def getCoordinates(self):
+    def get_coordinates(self):
         return [self.x, self.y, self.z]
 
 
@@ -39,18 +39,18 @@ class TreeNode(Node):
         g: float = 0,
         h: float = 0,
         f: float = 0,
-        _unit: unit.Unit = unit.nanometer,
+        unit_: unit.Unit = unit.nanometer,
         parent=None,
     ):
         super().__init__(x=x, y=y, z=z, g=g, h=h, f=f)
-        self.unit = _unit
+        self.unit = unit_
         self.parent: TreeNode = parent
 
     @classmethod
-    def fromCoords(
+    def from_coords(
         cls,
         coords: List[unit.Quantity] or unit.Quantity or List[float],
-        _unit: unit.Unit = None,
+        unit_: unit.Unit = None,
         parent=None,
     ):
         try:
@@ -63,9 +63,9 @@ class TreeNode(Node):
             p = parent
         except AttributeError:
             x, y, z = coords[0], coords[1], coords[2]
-            u = _unit
+            u = unit_
             p = parent
-        return cls(x=x, y=y, z=z, _unit=u, parent=p)
+        return cls(x=x, y=y, z=z, unit_=u, parent=p)
 
     def __str__(self) -> str:
         return f"[{self.x},{self.y},{self.z}]"
@@ -74,7 +74,7 @@ class TreeNode(Node):
         return f"[{self.x},{self.y},{self.z}]"
 
     def __eq__(self, o: object) -> bool:
-        return self.getCoordinates() == o.getCoordinates()
+        return self.get_coordinates() == o.get_coordinates()
 
     def __round__(self, decimals: int = 3) -> unit.Quantity:
         return unit.Quantity(
@@ -86,14 +86,14 @@ class TreeNode(Node):
             unit=self.unit,
         )
 
-    def getCoordinates(self) -> unit.Quantity:
+    def get_coordinates(self) -> unit.Quantity:
         return unit.Quantity(value=Vec3(self.x, self.y, self.z), unit=self.unit)
 
-    def coordsForQuery(self, _unit) -> List[float]:
+    def get_coordinates_for_query(self, unit_) -> List[float]:
         x = unit.Quantity(value=self.x, unit=self.unit)
         y = unit.Quantity(value=self.y, unit=self.unit)
         z = unit.Quantity(value=self.z, unit=self.unit)
-        return [x.value_in_unit(_unit), y.value_in_unit(_unit), z.value_in_unit(_unit)]
+        return [x.value_in_unit(unit_), y.value_in_unit(unit_), z.value_in_unit(unit_)]
 
 
 class GridNode(Node):
@@ -119,7 +119,7 @@ class GridNode(Node):
         self.parent: GridNode = parent
 
     def __eq__(self, o: object) -> bool:
-        return self.getCoordinates() == o.getCoordinates()
+        return self.get_coordinates() == o.get_coordinates()
 
     def __str__(self) -> str:
         return f"[{self.x},{self.y},{self.z}]"
@@ -128,7 +128,7 @@ class GridNode(Node):
         return f"[{self.x},{self.y},{self.z}]"
 
     @classmethod
-    def fromCoords(cls, coords: List[int]):
+    def from_coords(cls, coords: List[int]):
         """
         constructor creates node form list of node coordinates
         Args:
@@ -138,7 +138,7 @@ class GridNode(Node):
         x, y, z = coords[0], coords[1], coords[2]
         return cls(x=x, y=y, z=z)
 
-    def getCoordinates(self) -> List[int]:
+    def get_coordinates(self) -> List[int]:
         """
         returns list of node coordinates
         Returns:

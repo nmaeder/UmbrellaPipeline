@@ -230,7 +230,7 @@ if __name__ == "__main__":
     filename = sys.argv[1]
     basename = os.path.dirname(filename)
     rtfname = os.path.basename(filename)
-    ligandname = rtfname.split(".")[0]
+    ligand_name = rtfname.split(".")[0]
     G = ligand_topology(filename)
     rtflines = open(filename, "r").readlines()
 
@@ -305,7 +305,7 @@ set ndihe = %d
             str += "ATOM %6s %6s %8.4f\n" % (n, G.node[n]["type"], G.node[n]["charge"])
 
     flag = False
-    fp = open("%s_g.rtf" % ligandname, "w")
+    fp = open("%s_g.rtf" % ligand_name, "w")
     for line in rtflines:
         if line.startswith("ATOM") or line.startswith("GROUP"):
             flag = True

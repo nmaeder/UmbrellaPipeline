@@ -16,30 +16,30 @@ pdb = "UmbrellaPipeline/data/step5_input.pdb"
 psf = "UmbrellaPipeline/data/step5_input.psf"
 
 
-def readPDB(pdb: str = pdb) -> app.PDBFile:
+def read_pdb(pdb: str = pdb) -> app.PDBFile:
     return app.PDBFile(pdb)
 
 
-def testGridAStarBasic():
+def test_grid_astar_basic():
     grid = Grid(grid=np.zeros(shape=(10, 10, 10), dtype=bool))
     start = GridNode(0, 0, 0)
     end = GridNode(9, 9, 9)
     astar = GridAStar(grid=grid, start=start, end=end)
 
-    assert not astar.isEndReached()
-    assert not astar.isEndReached(node=start)
-    assert astar.isEndReached(node=end)
-    astar.shortestPath.append(end)
-    assert astar.isEndReached()
+    assert not astar.is_end_reached()
+    assert not astar.is_end_reached(node=start)
+    assert astar.is_end_reached(node=end)
+    astar.shortest_path.append(end)
+    assert astar.is_end_reached()
 
 
-def testGridSuccessor():
+def test_grid_successors():
     grid = Grid(grid=np.zeros(shape=(10, 10, 10), dtype=bool))
     grid.grid[1][1][1] = True
     start = GridNode(0, 0, 0)
     end = GridNode(9, 9, 9)
     astar = GridAStar(grid=grid, start=start, end=end)
-    children = astar.generateSuccessors(parent=start)
+    children = astar.generate_successors(parent=start)
     supposedchildren = [
         [0, 0, 1],
         [0, 1, 0],
@@ -50,9 +50,9 @@ def testGridSuccessor():
     ]
 
     for i, c in enumerate(children):
-        assert c.getCoordinates() == supposedchildren[i]
+        assert c.get_coordinates() == supposedchildren[i]
 
-    children = astar.generateSuccessors(parent=end)
+    children = astar.generate_successors(parent=end)
     supposedchildren = [
         [8, 8, 8],
         [8, 8, 9],
@@ -64,19 +64,19 @@ def testGridSuccessor():
     ]
 
     for i, c in enumerate(children):
-        assert c.getCoordinates() == supposedchildren[i]
+        assert c.get_coordinates() == supposedchildren[i]
 
 
-def testGridPathfinding():
-    grid = Grid.gridFromFiles(pdb=pdb, psf=psf, gridsize=3 * unit.angstrom)
-    node = grid.nodeFromFiles(psf=psf, pdb=pdb, name="UNL")
-    assert not grid.positionIsBlocked(node)
+def test_grid_pathfinding():
+    grid = Grid.from_files(pdb=pdb, psf=psf, gridsize=3 * unit.angstrom)
+    node = grid.node_from_files(psf=psf, pdb=pdb, name="UNL")
+    assert not grid.position_is_blocked(node)
     astar = GridAStar(grid=grid, start=node)
-    path = astar.aStar3D()
+    path = astar.astar_3d()
     assert path != []
 
 
-def testGridPathPartitioning():
+def test_grid_path_partitioning():
 
     # Generate grid and a star objects
 
@@ -103,11 +103,11 @@ def testGridPathPartitioning():
 
     # Generate paths
 
-    astar1.shortestPath = path1
-    astar2.shortestPath = path2
+    astar1.shortest_path = path1
+    astar2.shortest_path = path2
 
-    path1 = astar1.getPathForSampling(0.05 * unit.nanometer)
-    path2 = astar2.getPathForSampling(0.5 * unit.angstrom)
+    path1 = astar1.get_path_for_sampling(0.05 * unit.nanometer)
+    path2 = astar2.get_path_for_sampling(0.5 * unit.angstrom)
 
     # Generate desired outcomes
 
@@ -136,16 +136,16 @@ def testGridPathPartitioning():
             )
 
 
-def testTreeSuccessor():
+def test_tree_successor():
     nodes = []
     for i in range(5):
         nodes.append(unit.Quantity(Vec3(i + 1, i + 1, i + 2), unit.nanometer))
     tree = Tree(coordinates=nodes)
     start = TreeNode(0, 0, 0)
     astar = TreeAStar(tree=tree, start=start)
-    children = astar.generateSuccessors(parent=start)
+    children = astar.generate_successors(parent=start)
     supposedchildren = []
-    for i in tree.possibleNeighbours:
+    for i in tree.POSSIBLE_NEIGHBOURS:
         supposedchildren.append(
             TreeNode(
                 x=i[0] * astar.stepsize.value_in_unit(tree.unit),
@@ -154,26 +154,26 @@ def testTreeSuccessor():
             )
         )
     for i, c in enumerate(children):
-        assert c.getCoordinates() == supposedchildren[i].getCoordinates().in_units_of(
+        assert c.get_coordinates() == supposedchildren[i].get_coordinates().in_units_of(
             c.unit
         )
 
 
-def testTreePathfinding():
-    pdb = readPDB()
-    tree = Tree.treeFromFiles(pdb=pdb, psf=psf)
-    node = tree.nodeFromFiles(psf=psf, pdb=pdb, name="UNL")
-    assert not tree.positionIsBlocked(node=node)
+def test_tree_path_finding():
+    pdb = read_pdb()
+    tree = Tree.from_files(pdb=pdb, psf=psf)
+    node = tree.node_from_files(psf=psf, pdb=pdb, name="UNL")
+    assert not tree.position_is_blocked(node=node)
     box = []
     for i in range(3):
         box.append(min([row[i] for row in pdb.positions]))
         box.append(max([row[i] for row in pdb.positions]))
-    astar = TreeAStar(tree=tree, start=node, stepsize=0.5 * unit.angstrom)
-    path = astar.aStar3D(box=box)
+    astar = TreeAStar(tree=tree, start=node, stepsize=0.25 * unit.angstrom)
+    path = astar.astar_3d(box=box)
     assert path != []
 
 
-def testTreePathPartitioning():
+def test_tree_path_partitioning():
 
     # Generate trees and a star objects
 
@@ -184,20 +184,20 @@ def testTreePathPartitioning():
     tree = Tree([[0, 0, 0]], unit.angstrom)
 
     for i in range(5):
-        path1.append(TreeNode(x=i, y=i, z=i, _unit=unit.angstrom))
-        path2.append(TreeNode(x=i, y=-i, z=1, _unit=unit.angstrom))
+        path1.append(TreeNode(x=i, y=i, z=i, unit_=unit.angstrom))
+        path2.append(TreeNode(x=i, y=-i, z=1, unit_=unit.angstrom))
 
     astar1 = TreeAStar(tree=tree, start=TreeNode(x=0, y=0, z=0))
     astar2 = TreeAStar(tree=tree, start=TreeNode(x=0, y=0, z=0))
 
     # Generate paths
 
-    astar1.shortestPath = path1
-    astar2.shortestPath = path2
+    astar1.shortest_path = path1
+    astar2.shortest_path = path2
 
-    path1 = astar1.getPathForSampling(0.05 * unit.nanometer)
-    path2 = astar2.getPathForSampling(0.5 * unit.angstrom)
-    path3 = astar2.getPathForSampling(0.5 * unit.nanometer)
+    path1 = astar1.get_path_for_sampling(0.05 * unit.nanometer)
+    path2 = astar2.get_path_for_sampling(0.5 * unit.angstrom)
+    path3 = astar2.get_path_for_sampling(0.5 * unit.nanometer)
 
     # Generate desired outcomes
 

@@ -8,9 +8,9 @@ import numpy as np
 import openmm.app as app
 import openmm.unit as unit
 from UmbrellaPipeline.pathGeneration.pathHelper import (
-    genBox,
-    getIndices,
-    getCentroidCoordinates,
+    gen_pbc_box,
+    get_residue_indices,
+    get_centroid_coordinates,
 )
 from UmbrellaPipeline.pathGeneration.node import GridNode
 
@@ -59,7 +59,7 @@ class Grid:
         except TypeError:
             self.a, self.b, self.c = boxlengths, boxlengths, boxlengths
         self.offset = offset
-        self.possibleNeighbours = [
+        self.POSSIBLE_NEIGHBOURS = [
             [-1, -1, -1],
             [-1, -1, 0],
             [-1, -1, 1],
@@ -89,13 +89,13 @@ class Grid:
         ]
 
     @classmethod
-    def gridFromFiles(
+    def from_files(
         cls,
         pdb: str or app.PDBFile,
         psf: str or app.CharmmPsfFile,
         gridsize: unit.Quantity or List[unit.Quantity] = 0.1 * unit.angstrom,
-        vdwradius: unit.Quantity = 1.2 * unit.angstrom,
-        addVDW: bool = True,
+        vdw_radius: unit.Quantity = 1.2 * unit.angstrom,
+        add_vdw: bool = True,
     ):
         """
         Constructor for grid. takes in psf and pdb files generated from charmmgui and generates a grid where all points with a protein atom are true. every other gridpoint is False.
@@ -103,8 +103,8 @@ class Grid:
             pdbfile (str): give either path to pdb file as string or an openmm.app.PDBFile object.
             psffile (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
             gridsize (unit.QuantityorList[unit.Quantity], optional): [description]. Defaults to .1*unit.angstrom.
-            vdwradius (unit.Quantity, optional): VDW radius of the protein atoms in the grid. Defaults to 1.2*unit.angstrom.
-            addVDW (bool, optional): Whether or not the protein atoms should have a VDW radius in the grid. Defaults to True.
+            vdw_radius (unit.Quantity, optional): VDW radius of the protein atoms in the grid. Defaults to 1.2*unit.angstrom.
+            add_vdw (bool, optional): Whether or not the protein atoms should have a VDW radius in the grid. Defaults to True.
         Returns:
             Grid: Boolean grid where protein positions are True.
         """
@@ -126,9 +126,9 @@ class Grid:
             psf = input("Enter absolute path to psf file: ")
             psf = app.CharmmPsfFile(psf)
 
-        inx = getIndices(psf.atom_list)
+        inx = get_residue_indices(psf.atom_list)
         if psf.boxVectors == None:
-            min_c = genBox(psf, pdb)
+            min_c = gen_pbc_box(psf, pdb)
 
         n = [
             round(psf.boxLengths[0] / gridsize),
@@ -142,11 +142,11 @@ class Grid:
         ]
         numadd = (
             [0, 0, 0]
-            if not vdwradius
+            if not vdw_radius
             else [
-                round(vdwradius / l[0]),
-                round(vdwradius / l[1]),
-                round(vdwradius / l[2]),
+                round(vdw_radius / l[0]),
+                round(vdw_radius / l[1]),
+                round(vdw_radius / l[2]),
             ]
         )
         grid = np.zeros(shape=(n[0], n[1], n[2]), dtype=bool)
@@ -157,7 +157,7 @@ class Grid:
                 math.floor((pdb.positions[index][2] - min_c[2]) / l[2]),
             )
             grid[x][y][z] = True
-            if addVDW:
+            if add_vdw:
                 for dx, dy, dz in product(
                     range(numadd[0] + 1), range(numadd[1] + 1), range(numadd[2] + 1)
                 ):
@@ -176,7 +176,7 @@ class Grid:
 
         return cls(grid=grid, boxlengths=[l[0], l[1], l[2]], offset=min_c)
 
-    def nodeFromFiles(self, psf: str, pdb: str, name: str) -> GridNode:
+    def node_from_files(self, psf: str, pdb: str, name: str) -> GridNode:
         """
         calculates the centroid coordinates of the ligand and returns the grid node closest to the centriod Cordinates.
         Args:
@@ -191,9 +191,9 @@ class Grid:
             pdb = app.PDBFile(pdb)
         if type(psf) is str:
             psf = app.CharmmPsfFile(psf)
-        indices = getIndices(atom_list=psf.atom_list, name=name)
-        coordinates = getCentroidCoordinates(positions=pdb.positions, indices=indices)
-        return GridNode.fromCoords(
+        indices = get_residue_indices(atom_list=psf.atom_list, name=name)
+        coordinates = get_centroid_coordinates(positions=pdb.positions, indices=indices)
+        return GridNode.from_coords(
             [
                 math.floor((coordinates[0] - self.offset[0]) / self.a),
                 math.floor((coordinates[1] - self.offset[1]) / self.a),
@@ -201,7 +201,7 @@ class Grid:
             ]
         )
 
-    def getGridValue(
+    def get_grid_value(
         self, node: GridNode = None, coordinates: List[int] = None
     ) -> bool:
         """
@@ -218,7 +218,7 @@ class Grid:
             else self.grid[coordinates[0]][coordinates[1]][coordinates[2]]
         )
 
-    def positionIsValid(
+    def position_is_valid(
         self, node: GridNode = None, coordinates: List[int] = None
     ) -> bool:
         """
@@ -240,7 +240,7 @@ class Grid:
             )
         return False
 
-    def positionIsBlocked(
+    def position_is_blocked(
         self, node: GridNode = None, coordinates: List[int] = None
     ) -> bool:
         """Returns true if a gridcell is occupied with a protien atom.
@@ -250,9 +250,9 @@ class Grid:
         Returns:
             bool: True if position is occupied by protein
         """
-        return self.getGridValue(node=node, coordinates=coordinates)
+        return self.get_grid_value(node=node, coordinates=coordinates)
 
-    def estimateDiagonalH(self, node: GridNode, destination: GridNode) -> float:
+    def estimate_diagonal_h(self, node: GridNode, destination: GridNode) -> float:
         """
         estimates diagonal distance heuristics between node and destination.
         Args:
@@ -272,7 +272,7 @@ class Grid:
         D1 = math.sqrt(1)
         return (D3 - D2) * dmin + (D2 - D1) * dmid + D1 * dmax
 
-    def getDistanceToTrue(self, node: GridNode) -> float:
+    def get_distance_to_protein(self, node: GridNode) -> float:
         """
         Args:
             node (GridNode): [description]
@@ -282,20 +282,20 @@ class Grid:
 
         """
         for i in range(1, min(self.x, self.y, self.z), 1):
-            for n in self.possibleNeighbours:
+            for n in self.POSSIBLE_NEIGHBOURS:
                 x, y, z = node.x + n[0] * i, node.y + n[1] * i, node.z + n[2] * i
                 try:
                     node2 = GridNode(x, y, z)
                 except ValueError:
                     continue
                 try:
-                    if self.getGridValue(node=node2):
-                        return self.estimateDiagonalH(node=node, destination=node2)
+                    if self.get_grid_value(node=node2):
+                        return self.estimate_diagonal_h(node=node, destination=node2)
                 except IndexError:
                     continue
         return 0
 
-    def toCcp4(self, filename: str):
+    def to_ccp4(self, filename: str):
         """
         Write out CCP4 density map of the grid. good for visualization in VMD/pymol.
         Args:
@@ -312,7 +312,7 @@ class Grid:
         ccp4_map.write_ccp4_map(filename)
         return None
 
-    def toXYZCoordinates(self) -> List[float]:
+    def to_cartesian_coordinates(self) -> List[float]:
         """
         returns list of cartesian coordinates that are true in the grid.
         Returns:

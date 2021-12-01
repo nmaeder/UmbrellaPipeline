@@ -6,8 +6,8 @@ import openmm.unit as unit
 from openmm import Vec3
 from scipy.spatial import KDTree
 from UmbrellaPipeline.pathGeneration.pathHelper import (
-    getIndices,
-    getCentroidCoordinates,
+    get_residue_indices,
+    get_centroid_coordinates,
 )
 from UmbrellaPipeline.pathGeneration.node import TreeNode
 
@@ -20,7 +20,7 @@ class Tree:
     def __init__(
         self,
         coordinates: unit.Quantity or List[unit.Quantity] or List[float],
-        _unit: unit.Unit = None,
+        unit_: unit.Unit = None,
     ):
         """
 
@@ -28,15 +28,15 @@ class Tree:
             coordinates (unit.Quantity or List[unit.Quantity] or List[float]): List of coordinates to be added to the tree
             unit (unit.Unit): unit of coordinates if they are given without any.
         """
-        if _unit:
+        if unit_:
             try:
-                self.unit = _unit
+                self.unit = unit_
                 pos = []
                 for i in coordinates:
                     pos.append(list(i.value_in_unit(i.unit)))
                 self.tree = KDTree(pos)
             except AttributeError:
-                self.unit = _unit
+                self.unit = unit_
                 self.tree = KDTree(coordinates)
         else:
             try:
@@ -46,8 +46,8 @@ class Tree:
                     pos.append(list(i.value_in_unit(i.unit)))
                 self.tree = KDTree(pos)
             except AttributeError:
-                raise ValueError("no _unit provided.")
-        self.possibleNeighbours = [
+                raise ValueError("no unit_ provided.")
+        self.POSSIBLE_NEIGHBOURS = [
             [-1, -1, -1],
             [-1, -1, 0],
             [-1, -1, 1],
@@ -77,7 +77,7 @@ class Tree:
         ]
 
     @classmethod
-    def treeFromFiles(
+    def from_files(
         cls,
         pdb: str or app.PDBFile,
         psf: str or app.CharmmPsfFile,
@@ -100,16 +100,16 @@ class Tree:
         except TypeError:
             psf = psf
 
-        indices = getIndices(psf.atom_list)
+        indices = get_residue_indices(psf.atom_list)
         coords = []
         unit = pdb.positions.unit
         for i in indices:
             coords.append(list(pdb.positions[i].value_in_unit(unit)))
 
-        return cls(_unit=unit, coordinates=coords)
+        return cls(unit_=unit, coordinates=coords)
 
-    def nodeFromFiles(
-        self, psf: str, pdb: str, name: str, includeHydrogens: bool = True
+    def node_from_files(
+        self, psf: str, pdb: str, name: str, include_hydrogens: bool = True
     ) -> TreeNode:
         """
         calculates the centroid coordinates of the ligand and returns the grid node closest to the centriod Cordinates.
@@ -133,11 +133,11 @@ class Tree:
         except TypeError:
             psf = psf
 
-        indices = getIndices(
-            atom_list=psf.atom_list, name=name, includeHydrogens=includeHydrogens
+        indices = get_residue_indices(
+            atom_list=psf.atom_list, name=name, include_hydrogens=include_hydrogens
         )
-        coordinates = getCentroidCoordinates(positions=pdb.positions, indices=indices)
-        return TreeNode.fromCoords(
+        coordinates = get_centroid_coordinates(positions=pdb.positions, indices=indices)
+        return TreeNode.from_coords(
             [
                 coordinates[0],
                 coordinates[1],
@@ -145,66 +145,66 @@ class Tree:
             ]
         )
 
-    def positionIsBlocked(
+    def position_is_blocked(
         self,
         node: TreeNode = None,
         coordinates: List[float] = None,
-        _unit: unit.Unit = unit.nanometer,
-        vdwRadius: unit.Quantity = 1.2 * unit.angstrom,
+        unit_: unit.Unit = unit.nanometer,
+        vdw_radius: unit.Quantity = 1.2 * unit.angstrom,
     ) -> bool:
         """
-        Checks if a Node is the vdwRadius of a protein Atom in the tree
+        Checks if a Node is the vdw_radius of a protein Atom in the tree
 
         Args:
             node (TreeNode, optional): TreeNode type object. Defaults to None.
             coordinates (unit.Wuantity, optional): grid cell coordinates. Defaults to None.
             unit (unit.Unit, optional): unit of coordinates. Defaults to unit.nanometer.
-            vdwRadius (unit.Quantity): vdwRadius given to each protein atom. Defaults to 1.2 * unit.angstrom
+            vdw_radius (unit.Quantity): vdw_radius given to each protein atom. Defaults to 1.2 * unit.angstrom
 
         Returns:
             bool: True if Node is within grid
         """
         try:
-            dist, i = self.tree.query(x=node.coordsForQuery(self.unit), k=1)
+            dist, i = self.tree.query(x=node.get_coordinates_for_query(self.unit), k=1)
         except AttributeError:
             coords = unit.Quantity(
-                value=Vec3(coordinates[0], coordinates[1], coordinates[2]), unit=_unit
+                value=Vec3(coordinates[0], coordinates[1], coordinates[2]), unit=unit_
             )
             dist, i = self.tree.query(x=coords.value_in_unit(self.unit))
-        return dist * self.unit < vdwRadius
+        return dist * self.unit < vdw_radius
 
-    def distanceToProtein(
+    def get_distance_to_protein(
         self,
         node: TreeNode = None,
         coordinates: List[float] = None,
-        _unit: unit.Unit = unit.nanometer,
-        vdwRadius: unit.Quantity = 1.2 * unit.angstrom,
+        unit_: unit.Unit = unit.nanometer,
+        vdw_radius: unit.Quantity = 1.2 * unit.angstrom,
     ) -> unit.Quantity:
-        """distanceToProtein
+        """get_distance_to_protein
         returns distance to the nearest protein atom
 
         Parameters
         ----------
         node : Node
             node for which the distance should be calculated
-        vdwRadius : unit.Quantity, optional
-            vdwRadius to be used for protein atoms, defaults to 1.2*unit.angstrom
+        vdw_radius : unit.Quantity, optional
+            vdw_radius to be used for protein atoms, defaults to 1.2*unit.angstrom
 
         Returns
         -------
         unit.Quantity: distance to nearest protein atom
         """
         try:
-            dist, i = self.tree.query(x=node.coordsForQuery(self.unit), k=1)
+            dist, i = self.tree.query(x=node.get_coordinates_for_query(self.unit), k=1)
         except AttributeError:
             coords = unit.Quantity(
-                value=Vec3(coordinates[0], coordinates[1], coordinates[2]), unit=_unit
+                value=Vec3(coordinates[0], coordinates[1], coordinates[2]), unit=unit_
             )
             dist, i = self.tree.query(x=coords.value_in_unit(self.unit), k=1)
-        dist = dist * self.unit - vdwRadius.in_units_of(self.unit)
+        dist = dist * self.unit - vdw_radius.in_units_of(self.unit)
         return dist
 
-    def estimateEuclideanH(self, node: TreeNode, destination: TreeNode) -> float:
+    def estimate_euclidean_h(self, node: TreeNode, destination: TreeNode) -> float:
         """
         estimates euclidean distance heuristics between node and destination.
         NOT USED
@@ -220,7 +220,7 @@ class Tree:
             + (node.z - destination.z) ** 2
         )
 
-    def estimateDiagonalH(self, node: TreeNode, destination: TreeNode) -> float:
+    def estimate_diagonal_h(self, node: TreeNode, destination: TreeNode) -> float:
         """
         estimates diagonal distance heuristics between node and destination.
         Args:

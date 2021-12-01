@@ -1,4 +1,3 @@
-from os import kill
 import subprocess
 import logging
 import time
@@ -7,22 +6,20 @@ from typing import List
 logger = logging.getLogger(__name__)
 
 
-def executeBashCommand(
+def execute_bash(
     command: str or List[str],
-    ignoreReturn: bool = False,
-    killAfterWait: bool = False,
-    stderrFile: str = None,
-    stdoutFile: str = None,
+    kill_after_wait: bool = False,
+    stderr_file: str = None,
+    stdout_file: str = None,
 ) -> str:
     """
     Bash Wrapper. Gives option to timeout and to write files out of stdout and/or stderr
 
     Args:
         command (str or List[str]): command to be executed.
-        ignoreReturn (bool, optional): if return value of bash should be ignored. Defaults to False.
-        killAfterWait (bool, optional): if true, command is aborted after 10s. Defaults to False.
-        stderrFile (str, optional): file for stderr. Defaults to None.
-        stdoutFile (str, optional): file for stdout. Defaults to None.
+        kill_after_wait (bool, optional): if true, command is aborted after 10s. Defaults to False.
+        stderr_file (str, optional): file for stderr. Defaults to None.
+        stdout_file (str, optional): file for stdout. Defaults to None.
 
     Raises:
         et: if a timeout of the command occurs that is not raised by the bash console.
@@ -32,6 +29,8 @@ def executeBashCommand(
     Returns:
         str: stdout of the bash console
     """
+    stderr, stdout = None, None
+
     if isinstance(command, str):
         command = command.split()
 
@@ -42,15 +41,16 @@ def executeBashCommand(
             stderr=subprocess.PIPE,
             universal_newlines=True,
         )
-        stdout, stderr = process.communicate()
         try:
             process.wait(timeout=10)
-        except:
-            if killAfterWait:
+        except subprocess.TimeoutExpired:
+            if kill_after_wait:
                 process.kill()
                 logger.warning(
-                    "Process got killed, since it took to long. If its a long job, set killAfterWait to False"
+                    "Process got killed, since it took to long. If its a long job, set kill_after_wait to False"
                 )
+                raise TimeoutError
+
         try:
             while process.poll() is None:
                 time.sleep(0.1)
@@ -58,27 +58,90 @@ def executeBashCommand(
             process.kill()
 
     except TimeoutError as et:
+        stdout, stderr = process.communicate()
+        if stderr_file:
+            with open(file=stderr_file, mode="w") as err:
+                err.writelines(stderr)
+        else:
+            logger.error(stderr)
         raise et
+
     except Exception as ee:
+        stdout, stderr = process.communicate()
+        if stderr_file:
+            with open(file=stderr_file, mode="w") as err:
+                err.writelines(stderr)
+        else:
+            logger.error(stderr)
         raise ee
 
-    if stdoutFile:
-        with open(file=stdoutFile, mode="a") as out:
-            out.writelines(stdout.decode("utf-8"))
-    else:
-        logger.info(stdout.dcode("utf-8"))
-    if stderrFile:
-        with open(file=stderrFile, mode="a") as err:
-            err.writelines(stderr.decode("utf-8"))
-    else:
-        if stderr:
-            logger.error(stderr.decode("utf-8"))
+    stdout, stderr = process.communicate()
 
-    if process.returncode > 0 and not ignoreReturn:
-        raise OSError(
-            f"Return of Bash command is non-Zero: {process.returncode}\n"
-            f"OUT: {stdout}\n"
-            f"ERR: {stderr}\n"
-        )
+    if stdout_file:
+        with open(file=stdout_file, mode="w") as out:
+            out.writelines(stdout)
+    else:
+        logger.info(stdout)
 
-    return stdout.decode("utf-8")
+    return stdout
+
+
+def execute_bash_parallel(
+    command: List[List[str]],
+    stdout_file: List[str] = None,
+) -> List[str]:
+    """
+    Executes a number of bash scripts in parallel. returs output of all of them. if a list of outputfiles is given, the output is written to these files.
+
+    Args:
+        command (List[List[str]] or List[str]): list of commands to execute.
+        stdout_file (List[str], optional): List of files where the stdout should be store. Defaults to None.
+
+    Raises:
+        e: any exception occuring during the bashcommand.
+        StopIteration: if length of stderr is not eqaul to the number of commands
+
+    Returns:
+        List[str]: List of the stdoutputs given by each process.
+    """
+    procs: List[str] = []
+    newc = []
+    for coms in command:
+        newc.append(coms.split())
+    command = newc
+
+    try:
+        procs = [
+            subprocess.Popen(
+                com,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+            )
+            for com in command
+        ]
+
+    except Exception as e:
+        logger.error(e)
+        raise e
+
+    stdout: List[str] = []
+    stderr: List[str] = []
+    for process in procs:
+        o, e = process.communicate()
+        stdout.append(o)
+        stderr.append(e)
+
+    if stdout_file:
+        try:
+            for i, out in enumerate(stdout):
+                with open(file=stdout_file[i], mode="w") as out:
+                    out.writelines(stdout[i])
+        except StopIteration:
+            raise StopIteration(
+                "You have given a list in stdout_file that doesnt match the number of Commands!"
+            )
+    else:
+        logger.info(stdout)
+
+    return stdout
