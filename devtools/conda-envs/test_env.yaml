@@ -13,6 +13,7 @@ dependencies:
   - openmmtools
   - scipy
   - pytorch
+  - tqdm
     # Testing
   - pytest
   - pytest-cov

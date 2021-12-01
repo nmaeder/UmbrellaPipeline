@@ -1,6 +1,4 @@
 from UmbrellaPipeline.interface import SamplingInterface
-import os
-import openmm.unit as unit
 
 
 def test_interface_gen():
@@ -28,7 +26,7 @@ def test_interface_path_gen():
         number_eq_steps=100,
         number_prod_steps=1000,
         io_frequency=10,
-        trajectory_output_path="",
+        trajectory_output_path=None,
         conda_environment="openmm",
     )
     path = interface.generate_path()
