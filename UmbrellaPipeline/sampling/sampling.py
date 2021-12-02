@@ -114,9 +114,10 @@ class UmbrellaSimulation:
 
         if torch.cuda.is_available():
             self.platform = mm.Platform.getPlatformByName("CUDA")
+            self.platformProperties = {"Precision": "Single"}
         else: 
             self.platform = mm.Platform.getPlatformByName("CPU")
-        self.platformProperties = {"Precision": "Single"}
+            self.platformProperties = None
 
     def prepare_simulations(self) -> mm.openmm.Integrator:
         """
