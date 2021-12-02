@@ -110,11 +110,10 @@ class UmbrellaSimulation:
             # psf = input("Enter absolute path to psf file: ")
             self.psf = psf
 
-        self.platform = (
-            mm.Platform.getPlatformByName("CUDA")
-            if torch.cuda.is_available()
-            else mm.Platform.GetPlatformByName("CPU")
-        )
+        if torch.cuda.is_available():
+            self.platform = mm.Platform.getPlatformByName("CUDA")
+        else: 
+            self.platform = mm.Platform.getPlatformByName("CPU")
         self.platformProperties = {"Precision": "Single"}
 
     def prepare_simulations(self) -> mm.openmm.Integrator:
