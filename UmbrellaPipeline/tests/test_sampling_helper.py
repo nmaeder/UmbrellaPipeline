@@ -27,8 +27,8 @@ def test_add_harmonic_restraint():
     ind = get_residue_indices(atom_list=psf.atom_list, name="unl")
     values = [
         10 * unit.kilocalorie_per_mole / (unit.angstrom ** 2),
-        0 * unit.angstrom,
-        0 * unit.angstrom,
-        0 * unit.angstrom,
+        1 * unit.angstrom,
+        2 * unit.angstrom,
+        3 * unit.angstrom,
     ]
     add_harmonic_restraint(system=system, atom_group=ind, values=values)

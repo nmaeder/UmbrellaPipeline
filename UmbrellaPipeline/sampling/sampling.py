@@ -115,7 +115,7 @@ class UmbrellaSimulation:
         if torch.cuda.is_available():
             self.platform = mm.Platform.getPlatformByName("CUDA")
             self.platformProperties = {"Precision": "mixed"}
-        else: 
+        else:
             self.platform = mm.Platform.getPlatformByName("CPU")
             self.platformProperties = None
 
@@ -161,7 +161,7 @@ class UmbrellaSimulation:
             orgCoords.write(
                 f"{window}, {self.simulation.context.getParameter('x0')}, {self.simulation.context.getParameter('y0')}, {self.simulation.context.getParameter('z0')}\n"
             )
-            self.simulation.minimizeEnergy(maxIterations=100)
+            self.simulation.minimizeEnergy()
             self.simulation.context.setVelocitiesToTemperature(self.temp)
             self.simulation.step(self.num_eq)
             fileHandle = open(f"{self.tOutput}traj_{window}.dcd", "bw")
@@ -175,9 +175,9 @@ class UmbrellaSimulation:
                 )
             fileHandle.close()
             try:
-                self.simulation.context.setParameter("x0", self.path[window + 1].x)
-                self.simulation.context.setParameter("y0", self.path[window + 1].y)
-                self.simulation.context.setParameter("z0", self.path[window + 1].z)
+                self.simulation.context.setParameter("x0", self.path[window + 1][0].value_in_unit(self.pdb.positions.unit))
+                self.simulation.context.setParameter("y0", self.path[window + 1][1].value_in_unit(self.pdb.positions.unit))
+                self.simulation.context.setParameter("z0", self.path[window + 1][2].value_in_unit(self.pdb.positions.unit))
             except IndexError:
                 pass
         orgCoords.close()
@@ -226,34 +226,33 @@ class SamplingHydra(UmbrellaSimulation):
             ligand_name=ligand_name,
             traj_write_path=traj_write_path,
         )
-        self.psfPath = psf
         self.hydra_working_dir = hydra_working_dir
         self.mail = mail
         self.log = log
         self.gpu = gpu
         self.conda_environment = conda_environment
-        
+        self.psfPath = psf
+        self.pdbPath = pdb
+
         if not isinstance(hydra_working_dir, str):
             logger.warning(
                 "No hydra directory was given. Now everything is carried out in the current working directory. Ignore this warning if you are in /cluster/projects/..."
             )
-            self.hydra_working_dir = os.getcwd()+"/"
-        
+            self.hydra_working_dir = os.getcwd() + "/"
+
         if not self.hydra_working_dir.endswith("/"):
-            self.hydra_working_dir+="/"
-        
-        self.serialized_sys = self.hydra_working_dir+"serialized_sys.xml"
-        self.serialized_int = self.hydra_working_dir+"serialized_int.xml"
+            self.hydra_working_dir += "/"
+
+        self.serialized_sys = self.hydra_working_dir + "serialized_sys.xml"
+        self.serialized_int = self.hydra_working_dir + "serialized_int.xml"
 
         if not isinstance(self.psfPath, str) or not self.psfPath.startswith("/"):
             logger.warning("For serialization purposes, the PSF file path is needed.")
             self.psfPath = input("Absolute path for PSF file that is used: ")
 
-
-
     def write_hydra_scripts(
         self, window: int, serializedSystem: str, serializedIntegrator: str
-    ):  
+    ):
         command = "#$ -S /bin/bash\n#$ -m e\n"
         if self.mail:
             command += f"#$ -M {self.mail}\n"
@@ -263,11 +262,20 @@ class SamplingHydra(UmbrellaSimulation):
             command += f"#$ -l gpu={self.gpu}\n"
         if self.log:
             command += f"#$ -o {self.log}\n"
+        command += "#$ -p -1000\n"
         command += "#$ -cwd\n"
         command += "\n"
         command += f"conda activate {self.conda_environment}\n"
         command += f"python {os.path.dirname(__file__)}/simulation_hydra.py "
-        command += f"-psf {self.psfPath} -sys {serializedSystem} -int {serializedIntegrator} -to {self.tOutput} -ne {self.num_eq} -np {self.num_prod} -nw {window} -io"
+        pos = f"-x {self.path[window][0].value_in_unit(self.pdb.positions.unit)} "\
+            f"-y {self.path[window][1].value_in_unit(self.pdb.positions.unit)} "\
+            f"-z {self.path[window][2].value_in_unit(self.pdb.positions.unit)}"
+        
+        command += f"-psf {self.psfPath} -pdb {self.pdbPath} -sys {serializedSystem}"\
+            f" {pos} -int {serializedIntegrator} -to {self.tOutput}"\
+            f" -ne {self.num_eq} -np {self.num_prod} -nw {window} -io"
+        
+        
         with open(f"{self.hydra_working_dir}run_umbrella_{window}.sh", "w") as f:
             f.write(command)
         return f"{self.hydra_working_dir}run_umbrella_{window}.sh"

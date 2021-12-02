@@ -105,7 +105,7 @@ class SamplingInterface:
             astar = GridAStar(grid=self.grid, start=self.start)
             astar.astar_3d(distance=self.distance_to_protein)
             self.path = astar.get_path_for_sampling(stepsize=self.path_interval)
-        return astar.get_path_for_sampling
+        return self.path
 
     def prep_and_run(self):
 
@@ -126,10 +126,10 @@ class SamplingInterface:
                 p=self.pressure,
                 iofreq=self.io_frequency,
                 dt=self.time_step,
-                nProd=self.number_prod_steps,
-                nEq=self.number_eq_steps,
+                num_prod=self.number_prod_steps,
+                num_eq=self.number_eq_steps,
                 path=self.path,
-                forceK=self.force_constant,
+                force_const=self.force_constant,
                 fric=self.friction_coeff,
                 system=system,
                 psf=self.psf,
@@ -148,10 +148,10 @@ class SamplingInterface:
                 p=self.pressure,
                 iofreq=self.io_frequency,
                 dt=self.time_step,
-                nProd=self.number_prod_steps,
-                nEq=self.number_eq_steps,
+                num_prod=self.number_prod_steps,
+                num_eq=self.number_eq_steps,
                 path=self.path,
-                forceK=self.force_constant,
+                force_const=self.force_constant,
                 fric=self.friction_coeff,
                 system=system,
                 psf=self.psf,
