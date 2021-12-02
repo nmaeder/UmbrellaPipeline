@@ -114,7 +114,7 @@ class UmbrellaSimulation:
 
         if torch.cuda.is_available():
             self.platform = mm.Platform.getPlatformByName("CUDA")
-            self.platformProperties = {"Precision": "Single"}
+            self.platformProperties = {"Precision": "mixed"}
         else: 
             self.platform = mm.Platform.getPlatformByName("CPU")
             self.platformProperties = None
