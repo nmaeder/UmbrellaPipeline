@@ -7,9 +7,9 @@ import gemmi
 import numpy as np
 import openmm.unit as unit
 from openmm import Vec3
-from UmbrellaPipeline.pathGeneration.grid import Grid
-from UmbrellaPipeline.pathGeneration.node import GridNode, TreeNode
-from UmbrellaPipeline.pathGeneration.tree import Tree
+from UmbrellaPipeline.path_generation.grid import Grid
+from UmbrellaPipeline.path_generation.node import GridNode, TreeNode
+from UmbrellaPipeline.path_generation.tree import Tree
 
 logger = logging.getLogger(__name__)
 

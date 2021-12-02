@@ -1,7 +1,7 @@
 import openmm.unit as unit
 import os
 from openmm import Vec3
-from UmbrellaPipeline.pathGeneration import (
+from UmbrellaPipeline.path_generation import (
     gen_pbc_box,
     get_residue_indices,
     get_center_of_mass_coordinates,

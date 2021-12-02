@@ -5,11 +5,11 @@ import openmm.app as app
 import openmm.unit as unit
 from openmm import Vec3
 from scipy.spatial import KDTree
-from UmbrellaPipeline.pathGeneration.pathHelper import (
+from UmbrellaPipeline.path_generation.path_helper import (
     get_residue_indices,
     get_centroid_coordinates,
 )
-from UmbrellaPipeline.pathGeneration.node import TreeNode
+from UmbrellaPipeline.path_generation.node import TreeNode
 
 
 class Tree:

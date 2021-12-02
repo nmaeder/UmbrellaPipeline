@@ -1,6 +1,10 @@
 import os
-from UmbrellaPipeline.sampling import UmbrellaSimulation
-from UmbrellaPipeline.pathGeneration import (
+from UmbrellaPipeline.sampling import (
+    UmbrellaSimulation,
+    SamplingHydra,
+    SamplingLSF,
+)
+from UmbrellaPipeline.path_generation import (
     Tree,
     parse_params,
 )
@@ -31,7 +35,6 @@ def create_system() -> mm.openmm.System:
 
 
 def test_simulations():
-
     pdb = read_pdb()
     psf = read_psf()
     tree = Tree.from_files(pdb=pdb, psf=psf)
@@ -55,3 +58,33 @@ def test_simulations():
     for i in range(len(path)):
         assert os.path.exists(f"UmbrellaPipeline/tests/traj_{i}.dcd")
         os.remove(f"UmbrellaPipeline/tests/traj_{i}.dcd")
+
+def test_script_writing():
+    output = ["run_umbrella_0.sh", "run_umbrella_1.sh", "serialized_sys.xml", "serialized_int.xml"]
+    dir = "UmbrellaPipeline/tests"
+    pdbo = read_pdb()
+    psfo = read_psf()
+    tree = Tree.from_files(pdb=pdbo, psf=psfo)
+    st = tree.node_from_files(psf=psfo, pdb=pdbo, name="unl").get_coordinates()
+    path = [st, st]
+    ps = os.path.abspath(psf)
+    sim = SamplingHydra(
+        system=create_system(),
+        psf=ps,
+        pdb=pdb,
+        ligand_name="unl",
+        path=path,
+        num_eq=10,
+        num_prod=10,
+        iofreq=1,
+        traj_write_path=os.getcwd() + f"/{dir}",
+        hydra_working_dir=os.getcwd() + f"/{dir}",
+        conda_environment="openmm"
+    )
+    sim.prepare_simulations()
+
+    for i in output:
+        p = os.path.abspath(dir+"/"+i)
+        assert os.path.exists(p)
+        os.remove(p)
+    

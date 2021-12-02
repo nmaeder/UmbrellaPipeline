@@ -1,6 +1,6 @@
 from openmm.app.pdbfile import PDBFile
 from UmbrellaPipeline.sampling import add_harmonic_restraint
-from UmbrellaPipeline.pathGeneration import (
+from UmbrellaPipeline.path_generation import (
     gen_pbc_box,
     parse_params,
     get_residue_indices,

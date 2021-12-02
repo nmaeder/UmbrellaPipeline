@@ -5,16 +5,18 @@ import openmm.unit as unit
 import openmm as mm
 import openmm.app as app
 from tqdm import tqdm
-from typing import List
-
-from UmbrellaPipeline.sampling.samplingHelper import add_harmonic_restraint
-from UmbrellaPipeline.pathGeneration.node import Node
+from typing import (
+    List,
+    Tuple,
+)
+from UmbrellaPipeline.sampling.sampling_helper import add_harmonic_restraint
+from UmbrellaPipeline.path_generation.node import Node
 import openmmtools
 from UmbrellaPipeline.utils.bash import (
     execute_bash,
     execute_bash_parallel,
 )
-from UmbrellaPipeline.pathGeneration.pathHelper import (
+from UmbrellaPipeline.path_generation.path_helper import (
     get_residue_indices,
 )
 
@@ -204,7 +206,7 @@ class SamplingHydra(UmbrellaSimulation):
         mail: str = None,
         log: str = None,
         gpu: int = 1,
-        conda_environment: str = "openmm",
+        conda_environment: str = None,
     ) -> None:
         super().__init__(
             temp=temp,
@@ -229,27 +231,29 @@ class SamplingHydra(UmbrellaSimulation):
         self.log = log
         self.gpu = gpu
         self.conda_environment = conda_environment
+        
         if not isinstance(hydra_working_dir, str):
             logger.warning(
                 "No hydra directory was given. Now everything is carried out in the current working directory. Ignore this warning if you are in /cluster/projects/..."
             )
-            self.tOutput = os.getcwd()
+            self.hydra_working_dir = os.getcwd()+"/"
+        
+        if not self.hydra_working_dir.endswith("/"):
+            self.hydra_working_dir+="/"
+        
+        self.serialized_sys = self.hydra_working_dir+"serialized_sys.xml"
+        self.serialized_int = self.hydra_working_dir+"serialized_int.xml"
 
-        if not self.tOutput("/"):
-            self.tOutput += "/"
-
-        if not isinstance(self.psfPath, str):
+        if not isinstance(self.psfPath, str) or not self.psfPath.startswith("/"):
             logger.warning("For serialization purposes, the PSF file path is needed.")
             self.psfPath = input("Absolute path for PSF file that is used: ")
 
+
+
     def write_hydra_scripts(
         self, window: int, serializedSystem: str, serializedIntegrator: str
-    ):
-        if not self.hydra_working_dir.endswith("/"):
-            self.hydra_working_dir += "/"
-
-        f = open(f"{self.hydra_working_dir}run_umbrella_{window}.sh", "w")
-        command = "#$ -S /bin/bash\n#$ -m e"
+    ):  
+        command = "#$ -S /bin/bash\n#$ -m e\n"
         if self.mail:
             command += f"#$ -M {self.mail}\n"
             command += "#$ -m e\n" + "#$ -pe smp 1\n"
@@ -258,28 +262,29 @@ class SamplingHydra(UmbrellaSimulation):
             command += f"#$ -l gpu={self.gpu}\n"
         if self.log:
             command += f"#$ -o {self.log}\n"
-        if self.cwd:
-            command += "#$ -cwd\n"
+        command += "#$ -cwd\n"
         command += "\n"
         command += f"conda activate {self.conda_environment}\n"
-        command += "python UmbrellaPipeline/sampling/simulationHydra.py "
+        command += f"python {os.path.dirname(__file__)}/simulation_hydra.py "
         command += f"-psf {self.psfPath} -sys {serializedSystem} -int {serializedIntegrator} -to {self.tOutput} -ne {self.num_eq} -np {self.num_prod} -nw {window} -io"
-        f.write(command)
-        f.close()
+        with open(f"{self.hydra_working_dir}run_umbrella_{window}.sh", "w") as f:
+            f.write(command)
         return f"{self.hydra_working_dir}run_umbrella_{window}.sh"
 
-    def prepare_simulations(self):
-        super().prepareSystem()
-        serializedSystem = mm.openmm.XmlSerializer.serialize(self.system)
-        serializedIntegrator = mm.openmm.XmlSerializer.serialize(self.integrator)
+    def prepare_simulations(self) -> Tuple[str]:
+        super().prepare_simulations()
+        with open(file=self.serialized_sys, mode="w") as f:
+            f.write(mm.openmm.XmlSerializer.serialize(self.system))
+        with open(file=self.serialized_int, mode="w") as f:
+            f.write(mm.openmm.XmlSerializer.serialize(self.integrator))
         for window in range(self.nWin):
             newfile = self.write_hydra_scripts(
                 window=window,
-                serializedSystem=serializedSystem,
-                serializedIntegrator=serializedIntegrator,
+                serializedSystem=self.serialized_sys,
+                serializedIntegrator=self.serialized_int,
             )
             logger.info(f"File written: {newfile}")
-        return self.integrator
+        return self.serialized_sys, self.serialized_int
 
     def run_sampling(self):
         command: List[str] = []

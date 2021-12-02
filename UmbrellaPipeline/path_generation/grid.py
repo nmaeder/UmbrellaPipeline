@@ -7,12 +7,12 @@ import gemmi
 import numpy as np
 import openmm.app as app
 import openmm.unit as unit
-from UmbrellaPipeline.pathGeneration.pathHelper import (
+from UmbrellaPipeline.path_generation.path_helper import (
     gen_pbc_box,
     get_residue_indices,
     get_centroid_coordinates,
 )
-from UmbrellaPipeline.pathGeneration.node import GridNode
+from UmbrellaPipeline.path_generation.node import GridNode
 
 
 class Grid:

@@ -2,7 +2,7 @@ import openmm.app as app
 import openmm.unit as unit
 import pytest
 from openmm import Vec3
-from UmbrellaPipeline.pathGeneration import Tree, TreeNode
+from UmbrellaPipeline.path_generation import Tree, TreeNode
 
 pdb = "UmbrellaPipeline/data/step5_input.pdb"
 psf = "UmbrellaPipeline/data/step5_input.psf"

@@ -3,7 +3,7 @@ import numpy as np
 import openmm.app as app
 import openmm.unit as unit
 from openmm import Vec3
-from UmbrellaPipeline.pathGeneration import (
+from UmbrellaPipeline.path_generation import (
     Grid,
     GridAStar,
     GridNode,

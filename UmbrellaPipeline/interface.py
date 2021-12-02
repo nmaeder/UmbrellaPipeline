@@ -5,7 +5,7 @@ from UmbrellaPipeline.sampling import (
     SamplingHydra,
     UmbrellaSimulation,
 )
-from UmbrellaPipeline.pathGeneration import (
+from UmbrellaPipeline.path_generation import (
     GridAStar,
     TreeAStar,
     TreeNode,
