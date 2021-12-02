@@ -73,10 +73,11 @@ def test_script_writing():
     st = tree.node_from_files(psf=psfo, pdb=pdbo, name="unl").get_coordinates()
     path = [st, st]
     ps = os.path.abspath(psf)
+    pd = os.path.abspath(pdb)
     sim = SamplingHydra(
         system=create_system(),
         psf=ps,
-        pdb=pdb,
+        pdb=pd,
         ligand_name="unl",
         path=path,
         num_eq=10,

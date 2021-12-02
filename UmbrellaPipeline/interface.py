@@ -80,11 +80,10 @@ class SamplingInterface:
         self.start: GridNode or TreeNode
         self.path: List[unit.Quantity]
         self.simulation: UmbrellaSimulation or SamplingHydra
-        self.psf_object = app.CharmmPsfFile(self.psf)
-        self.pdb_object = app.PDBFile(self.pdb)
+        self.psf_object = app.CharmmPsfFile(psf)
+        self.pdb_object = app.PDBFile(pdb)
 
     def generate_path(self):
-
         if not self.method:
             self.tree = Tree.from_files(psf=self.psf_object, pdb=self.pdb_object)
             self.start = self.tree.node_from_files(

@@ -273,7 +273,7 @@ class SamplingHydra(UmbrellaSimulation):
         
         command += f"-psf {self.psfPath} -pdb {self.pdbPath} -sys {serializedSystem}"\
             f" {pos} -int {serializedIntegrator} -to {self.tOutput}"\
-            f" -ne {self.num_eq} -np {self.num_prod} -nw {window} -io"
+            f" -ne {self.num_eq} -np {self.num_prod} -nw {window} -io {self.freq}"
         
         
         with open(f"{self.hydra_working_dir}run_umbrella_{window}.sh", "w") as f:

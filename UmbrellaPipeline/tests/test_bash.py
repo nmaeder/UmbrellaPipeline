@@ -2,10 +2,10 @@ from UmbrellaPipeline.utils import (
     execute_bash,
     execute_bash_parallel,
 )
-import time, os
+import time, os, sys
 import pytest
 
-
+@pytest.mark.skipif("win" in sys.platform, reason="Bash not supported on Windows.")
 def test_execute_bash():
     command1 = "echo Hello World"
     command2 = ["echo", "Hello World"]
@@ -21,7 +21,7 @@ def test_execute_bash():
     os.remove(stderr)
     os.remove(stdout)
 
-
+@pytest.mark.skipif("win" in sys.platform, reason="Bash not supported on Windows.")
 def test_parallel_bash():
     commands = ["sleep 3", "sleep 3", "sleep 3", "echo World"]
     start = time.time()
