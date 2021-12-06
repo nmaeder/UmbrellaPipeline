@@ -93,7 +93,7 @@ def main():
         )
         t = time.time() - st
         ttot += t
-
+        
     fileHandle.close()
     orgCoords.close()
 

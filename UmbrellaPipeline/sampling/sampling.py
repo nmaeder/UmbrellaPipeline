@@ -230,7 +230,7 @@ class SamplingHydra(UmbrellaSimulation):
         command: List[str] = []
         out: List[str] = []
         for window in range(self.lamdas):
-            command.append(f"qsub {self.hydra_working_dir}run_umbrella_{window}.sh")
+            command.append(f"qsub {self.hydra_working_dir}/run_umbrella_{window}.sh")
         try:
             out = execute_bash_parallel(command=command)
         except FileNotFoundError:
