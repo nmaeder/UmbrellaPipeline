@@ -103,7 +103,7 @@ class UmbrellaPipeline:
         self,
         conda_environment: str,
         trajectory_path: str,
-        hydra_working_dir:str,
+        hydra_working_dir: str,
         mail: str = None,
         gpu: int = 1,
         log_prefix: str = "umbrella_simulation",

@@ -56,14 +56,26 @@ class UmbrellaSimulation:
         Returns:
             mm.openmm.Integrator: Integrator for the system. it changes self.integrator.
         """
-        values=[self.sim_props.force_constant, self.path[0].x, self.path[0].y, self.path[0].z],
+        values = (
+            [
+                self.sim_props.force_constant,
+                self.path[0].x,
+                self.path[0].y,
+                self.path[0].z,
+            ],
+        )
         for i in values:
-            print (i)
+            print(i)
 
         add_harmonic_restraint(
             system=self.openmm_system,
             atom_group=self.sys_info.ligand_indices,
-            values=[self.sim_props.force_constant, self.path[0].x, self.path[0].y, self.path[0].z],
+            values=[
+                self.sim_props.force_constant,
+                self.path[0].x,
+                self.path[0].y,
+                self.path[0].z,
+            ],
         )
 
         self.integrator = openmmtools.integrators.LangevinIntegrator(
@@ -150,7 +162,7 @@ class SamplingHydra(UmbrellaSimulation):
         mail: str = None,
         log_prefix: str = "umbrella_simulation",
         gpu: str = 1,
-        hydra_working_dir:str = None,
+        hydra_working_dir: str = None,
     ) -> None:
         super().__init__(
             properties=properties,

@@ -97,9 +97,9 @@ class SimulationProperties:
     @force_constant.setter
     def force_constant(self, value: u.Quantity) -> None:
         try:
-            self._force_constant = value#.in_units_of(
-                #u.kilocalorie_per_mole / (u.angstrom ** 2)
-            #)
+            self._force_constant = value  # .in_units_of(
+            # u.kilocalorie_per_mole / (u.angstrom ** 2)
+            # )
         except (TypeError, AttributeError):
             raise TypeError(
                 "Force Constant has to be in units of energy per mole per length²!"
@@ -108,7 +108,7 @@ class SimulationProperties:
     @friction_coefficient.setter
     def friction_coefficient(self, value: u.Quantity) -> None:
         try:
-            self._friction_coefficient = value#.in_units_of(1/u.picoseconds)
+            self._friction_coefficient = value  # .in_units_of(1/u.picoseconds)
         except (TypeError, AttributeError):
             raise TypeError("Friction Coefficient has to be in units of inverse time!")
 

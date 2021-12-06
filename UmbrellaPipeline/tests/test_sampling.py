@@ -84,7 +84,7 @@ def test_script_writing():
         pdb_file=pdb,
         ligand_name="UNL",
         toppar_directory="UmbrellaPipeline/data/toppar",
-        toppar_stream_file="UmbrellaPipeline/data/toppar/toppar.str"
+        toppar_stream_file="UmbrellaPipeline/data/toppar/toppar.str",
     )
 
     sim = SamplingHydra(
