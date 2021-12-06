@@ -1,8 +1,9 @@
 import argparse
+from numpy import mod
 import openmm as mm
 import openmm.app as app
 import time
-import torch
+import openmm.unit as unit
 from typing import List
 
 """
@@ -35,18 +36,21 @@ def main():
         description="System Info to run Umbrella Sampling with"
     )
 
-    parser.add_argument("-psf", "--psffile", type=str, required=True)
-    parser.add_argument("-pdb", "--pdbfile", type=str, required=True)
-    parser.add_argument("-sys", "--system", type=str, required=True)
-    parser.add_argument("-int", "--integrator", type=str, required=True)
-    parser.add_argument("-to", "--outputpath", type=str, required=True)
-    parser.add_argument("-ne", "--equilibrationsteps", type=int, required=True)
-    parser.add_argument("-np", "--productionsteps", type=int, required=True)
-    parser.add_argument("-nw", "--window", type=int, required=True)
-    parser.add_argument("-x", "--posx", type=float, required=True)
-    parser.add_argument("-y", "--posy", type=float, required=True)
-    parser.add_argument("-z", "--posz", type=float, required=True)
-    parser.add_argument("-io", "--outputfreq", type=int, required=True)
+    parser.add_argument("-psf", type=str, required=True)
+    parser.add_argument("-pdb", type=str, required=True)
+    parser.add_argument("-sys", type=str, required=True)
+    parser.add_argument("-int", type=str, required=True)
+    parser.add_argument("-to", type=str, required=True)
+    parser.add_argument("-ne", type=int, required=True)
+    parser.add_argument("-np", type=int, required=True)
+    parser.add_argument("-nw", type=int, required=True)
+    parser.add_argument("-x", type=float, required=True)
+    parser.add_argument("-y", type=float, required=True)
+    parser.add_argument("-z", type=float, required=True)
+    parser.add_argument("-io", type=int, required=True)
+    parser.add_argument("-t", type=float, required=True)
+    parser.add_argument("-fric", type=float, required=True)
+    parser.add_argument("-dt", type=float, required=True)
 
     args, unkn = parser.parse_known_args()
     pdb = app.PDBFile(args.pdb)
@@ -54,8 +58,14 @@ def main():
     platform = mm.Platform.getPlatformByName("CUDA")
     properties = {"Precision": "mixed"}
 
-    system = mm.openmm.XmlSerializer.deserialize(args.system)
-    integrator = mm.openmm.XmlSerializer.deserialize(args.integrator)
+    with open(args.sys, mode="r") as f:
+        system = f.read()
+    system = mm.openmm.XmlSerializer.deserialize(system)
+
+    integrator = mm.LangevinIntegrator(
+        args.t * unit.kelvin, args.fric / unit.picosecond, args.dt * unit.femtosecond
+    )
+
     simulation = app.Simulation(
         topology=psf.topology,
         system=system,
@@ -64,10 +74,10 @@ def main():
         platformProperties=properties,
     )
 
-    if not args.outputpath.endswith("/"):
-        args.outputpath += "/"
+    if not args.to.endswith("/"):
+        args.to += "/"
 
-    orgCoords = open(f"{args.outputpath}coordinates.dat")
+    orgCoords = open(f"{args.to}coordinates.dat", "w")
     orgCoords.write("nwin, x0, y0, z0\n")
 
     orgCoords.write(
@@ -79,17 +89,17 @@ def main():
     simulation.context.setParameter("z0", args.z)
     simulation.minimizeEnergy()
     simulation.context.setVelocitiesToTemperature(integrator.getTemperature())
-    simulation.step(args.equilibrationsteps)
-    fileHandle = open("f{args.outputpath}traj_{window}.dcd")
+    simulation.step(args.ne)
+    fileHandle = open("f{args.to}traj_{window}.dcd", "bw")
     dcdFile = app.DCDFile(fileHandle, simulation.topology, dt=args.dt)
 
     ttot = 0
-    totruns = int(args.productionsteps / args.outputfreq)
+    totruns = int(args.np / args.io)
     for i in range(totruns):
         st = time.time()
-        args.simulation.step(args.outputfreq)
+        simulation.step(args.io)
         dcdFile.writeModel(
-            args.simulation.context.getState(getPositions=True).getPositions()
+            simulation.context.getState(getPositions=True).getPositions()
         )
         t = time.time() - st
         ttot += t
@@ -100,4 +110,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

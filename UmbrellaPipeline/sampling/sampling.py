@@ -56,17 +56,6 @@ class UmbrellaSimulation:
         Returns:
             mm.openmm.Integrator: Integrator for the system. it changes self.integrator.
         """
-        values = (
-            [
-                self.sim_props.force_constant,
-                self.path[0].x,
-                self.path[0].y,
-                self.path[0].z,
-            ],
-        )
-        for i in values:
-            print(i)
-
         add_harmonic_restraint(
             system=self.openmm_system,
             atom_group=self.sys_info.ligand_indices,
@@ -194,16 +183,22 @@ class SamplingHydra(UmbrellaSimulation):
         command += "#$ -p -1000\n"
         command += "#$ -cwd\n"
         command += "\n"
+        command += "hostname\n"
         command += f"conda activate {self.conda_environment}\n"
-        command += f"python {os.path.abspath(os.path.dirname(__file__)+'/../../scripts/simulation_hydra.py')} "
+        command += f"python {os.path.abspath(os.path.dirname(__file__)+'/../scripts/simulation_hydra.py')} "
         pos = (
             f"-x {self.path[window][0].value_in_unit(self.sys_info.pdb_object.positions.unit)} "
             f"-y {self.path[window][1].value_in_unit(self.sys_info.pdb_object.positions.unit)} "
             f"-z {self.path[window][2].value_in_unit(self.sys_info.pdb_object.positions.unit)}"
         )
+        command += f" -t {self.sim_props.temperature.value_in_unit(unit=unit.kelvin)}"
+        command += (
+            f" -dt {self.sim_props.time_step.value_in_unit(unit=unit.femtosecond)}"
+        )
+        command += f" -fric {self.sim_props.friction_coefficient.value_in_unit(unit=unit.picosecond**-1)}"
 
         command += (
-            f"-psf {self.sys_info.psf_file} -pdb {self.sys_info.pdb_file} -sys {serializedSystem}"
+            f" -psf {self.sys_info.psf_file} -pdb {self.sys_info.pdb_file} -sys {serializedSystem}"
             f" {pos} -int {serializedIntegrator} -to {self.traj_write_path}"
             f" -ne {self.sim_props.n_equilibration_steps} -np {self.sim_props.n_production_steps} -nw {window} -io {self.sim_props.write_out_frequency}"
         )
