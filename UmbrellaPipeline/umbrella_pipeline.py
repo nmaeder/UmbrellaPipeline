@@ -109,7 +109,7 @@ class UmbrellaPipeline:
         log_prefix: str = "umbrella_simulation",
     ) -> None:
         simulation = SamplingHydra(
-            properties=self.sim_props,
+            properties=self.simulation_parameters,
             path=self.path,
             openmm_system=self.openmm_system,
             info=self.system_info,
@@ -128,7 +128,7 @@ class UmbrellaPipeline:
         trajectory_path,
     ) -> None:
         simulation = UmbrellaSimulation(
-            properties=self.sim_props,
+            properties=self.simulation_parameters,
             path=self.path,
             openmm_system=self.openmm_system,
             info=self.system_info,
