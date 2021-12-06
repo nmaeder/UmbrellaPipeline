@@ -185,7 +185,7 @@ class SamplingHydra(UmbrellaSimulation):
         command = "#$ -S /bin/bash\n#$ -m e\n"
         if self.mail:
             command += f"#$ -M {self.mail}\n"
-            command += "#$ -m e\n" + "#$ -pe smp 1\n"
+            command += "#$ -pe smp 1\n"
         command += "#$ -j y\n"
         if self.gpu:
             command += f"#$ -l gpu={self.gpu}\n"
@@ -195,7 +195,7 @@ class SamplingHydra(UmbrellaSimulation):
         command += "#$ -cwd\n"
         command += "\n"
         command += f"conda activate {self.conda_environment}\n"
-        command += f"python {os.path.abspath(os.path.dirname(__file__)+'/../scripts/simulation_hydra.py')} "
+        command += f"python {os.path.abspath(os.path.dirname(__file__)+'/../../scripts/simulation_hydra.py')} "
         pos = (
             f"-x {self.path[window][0].value_in_unit(self.sys_info.pdb_object.positions.unit)} "
             f"-y {self.path[window][1].value_in_unit(self.sys_info.pdb_object.positions.unit)} "

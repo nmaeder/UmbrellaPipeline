@@ -93,10 +93,11 @@ def main():
         )
         t = time.time() - st
         ttot += t
-        
+
     fileHandle.close()
     orgCoords.close()
 
 
 if __name__ == "__main__":
     main()
+
