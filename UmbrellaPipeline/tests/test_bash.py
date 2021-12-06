@@ -5,6 +5,7 @@ from UmbrellaPipeline.utils import (
 import time, os, sys
 import pytest
 
+
 @pytest.mark.skipif("win" in sys.platform, reason="Bash not supported on Windows.")
 def test_execute_bash():
     command1 = "echo Hello World"
@@ -20,6 +21,7 @@ def test_execute_bash():
     assert ret2 == "Hello World\n"
     os.remove(stderr)
     os.remove(stdout)
+
 
 @pytest.mark.skipif("win" in sys.platform, reason="Bash not supported on Windows.")
 def test_parallel_bash():

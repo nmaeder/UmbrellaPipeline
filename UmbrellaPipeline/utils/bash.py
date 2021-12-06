@@ -1,9 +1,7 @@
 import subprocess
-import logging
+
 import time
 from typing import List
-
-logger = logging.getLogger(__name__)
 
 
 def execute_bash(
@@ -46,9 +44,6 @@ def execute_bash(
         except subprocess.TimeoutExpired:
             if kill_after_wait:
                 process.kill()
-                logger.warning(
-                    "Process got killed, since it took to long. If its a long job, set kill_after_wait to False"
-                )
                 raise TimeoutError
 
         try:
@@ -62,8 +57,6 @@ def execute_bash(
         if stderr_file:
             with open(file=stderr_file, mode="w") as err:
                 err.writelines(stderr)
-        else:
-            logger.error(stderr)
         raise et
 
     except Exception as ee:
@@ -71,8 +64,6 @@ def execute_bash(
         if stderr_file:
             with open(file=stderr_file, mode="w") as err:
                 err.writelines(stderr)
-        else:
-            logger.error(stderr)
         raise ee
 
     stdout, stderr = process.communicate()
@@ -80,9 +71,6 @@ def execute_bash(
     if stdout_file:
         with open(file=stdout_file, mode="w") as out:
             out.writelines(stdout)
-    else:
-        logger.info(stdout)
-
     return stdout
 
 
@@ -122,7 +110,6 @@ def execute_bash_parallel(
         ]
 
     except Exception as e:
-        logger.error(e)
         raise e
 
     stdout: List[str] = []
@@ -141,7 +128,4 @@ def execute_bash_parallel(
             raise StopIteration(
                 "You have given a list in stdout_file that doesnt match the number of Commands!"
             )
-    else:
-        logger.info(stdout)
-
     return stdout

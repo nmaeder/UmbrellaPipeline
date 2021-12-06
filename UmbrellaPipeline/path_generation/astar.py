@@ -1,5 +1,5 @@
 import copy
-import logging
+
 import math
 from typing import List
 
@@ -10,8 +10,6 @@ from openmm import Vec3
 from UmbrellaPipeline.path_generation.grid import Grid
 from UmbrellaPipeline.path_generation.node import GridNode, TreeNode
 from UmbrellaPipeline.path_generation.tree import Tree
-
-logger = logging.getLogger(__name__)
 
 
 class astar_3d:
@@ -65,9 +63,6 @@ class GridAStar(astar_3d):
         super().__init__(start=start, end=end)
         self.grid = grid
         self.shortest_path: List[GridNode] = []
-        logger.warning(
-            msg="You are using the grid Version. This is not encouraged. Try to use the tree version whenever possible."
-        )
 
     def is_goal_reached(self, node: GridNode, distance: unit.Quantity = None) -> bool:
         """

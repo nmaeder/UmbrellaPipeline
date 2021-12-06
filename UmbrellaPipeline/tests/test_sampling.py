@@ -11,6 +11,9 @@ from UmbrellaPipeline.path_generation import (
 import openmm.app as app
 import openmm as mm
 
+from UmbrellaPipeline.utils.simulation_properties import SimulationProperties
+from UmbrellaPipeline.utils.simulation_system import SimulationSystem
+
 psf = "UmbrellaPipeline/data/step5_input.psf"
 pdb = "UmbrellaPipeline/data/step5_input.pdb"
 toppar_stream_file = "UmbrellaPipeline/data/toppar/toppar.str"
@@ -32,6 +35,7 @@ def create_system() -> mm.openmm.System:
         toppar_directory=toppar_directory, toppar_str_file=toppar_stream_file
     )
     return p.createSystem(params=par)
+
 
 """
 def test_simulations():
@@ -60,6 +64,8 @@ def test_simulations():
         os.remove(f"UmbrellaPipeline/tests/traj_{i}.dcd")
 
 """
+
+
 def test_script_writing():
     output = [
         "run_umbrella_0.sh",
@@ -72,20 +78,23 @@ def test_script_writing():
     tree = Tree.from_files(pdb=pdbo, psf=psfo)
     st = tree.node_from_files(psf=psfo, pdb=pdbo, name="unl").get_coordinates()
     path = [st, st]
-    ps = os.path.abspath(psf)
-    pd = os.path.abspath(pdb)
+    properties = SimulationProperties()
+    info = SimulationSystem(
+        psf_file=psf,
+        pdb_file=pdb,
+        ligand_name="UNL",
+        toppar_directory="UmbrellaPipeline/data/toppar",
+        toppar_stream_file="UmbrellaPipeline/data/toppar/toppar.str"
+    )
+
     sim = SamplingHydra(
-        system=create_system(),
-        psf=ps,
-        pdb=pd,
-        ligand_name="unl",
+        openmm_system=create_system(),
+        properties=properties,
+        info=info,
         path=path,
-        num_eq=10,
-        num_prod=10,
-        iofreq=1,
         traj_write_path=os.path.dirname(__file__),
-        hydra_working_dir=os.path.dirname(__file__),
         conda_environment="openmm",
+        hydra_working_dir=os.path.dirname(__file__),
     )
     sim.prepare_simulations()
 
