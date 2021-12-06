@@ -91,7 +91,7 @@ class UmbrellaPipeline:
         gen_pbc_box(psf=self.system_info.psf_object, pdb=self.system_info.pdb_object)
         params = self.system_info.params
 
-        self.openmm_system = self.psf_object.createSystem(
+        self.openmm_system = self.system_info.psf_object.createSystem(
             params=params,
             nonbondedMethod=nonbonded_method,
             nonbondedCutoff=nonbonded_cutoff,
@@ -103,6 +103,7 @@ class UmbrellaPipeline:
         self,
         conda_environment: str,
         trajectory_path: str,
+        hydra_working_dir:str,
         mail: str = None,
         gpu: int = 1,
         log_prefix: str = "umbrella_simulation",
@@ -114,9 +115,10 @@ class UmbrellaPipeline:
             info=self.system_info,
             traj_write_path=trajectory_path,
             mail=mail,
-            log=log,
+            log_prefix=log_prefix,
             gpu=gpu,
             conda_environment=conda_environment,
+            hydra_working_dir=hydra_working_dir,
         )
         simulation.prepare_simulations()
         simulation.run_sampling()
