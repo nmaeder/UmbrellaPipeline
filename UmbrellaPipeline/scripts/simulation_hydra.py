@@ -5,30 +5,14 @@ import openmm.app as app
 import time
 import openmm.unit as unit
 from typing import List
+from UmbrellaPipeline.utils import display_time
+import logging
+
+logger = logging.getLogger(__name__)
 
 """
 Worker script for the sampling.py script. Highly specific, not encouraged to use on its own.
 """
-
-
-def displayTime(seconds: float) -> str:
-    ret = ""
-    tot = seconds
-    intervals = [
-        (604800, 0),
-        (86400, 0),
-        (3600, 0),
-        (60, 0),
-        (1, 0),
-    ]
-    for number, count in intervals:
-        while tot >= number:
-            count += 1
-            tot -= number
-        if count:
-            ret += f"{count:02d}:"
-    ret = ret.rstrip(":")
-    return f"00:{ret}"
 
 
 def main():
@@ -77,12 +61,6 @@ def main():
     if not args.to.endswith("/"):
         args.to += "/"
 
-    orgCoords = open(f"{args.to}coordinates.dat", "w")
-    orgCoords.write("nwin, x0, y0, z0\n")
-
-    orgCoords.write(
-        f"{args.nw}, {simulation.context.getParameter('x0')}, {simulation.context.getParameter('y0')}, {simulation.context.getParameter('z0')}\n"
-    )
     simulation.context.setPositions(pdb.positions)
     simulation.context.setParameter("x0", args.x)
     simulation.context.setParameter("y0", args.y)
@@ -103,9 +81,14 @@ def main():
         )
         t = time.time() - st
         ttot += t
+        logger.info(
+            f"Step {i+1} of {totruns} simulated. "
+            f"Elapsed Time: {display_time(t)}. "
+            f"Elapsed total time: {display_time(ttot)}. "
+            f"Estimated time until finish: {display_time((totruns - i -1) * t) }."
+        )
 
     fileHandle.close()
-    orgCoords.close()
 
 
 if __name__ == "__main__":

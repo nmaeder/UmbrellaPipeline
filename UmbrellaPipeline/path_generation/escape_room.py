@@ -1,14 +1,20 @@
-import copy
-import math
+import copy, time
+import logging
 from typing import List
 
 import gemmi
 import numpy as np
 import openmm.unit as unit
 from openmm import Vec3
-from UmbrellaPipeline.path_generation.grid import Grid
-from UmbrellaPipeline.path_generation.node import GridNode, Node, TreeNode
-from UmbrellaPipeline.path_generation.tree import Tree
+from UmbrellaPipeline.path_generation import (
+    Grid,
+    GridNode,
+    TreeNode,
+    Tree,
+)
+from UmbrellaPipeline.utils import display_time
+
+logger = logging.getLogger(__name__)
 
 
 class EscapeRoom3D:
@@ -46,6 +52,9 @@ class GridEscapeRoom(EscapeRoom3D):
         super().__init__(start=start)
         self.grid = grid
         self.shortest_path: List[GridNode] = []
+        logger.warning(
+            "You are now using the grid version of the escape room module. This is generally not advised and should only be used for visualization purposes. Use the Tree version instead, which is much faster and memory efficient!"
+        )
 
     def is_goal_reached(self, node: GridNode, distance: unit.Quantity = None) -> bool:
         """
@@ -173,8 +182,12 @@ class GridEscapeRoom(EscapeRoom3D):
         Returns:
             List[GridNode]: shortest path from a to b if class settint backtrace is true. else returns all searched nodes.
         """
+        start = time.time()
         if self.is_goal_reached(node=self.start, distance=distance):
             self.shortest_path.append(self.start)
+            logger.warning(
+                "Start point does already a goal point. Try using a bigger distance, or even without a distance."
+            )
             return self.shortest_path
         self.start.distance_to_wall = self.grid.get_distance_to_protein(self.start)
         open_list = [self.start]
@@ -195,10 +208,16 @@ class GridEscapeRoom(EscapeRoom3D):
             for child in children:
                 if self.is_goal_reached(node=child, distance=distance):
                     self.shortest_path.append(q)
+                    logger.info(
+                        f"Shortes path was found! Elapsed Time = {display_time(time.time() - start)}"
+                    )
                     return self.backtrace_path()
                 if self.is_child_good(child=child, open_list=open_list):
                     open_list.insert(0, child)
             self.shortest_path.append(q)
+        logger.warning(
+            "No way out was found! :( Try again, employing a smaller gridsize when constructing the grid."
+        )
         return []
 
     def get_path_for_sampling(
@@ -261,7 +280,7 @@ class GridEscapeRoom(EscapeRoom3D):
         """
         if not filename.endswith(".ccp4"):
             filename += ".ccp4"
-        print("Hang in there, this can take a while (~1 Minute)")
+        logger.info("Hang in there, this can take up to a minute :)")
         pathgrid = np.zeros(shape=(self.grid.x, self.grid.y, self.grid.z), dtype=bool)
         for i in self.shortest_path:
             pathgrid[i.get_coordinates()[0]][i.get_coordinates()[1]][
@@ -424,6 +443,13 @@ class TreeEscapeRoom(EscapeRoom3D):
         Returns:
             List[TreeNode]: shortest path from a to b if class settint backtrace is true. else returns all searched nodes.
         """
+        start = time.time()
+        if self.is_goal_reached(node=start, box=box, distance=distance):
+            logger.warning(
+                "Start point does already a goal point. Try using a bigger distance, or giving the method a box instead of a distance :)."
+            )
+            self.shortest_path.append(start)
+            return self.shortest_path
         self.start.distance_to_wall = self.tree.get_distance_to_protein(
             node=self.start
         ).value_in_unit(self.tree.unit)
@@ -444,12 +470,18 @@ class TreeEscapeRoom(EscapeRoom3D):
             for child in children:
                 if self.is_goal_reached(node=child, box=box, distance=distance):
                     self.shortest_path.append(q)
+                    logger.info(
+                        f"Shortes path was found! Elapsed Time = {display_time(time.time() - start)}"
+                    )
                     return self.backtrace_path()
                 if not self.is_child_good(child, open_list):
                     continue
                 else:
                     open_list.insert(0, child)
             self.shortest_path.append(q)
+        logger.warning(
+            "No way out was found! :( Try again, using a smaller stepsize when searching a way out."
+        )
         return []
 
     def get_path_for_sampling(

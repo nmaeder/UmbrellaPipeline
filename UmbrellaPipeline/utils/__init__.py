@@ -6,3 +6,4 @@ from .bash import (
 )
 from .simulation_properties import SimulationProperties
 from .simulation_system import SimulationSystem
+from .time import display_time
