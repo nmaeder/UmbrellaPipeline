@@ -310,7 +310,7 @@ class TreeEscapeRoom(EscapeRoom3D):
                 return True
             else:
                 return False
-        except TypeError:
+        except (TypeError, AttributeError):
             pass
         try:
             return (
