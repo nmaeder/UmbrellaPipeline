@@ -16,7 +16,7 @@ from UmbrellaPipeline.utils import (
     execute_bash,
     execute_bash_parallel,
 )
-from UmbrellaPipeline.path_generation.path_helper import (
+from UmbrellaPipeline.path_generation import (
     get_residue_indices,
 )
 from UmbrellaPipeline.utils import SimulationProperties
@@ -105,18 +105,10 @@ class UmbrellaSimulation:
                 topology=self.simulation.topology,
                 dt=self.sim_props.time_step,
             )
-            num = (
-                self.sim_props.n_production_steps / self.sim_props.write_out_frequency
-                if self.sim_props.write_out_frequency == 0
-                else 1
-            )
-            num2 = (
-                self.sim_props.n_production_steps
-                if self.sim_props.write_out_frequency == 0
-                else self.sim_props.write_out_frequency
-            )
-            for i in tqdm(range(int(num))):
-                self.simulation.step(num2)
+            for i in range(self.sim_props.number_of_rounds):
+                self.simulation.step(
+                    self.sim_props.n_production_steps / self.sim_props.number_of_rounds
+                )
                 dcdFile.writeModel(
                     self.simulation.context.getState(getPositions=True).getPositions()
                 )

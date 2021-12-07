@@ -35,6 +35,7 @@ class SimulationProperties:
         self.n_equilibration_steps = n_equilibration_steps
         self.n_production_steps = n_production_steps
         self.write_out_frequency = write_out_frequency
+        self.number_of_runs = (n_production_steps, write_out_frequency)
 
     # Getters
     @property
@@ -68,6 +69,10 @@ class SimulationProperties:
     @property
     def write_out_frequency(self) -> int:
         return self._write_out_frequency
+
+    @property
+    def number_of_rounds(self):
+        return self._number_of_rounds
 
     # Setters
 
@@ -138,3 +143,11 @@ class SimulationProperties:
             self._write_out_frequency = int(value)
         except:
             raise TypeError("Write out Frequency has to be an integer!")
+
+    @number_of_rounds.setter
+    def number_of_rounds(self, value):
+        np, f = value
+        try:
+            self._number_of_rounds = int(np / f)
+        except ZeroDivisionError:
+            self._number_of_rounds = 1
