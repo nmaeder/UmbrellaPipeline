@@ -1,6 +1,6 @@
 import math
 from itertools import product
-from typing import List
+from typing import List, ValuesView
 from openmm import Vec3
 
 import gemmi
@@ -47,13 +47,14 @@ class Grid:
             self.z = grid.shape[2]
             self.dtype = grid.dtype
         except AttributeError:
-            if any(i < 0 for i in [x, y, z]):
-                raise ValueError("Grid shape must be nonnegative!")
-            self.grid = np.zeros(shape=(x, y, z), dtype=dtype)
-            self.x = x
-            self.y = y
-            self.z = z
-            self.dtype = dtype
+            try:
+                self.grid = np.zeros(shape=(x, y, z), dtype=dtype)
+                self.x = x
+                self.y = y
+                self.z = z
+                self.dtype = dtype
+            except IndexError as err:
+                raise err
         try:
             self.a, self.b, self.c = boxlengths[0], boxlengths[1], boxlengths[2]
         except TypeError:
@@ -87,6 +88,7 @@ class Grid:
             [1, 1, 0],
             [1, 1, 1],
         ]
+    
 
     @classmethod
     def from_files(
@@ -111,20 +113,11 @@ class Grid:
         try:
             pdb = app.PDBFile(pdb)
         except TypeError:
-            if not isinstance(pdb, app.PDBFile):
-                raise ValueError("pdb cannot be None!")
-        except ValueError:
-            pdb = input("Enter absolute path to pdb file: ")
-            pdb = app.PDBFile(pdb)
-
+            pdb = pdb
         try:
             psf = app.CharmmPsfFile(psf)
         except TypeError:
-            if not isinstance(psf, app.CharmmPsfFile):
-                raise ValueError("psf cannot be None!")
-        except ValueError:
-            psf = input("Enter absolute path to psf file: ")
-            psf = app.CharmmPsfFile(psf)
+            psf = psf
 
         inx = get_residue_indices(psf.atom_list)
         if psf.boxVectors == None:
@@ -187,19 +180,25 @@ class Grid:
             Node: grid node closest to ligand centroid.
         TODO: add support for center of mass -> more complicated since it needs an initialized system.
         """
-        if type(pdb) is str:
+        try:
             pdb = app.PDBFile(pdb)
-        if type(psf) is str:
+        except TypeError:
+            pdb = pdb
+        try:
             psf = app.CharmmPsfFile(psf)
+        except TypeError:
+            psf = psf
+            
         indices = get_residue_indices(atom_list=psf.atom_list, name=name)
         coordinates = get_centroid_coordinates(positions=pdb.positions, indices=indices)
-        return GridNode.from_coords(
-            [
-                math.floor((coordinates[0] - self.offset[0]) / self.a),
-                math.floor((coordinates[1] - self.offset[1]) / self.a),
-                math.floor((coordinates[2] - self.offset[2]) / self.a),
-            ]
+        ret = GridNode(
+            x = math.floor((coordinates[0] - self.offset[0]) / self.a),
+            y = math.floor((coordinates[1] - self.offset[1]) / self.a),
+            z = math.floor((coordinates[2] - self.offset[2]) / self.a),
         )
+        if not self.position_is_valid(ret):
+            raise ValueError("Node not within grid")
+        return ret
 
     def get_grid_value(
         self, node: GridNode = None, coordinates: List[int] = None
@@ -212,11 +211,14 @@ class Grid:
         Returns:
             bool: value of gridcell
         """
-        return (
-            self.grid[node.x][node.y][node.z]
-            if node
-            else self.grid[coordinates[0]][coordinates[1]][coordinates[2]]
-        )
+        try:
+            return (
+                self.grid[node.x][node.y][node.z]
+                if node
+                else self.grid[coordinates[0]][coordinates[1]][coordinates[2]]
+            )
+        except IndexError as err:
+            raise err
 
     def position_is_valid(
         self, node: GridNode = None, coordinates: List[int] = None
@@ -252,9 +254,9 @@ class Grid:
         """
         return self.get_grid_value(node=node, coordinates=coordinates)
 
-    def estimate_diagonal_h(self, node: GridNode, destination: GridNode) -> float:
+    def calculate_diagonal_distance(self, node: GridNode, destination: GridNode) -> float:
         """
-        estimates diagonal distance heuristics between node and destination.
+        calculates diagonal distance between node and destination.
         Args:
             node (GridNode): point a
             destination (GridNode): point b
@@ -290,7 +292,7 @@ class Grid:
                     continue
                 try:
                     if self.get_grid_value(node=node2):
-                        return self.estimate_diagonal_h(node=node, destination=node2)
+                        return self.calculate_diagonal_distance(node=node, destination=node2)
                 except IndexError:
                     continue
         return 0
@@ -311,6 +313,100 @@ class Grid:
         ccp4_map.update_ccp4_header()
         ccp4_map.write_ccp4_map(filename)
         return None
+    
+    def get_cartesian_distance(self, node1: GridNode, node2: GridNode) -> unit.Quantity:
+        """
+        Helper function for get_path_for_sampling(). Returns the true distance between two grid points.
+
+        Args:
+            node1 (GridNode):
+            node2 (GridNode):
+
+        Returns:
+            [type]: distance between two grid points in units the gridcellsizes have.
+        """
+        u = self.a.unit
+        ret = math.sqrt(
+            ((node2.x - node1.x) * self.a.value_in_unit(u)) ** 2
+            + ((node2.y - node1.y) * self.b.value_in_unit(u)) ** 2
+            + ((node2.z - node1.z) * self.c.value_in_unit(u)) ** 2
+        )
+        return unit.Quantity(value=ret, unit=u)
+
+    def cartesian_coordinates_of_node(self, node:GridNode) -> unit.Quantity:
+        """
+        returns the cartesian coordinates of a node in a grid.
+
+        Parameters
+        ----------
+        node : GridNode
+            node you want the cartesian coordinates from
+
+        Returns
+        -------
+        unit.Quantity
+            cartesian coordinates of the node.
+
+        Raises
+        ------
+        ValueError
+            if given node is outside the grid
+        """
+        if not self.position_is_valid(node):
+            raise ValueError("Node outside of grid!")
+        u = self.a.unit
+        return unit.Quantity(
+            value = Vec3(
+                x = node.x * self.a.value_in_unit(u) + self.offset[0].value_in_unit(u),
+                y = node.y * self.b.value_in_unit(u) + self.offset[1].value_in_unit(u),
+                z = node.z * self.c.value_in_unit(u) + self.offset[2].value_in_unit(u)
+            ),
+            unit=u
+        )
+
+    def cartesian_coordinates_w_increment(self, node1:GridNode, node2:GridNode, to_go:float):
+        """
+        returns the coordinates between node 1 and 2 where factor gives the total increment in all 3 dimenstions.
+        factor has to be smaller than the distance between the two nodes!
+
+        Parameters
+        ----------
+        node1 : GridNode
+            node1
+        node2 : GridNode
+            node1
+        factor : float
+            distance to be traveled
+
+        Returns
+        -------
+        [type]
+            [description]
+
+        Raises
+        ------
+        ValueError
+            [description]
+        """
+        if to_go > self.get_cartesian_distance(node1=node1, node2=node2):
+            raise ValueError("to_go is bigger than distance between two nodes")
+        if not self.position_is_valid(node1) or not self.position_is_valid(node2):
+            raise ValueError("Either Node is outside of the grid")
+        u = self.a.unit
+        return unit.Quantity(
+            value=Vec3(
+                x=((node2.x - node1.x) * to_go + node1.x)
+                * self.grid.a.value_in_unit(u)
+                + self.grid.offset[0].value_in_unit(u),
+                y=((node2.y - node1.y) * to_go + node1.y)
+                * self.grid.b.value_in_unit(u)
+                + self.grid.offset[1].value_in_unit(u),
+                z=((node2.z - node1.z) * to_go + node1.z)
+                * self.grid.c.value_in_unit(u)
+                + self.grid.offset[2].value_in_unit(u),
+            ),
+            unit=u
+        )
 
     def to_cartesian_coordinates(self) -> List[float]:
         """

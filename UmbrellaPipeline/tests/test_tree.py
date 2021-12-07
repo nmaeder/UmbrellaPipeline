@@ -23,8 +23,8 @@ def test_tree_generation():
         nodes.append(unit.Quantity(Vec3(i, i + 1, i + 2), unit.nanometer))
         nodesnu.append([i, i + 1, i + 2])
     tree = Tree(coordinates=nodes)
-    tree = Tree(coordinates=nodes, unit_=unit.angstrom)
-    tree = Tree(coordinates=nodesnu, unit_=unit.angstrom)
+    tree = Tree(coordinates=nodes, unit=unit.angstrom)
+    tree = Tree(coordinates=nodesnu, unit=unit.angstrom)
     with pytest.raises(ValueError):
         tree = Tree(coordinates=nodesnu)
 

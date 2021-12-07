@@ -13,7 +13,7 @@ def test_basenode():
 
 
 def test_treenode_generation():
-    treeNode1 = TreeNode(x=4, y=34.1, z=23.2, unit_=unit.nanometer)
+    treeNode1 = TreeNode(x=4, y=34.1, z=23.2, unit=unit.nanometer)
     treeNode2 = TreeNode.from_coords(
         coords=unit.Quantity(value=Vec3(4, 34.1, 23.2), unit=unit.nanometer)
     )
@@ -24,7 +24,7 @@ def test_treenode_generation():
             unit.Quantity(value=23.2, unit=unit.nanometer),
         ]
     )
-    treeNode4 = TreeNode.from_coords(coords=[4, 34.1, 23.2], unit_=unit.angstrom)
+    treeNode4 = TreeNode.from_coords(coords=[4, 34.1, 23.2], unit=unit.angstrom)
     assert treeNode4.x == 4
     assert treeNode4.get_coordinates() == unit.Quantity(
         value=Vec3(4, 34.1, 23.2), unit=unit.angstrom
@@ -35,18 +35,18 @@ def test_treenode_generation():
 
 
 def test_treenode_eq():
-    treeNode1 = TreeNode(x=4, y=34.1, z=23.2, unit_=unit.nanometer)
+    treeNode1 = TreeNode(x=4, y=34.1, z=23.2, unit=unit.nanometer)
     treeNode2 = TreeNode.from_coords(
         coords=unit.Quantity(value=Vec3(4, 34.1, 23.2), unit=unit.nanometer)
     )
-    treeNode3 = TreeNode.from_coords(coords=[4, 34.1, 23.2], unit_=unit.angstrom)
+    treeNode3 = TreeNode.from_coords(coords=[4, 34.1, 23.2], unit=unit.angstrom)
 
     assert treeNode1 == treeNode2
     assert treeNode1 != treeNode3
 
 
 def test_treenode_rnd():
-    treeNode1 = TreeNode(x=4.234562345235, y=34.1, z=23.2, unit_=unit.nanometer)
+    treeNode1 = TreeNode(x=4.234562345235, y=34.1, z=23.2, unit=unit.nanometer)
 
     assert round(treeNode1, 2) == unit.Quantity(
         value=Vec3(x=4.23, y=34.10, z=23.20), unit=unit.nanometer
@@ -54,9 +54,9 @@ def test_treenode_rnd():
 
 
 def test_query_coords():
-    treeNode1 = TreeNode(x=4.234562345235, y=34.1, z=23.2, unit_=unit.nanometer)
+    treeNode1 = TreeNode(x=4.234562345235, y=34.1, z=23.2, unit=unit.nanometer)
 
-    assert treeNode1.get_coordinates_for_query(unit_=treeNode1.unit) == [
+    assert treeNode1.get_coordinates_for_query(unit=treeNode1.unit) == [
         unit.Quantity(value=4.234562345235, unit=unit.nanometer).value_in_unit(
             unit.nanometer
         ),
@@ -64,7 +64,7 @@ def test_query_coords():
         unit.Quantity(value=23.2, unit=unit.nanometer).value_in_unit(unit.nanometer),
     ]
 
-    assert treeNode1.get_coordinates_for_query(unit_=unit.angstrom) == [
+    assert treeNode1.get_coordinates_for_query(unit=unit.angstrom) == [
         unit.Quantity(value=42.34562345235, unit=unit.angstrom).value_in_unit(
             unit.angstrom
         ),
@@ -72,7 +72,7 @@ def test_query_coords():
         unit.Quantity(value=232, unit=unit.angstrom).value_in_unit(unit.angstrom),
     ]
 
-    assert treeNode1.get_coordinates_for_query(unit_=unit.angstrom) != [
+    assert treeNode1.get_coordinates_for_query(unit=unit.angstrom) != [
         unit.Quantity(value=4.234562345235, unit=unit.nanometer).value_in_unit(
             unit.nanometer
         ),

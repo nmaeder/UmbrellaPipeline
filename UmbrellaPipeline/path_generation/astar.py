@@ -1,5 +1,4 @@
 import copy
-
 import math
 from typing import List
 
@@ -8,21 +7,20 @@ import numpy as np
 import openmm.unit as unit
 from openmm import Vec3
 from UmbrellaPipeline.path_generation.grid import Grid
-from UmbrellaPipeline.path_generation.node import GridNode, TreeNode
+from UmbrellaPipeline.path_generation.node import GridNode, Node, TreeNode
 from UmbrellaPipeline.path_generation.tree import Tree
 
 
-class astar_3d:
+class EscapeRoom3D:
     """
-    Base class for the astar_3d class
+    Base class for the EscapeRoom3d algorithm
     """
 
     def __init__(
-        self, start: GridNode or TreeNode, end: GridNode or TreeNode = None
+        self, start: GridNode or TreeNode,
     ) -> None:
 
         self.start = start
-        self.end = end
         self.shortest_path = []
 
     def __str__(self) -> str:
@@ -37,37 +35,21 @@ class astar_3d:
             ret += f"{str(i)}\n"
         return ret
 
-    def is_end_reached(self, node: TreeNode or GridNode = None):
-        """
-        Not in use at the moment. Plan is to add support, so one can give a specific endpoint for the path.
 
-        Args:
-            node (TreeNodeorGridNode, optional): [description]. Defaults to None.
-
-        Returns:
-            [type]: [description]
-        """
-        if node:
-            return node == self.end
-        else:
-            return self.end in self.shortest_path
-
-
-class GridAStar(astar_3d):
+class GridEscapeRoom(EscapeRoom3D):
     def __init__(
         self,
         grid: Grid,
         start: GridNode,
-        end: GridNode = None,
     ) -> None:
-        super().__init__(start=start, end=end)
+        super().__init__(start=start)
         self.grid = grid
         self.shortest_path: List[GridNode] = []
 
     def is_goal_reached(self, node: GridNode, distance: unit.Quantity = None) -> bool:
         """
         Checks wether the given node has the distance to the neares True grid point.
-        node.h is in "node units" so the distance is divided by the gridcell size to get its value in "grid units" as well.
+        node.distance_to_wall is in "node units" so the distance is divided by the gridcell size to get its value in "grid units" as well.
         If no distance is given, the end point is reached when node is outside the grid
         Args:
             node (GridNode): node to be checked
@@ -75,7 +57,7 @@ class GridAStar(astar_3d):
             bool: Returns true if input node is the destination.
         """
         try:
-            if node.h > distance / self.grid.a:
+            if node.distance_to_wall > distance / self.grid.a:
                 return True
         except TypeError:
             return not self.grid.position_is_valid(node)
@@ -95,6 +77,35 @@ class GridAStar(astar_3d):
         self.shortest_path = new
         return self.shortest_path
 
+    def create_child(self, neighbour:List[int], parent:GridNode) -> GridNode:
+        """
+        Create child at neighbour position of parent.
+        Parameters
+        ----------
+        neighbour : List[int]
+            neighbour position
+        parent : GridNode
+            parent node
+
+        Returns
+        -------
+        GridNode
+            child node at neighbour position if position is inside grid, else none.
+        """
+        try:
+            child = GridNode.from_coords(
+                [a + b for a, b in zip(parent.get_coordinates(), neighbour)]
+            )
+        except ValueError:
+            return None
+        child.distance_to_wall = self.grid.get_distance_to_protein(child)
+        child.distance_walked = parent.distance_walked + self.grid.calculate_diagonal_distance(
+            node=parent, destination=child
+        )
+        child.parent = parent
+        return child
+
+
     def generate_successors(self, parent: GridNode) -> List[GridNode]:
         """
         generates possible successors for the a star grid
@@ -106,26 +117,48 @@ class GridAStar(astar_3d):
         """
         ret = []
         for neighbour in self.grid.POSSIBLE_NEIGHBOURS:
-            try:
-                child = GridNode.from_coords(
-                    [a + b for a, b in zip(parent.get_coordinates(), neighbour)]
-                )
-            except ValueError:
+            child = self.create_child(neighbour, parent)
+            if child == None:
                 continue
             if not self.grid.position_is_valid(node=child):
                 continue
             if self.grid.position_is_blocked(node=child):
                 continue
-            child.g = parent.g + self.grid.estimate_diagonal_h(
-                node=parent, destination=child
-            )
-            child.h = self.grid.get_distance_to_protein(child)
-            child.parent = parent
             ret.append(child)
         return ret
+    
+    def is_child_good(
+        self, child:GridNode, open_list:List[GridNode]
+    ) -> None:
+        """
+        Checks if there is already a child in open list or shortest path that has the same position but had a shorter way to get there.
+        Parameters
+        ----------
+        child : GridNode
+            child to be checked.
+        open_list : List[GridNode]
+            list to search beneath self.shortest_path
 
-    def astar_3d(
-        self, backtrace: bool = True, distance: unit.Quantity = 2 * unit.nanometer
+        Returns
+        -------
+        [type]
+            [description]
+        """
+        if any(
+            (list_entry == child and list_entry.distance_walked <= child.distance_walked)
+            for list_entry in open_list
+        ):
+            return False
+        elif any(
+            (list_entry == child and list_entry.distance_walked <= child.distance_walked)
+            for list_entry in self.shortest_path
+        ):
+            return False
+        else:
+            return True
+
+    def escape_room_3d(
+        self, distance: unit.Quantity = 2 * unit.nanometer
     ) -> List[GridNode]:
         """
         lets a slightly addapted (greedier) version of the A* star algorithm search for the shortest path between start end end point.
@@ -138,38 +171,79 @@ class GridAStar(astar_3d):
         if self.is_goal_reached(node=self.start, distance=distance):
             self.shortest_path.append(self.start)
             return self.shortest_path
-        self.start.g = 0
-        self.start.h = self.grid.get_distance_to_protein(self.start)
+        self.start.distance_to_wall = self.grid.get_distance_to_protein(self.start)
         open_list = [self.start]
         while open_list:
             q = open_list[0]
             for node in open_list:
                 # prioritize the node that is the fartest from any protein atom. -> will eventually lead out of the case as long as the goal distance is alrge enough.
-                if node.h > q.h:
+                if node.distance_to_wall > q.distance_to_wall:
                     q = node
                 # if two nodes are equally large apart from the protein, take the one that took less traveling to get there.
-                if node.h == q.h and node.g < q.g:
+                if node.distance_to_wall == q.distance_to_wall and node.distance_walked < q.distance_walked:
                     q = node
             open_list.remove(q)
             children = self.generate_successors(parent=q)
             for child in children:
                 if self.is_goal_reached(node=child, distance=distance):
                     self.shortest_path.append(q)
-                    return self.backtrace_path() if backtrace else self.shortest_path
-                if any(
-                    (list_entry == child and list_entry.g <= child.g)
-                    for list_entry in open_list
-                ):
-                    continue
-                if any(
-                    (list_entry == child and list_entry.g <= child.g)
-                    for list_entry in self.shortest_path
-                ):
-                    continue
-                else:
+                    return self.backtrace_path()
+                if self.is_child_good(child=child, open_list=open_list):
                     open_list.insert(0, child)
             self.shortest_path.append(q)
         return []
+
+    def get_path_for_sampling(
+        self, stepsize: unit.Quantity = 1 * unit.angstrom
+    ) -> List[unit.Quantity]:
+        """
+        Generates path of evenly spaced nodes for the sampling. Tree uses grid where diagonal jumps are bigger than nondiagonal jumps, hence this function is needed.
+        It can also be used if you want to generated differently spaced paths
+
+        Args:
+            stepsize (unit.Quantity, optional): Stepsite of the path you want. Defaults to 1*unit.angstrom.
+
+        Returns:
+            List[unit.Quantity]: list of Coordinates.
+        """
+        ret: list[unit.Quantity] = []
+        stride = 1
+        path = copy.deepcopy(self.shortest_path)
+        iterator = iter(path)
+        current = next(iterator)
+        new = next(iterator)
+        while min(self.grid.a, self.grid.b, self.grid.c) <= stepsize:
+            stepsize /= 2
+            stride *= 2
+        end_reached = False
+        diff = self.grid.get_cartesian_distance(node1=new, node2=current)
+        diffo = self.grid.get_cartesian_distance(node1=new, node2=current)
+        to_go = stepsize / diff
+        newstep = stepsize
+    
+        ret.append(
+            self.grid.cartesian_coordinates_of_node(current)
+        )
+
+        while not end_reached:
+            try:
+                diff -= newstep
+                ret.append(
+                    self.grid.cartesian_coordinates_w_increment(current, new, to_go)
+                )
+                if newstep < stepsize:
+                    newstep = stepsize
+                to_go += stepsize / diffo
+                if diff < stepsize:
+                    newstep = stepsize - diff
+                    current = new
+                    new = next(iterator)
+                    diff = self.get_diff(node1=new, node2=current)
+                    diffo = self.get_diff(node1=new, node2=current)
+                    to_go = newstep / diffo
+            except StopIteration:
+                end_reached = True
+        return ret[::stride]
 
     def path_to_ccp4(self, filename: str):
         """
@@ -193,110 +267,16 @@ class GridAStar(astar_3d):
         ccp4_map.write_ccp4_map(filename)
         return None
 
-    def get_diff(self, node1: GridNode, node2: GridNode) -> unit.Quantity:
-        """
-        Helper function for get_path_for_sampling(). Returns the true distance between two grid points.
 
-        Args:
-            node1 (GridNode):
-            node2 (GridNode):
-
-        Returns:
-            [type]: distance between two grid points in units the gridcellsizes have.
-        """
-        u = self.grid.a.unit
-        ret = math.sqrt(
-            ((node2.x - node1.x) * self.grid.a.value_in_unit(u)) ** 2
-            + ((node2.y - node1.y) * self.grid.b.value_in_unit(u)) ** 2
-            + ((node2.z - node1.z) * self.grid.c.value_in_unit(u)) ** 2
-        )
-        return unit.Quantity(value=ret, unit=u)
-
-    def get_path_for_sampling(
-        self, stepsize: unit.Quantity = 1 * unit.angstrom
-    ) -> List[unit.Quantity]:
-        """
-        Generates path of evenly spaced nodes for the sampling. Tree uses grid where diagonal jumps are bigger than nondiagonal jumps, hence this function is needed.
-        It can also be used if you want to generated differently spaced paths
-
-        Args:
-            stepsize (unit.Quantity, optional): Stepsite of the path you want. Defaults to 1*unit.angstrom.
-
-        Returns:
-            List[unit.Quantity]: list of Coordinates.
-        """
-        ret: list[unit.Quantity] = []
-        stride = 1
-        path = copy.deepcopy(self.shortest_path)
-        iterator = iter(path)
-        current = next(iterator)
-        new = next(iterator)
-        ret.append(
-            unit.Quantity(
-                value=Vec3(
-                    x=current.x * self.grid.a.value_in_unit(self.grid.a.unit)
-                    + self.grid.offset[0].value_in_unit(self.grid.a.unit),
-                    y=current.y * self.grid.b.value_in_unit(self.grid.a.unit)
-                    + self.grid.offset[1].value_in_unit(self.grid.a.unit),
-                    z=current.z * self.grid.c.value_in_unit(self.grid.a.unit)
-                    + self.grid.offset[2].value_in_unit(self.grid.a.unit),
-                ),
-                unit=self.grid.a.unit,
-            )
-        )
-        while min(self.grid.a, self.grid.b, self.grid.c) <= stepsize:
-            stepsize /= 2
-            stride *= 2
-        end_reached = False
-        diff = self.get_diff(node1=new, node2=current)
-        diffo = self.get_diff(node1=new, node2=current)
-        factor = stepsize / diff
-        newstep = stepsize
-        while not end_reached:
-            try:
-                diff -= newstep
-                ret.append(
-                    unit.Quantity(
-                        value=Vec3(
-                            x=((new.x - current.x) * factor + current.x)
-                            * self.grid.a.value_in_unit(self.grid.a.unit)
-                            + self.grid.offset[0].value_in_unit(self.grid.a.unit),
-                            y=((new.y - current.y) * factor + current.y)
-                            * self.grid.b.value_in_unit(self.grid.a.unit)
-                            + self.grid.offset[1].value_in_unit(self.grid.a.unit),
-                            z=((new.z - current.z) * factor + current.z)
-                            * self.grid.c.value_in_unit(self.grid.a.unit)
-                            + self.grid.offset[2].value_in_unit(self.grid.a.unit),
-                        ),
-                        unit=self.grid.a.unit,
-                    )
-                )
-                if newstep < stepsize:
-                    newstep = stepsize
-                factor += stepsize / diffo
-                if diff < stepsize:
-                    newstep = stepsize - diff
-                    current = new
-                    new = next(iterator)
-                    diff, diffo = self.get_diff(
-                        node1=new, node2=current
-                    ), self.get_diff(node1=new, node2=current)
-                    factor = newstep / diffo
-            except StopIteration:
-                end_reached = True
-        return ret[::stride]
-
-
-class TreeAStar(astar_3d):
+class TreeEscapeRoom(EscapeRoom3D):
     def __init__(
         self,
         tree: Tree,
         start: TreeNode,
-        end: TreeNode = None,
         pathsize: unit.Quantity = 1.2 * unit.angstrom,
         stepsize: unit.Quantity = 0.25 * unit.angstrom,
     ) -> None:
-        super().__init__(start, end)
+        super().__init__(start=start)
         self.shortest_path: List[TreeNode] = []
         self.tree = tree
         self.pathsize = pathsize
@@ -320,7 +300,7 @@ class TreeAStar(astar_3d):
             [type]: [description]
         """
         try:
-            if node.h >= distance:
+            if node.distance_to_wall >= distance:
                 return True
             else:
                 return False
@@ -333,7 +313,42 @@ class TreeAStar(astar_3d):
                 or (node.z * node.unit < box[4] or node.z * node.unit > box[5])
             )
         except (TypeError):
-            raise TypeError("Either give distance_to_protein or box mins and maxes!")
+            raise TypeError("Either give distance_to_protein or box vectors!")
+    
+    def create_child(
+        self,
+        neighbour: List[int],
+        parent:TreeNode
+    ) -> TreeNode:
+        """
+        Creates child node at given neighbour position.
+
+        Parameters
+        ----------
+        neighbour : List[int]
+            neighbour position
+        parent : TreeNode
+            parent node
+
+        Returns
+        -------
+        TreeNode
+            child at given neighbour position
+        """
+        child = TreeNode.from_coords(
+            [
+                a + b for a, b in zip(
+                    parent.get_coordinates_for_query(self.tree.unit),
+                    neighbour*self.stepsize.value_in_unit(self.tree.unit)
+                )
+            ]
+        )
+        child.distance_walked = parent.distance_walked + self.tree.calculate_diagonal_distance(
+                node=parent, destination=child
+            )
+        child.distance_to_wall = self.tree.get_distance_to_protein(node=child)
+        child.parent = parent
+        return child
 
     def generate_successors(
         self,
@@ -349,24 +364,9 @@ class TreeAStar(astar_3d):
         """
         ret = []
         for neighbour in self.tree.POSSIBLE_NEIGHBOURS:
-            child = TreeNode.from_coords(
-                [
-                    a + b * self.stepsize.value_in_unit(parent.unit)
-                    for a, b in zip(
-                        parent.get_coordinates_for_query(parent.unit), neighbour
-                    )
-                ],
-                unit_=parent.unit,
-                parent=parent,
-            )
-            dist = self.tree.get_distance_to_protein(node=child)
-            if dist < self.pathsize:
-                continue
-            child.g = parent.g + self.tree.estimate_diagonal_h(
-                node=parent, destination=child
-            )
-            child.h = dist
-            ret.append(child)
+            child = self.create_child(neighbour=neighbour, parent=parent)
+            if not child.distance_to_wall == 0:
+                ret.append(child)
         return ret
 
     def backtrace_path(self) -> List[TreeNode]:
@@ -383,8 +383,32 @@ class TreeAStar(astar_3d):
             current = current.parent
         self.shortest_path = new
         return self.shortest_path
+    
+    def is_child_good(
+        self,
+        child:TreeNode,
+        open_list:List[TreeNode]
+    ) -> bool:
+        if any(
+            (
+            round(list_entry, 3) == round(child,3)
+            and list_entry.distance_walked <= child.distance_walked
+            )
+            for list_entry in open_list
+        ):        
+            return False
+        elif any(
+            (
+            round(list_entry, 3) == round(child,3)
+            and list_entry.distance_walked <= child.distance_walked
+            )
+            for list_entry in self.shortest_path
+        ):
+            return False
+        else:
+            return True
 
-    def astar_3d(
+    def escape_room(
         self,
         backtrace: bool = True,
         distance: unit.Quantity = None,
@@ -397,39 +421,22 @@ class TreeAStar(astar_3d):
         Returns:
             List[TreeNode]: shortest path from a to b if class settint backtrace is true. else returns all searched nodes.
         """
-        self.start.g = 0
-        self.start.h = self.tree.get_distance_to_protein(node=self.start)
+        self.start.distance_to_wall = self.tree.get_distance_to_protein(node=self.start)
         open_list = [self.start]
         while open_list:
             q = open_list[0]
             for node in open_list:
-                if node.h > q.h:
+                if node.distance_to_wall > q.distance_to_wall:
                     q = node
-                if node.h == q.h and node.g < q.g:
+                if node.distance_to_wall == q.distance_to_wall and node.distance_walked < q.distance_walked:
                     q = node
             open_list.remove(q)
             children = self.generate_successors(parent=q)
             for child in children:
                 if self.is_goal_reached(node=child, box=box, distance=distance):
                     self.shortest_path.append(q)
-                    return (
-                        self.shortest_path if not backtrace else self.backtrace_path()
-                    )
-                if any(
-                    (
-                        round(list_entry, 3) == round(child, 3)
-                        and list_entry.g <= child.g
-                    )
-                    for list_entry in open_list
-                ):
-                    continue
-                if any(
-                    (
-                        round(list_entry, 3) == round(child, 3)
-                        and list_entry.g <= child.g
-                    )
-                    for list_entry in self.shortest_path
-                ):
+                    return self.backtrace_path()
+                if not self.is_child_good(child, open_list):
                     continue
                 else:
                     open_list.insert(0, child)
@@ -469,12 +476,12 @@ class TreeAStar(astar_3d):
             try:
                 if newstep < stepsize:
                     newstep = stepsize
-                diff = self.tree.estimate_diagonal_h(current, new) * self.tree.unit
+                diff = self.tree.calculate_diagonal_distance(current, new) * self.tree.unit
                 if diff < stepsize:
                     current = new
                     new = next(iterator)
                     newstep -= diff
-                    diff = self.tree.estimate_diagonal_h(current, new) * self.tree.unit
+                    diff = self.tree.calculate_diagonal_distance(current, new) * self.tree.unit
                 factor = newstep / diff
                 current.x += (new.x - current.x) * factor
                 current.y += (new.y - current.y) * factor

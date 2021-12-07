@@ -96,18 +96,18 @@ def test_distance_calculations():
 
     assert grid.get_distance_to_protein(node=node1) == 1
     assert round(grid.get_distance_to_protein(node=node2), 5) == round(
-        grid.estimate_diagonal_h(node=node2, destination=node5), 5
+        grid.calculate_diagonal_distance(node=node2, destination=node5), 5
     )
     assert round(grid.get_distance_to_protein(node=node3), 5) == round(
-        grid.estimate_diagonal_h(node=node3, destination=node5), 5
+        grid.calculate_diagonal_distance(node=node3, destination=node5), 5
     )
     assert round(grid.get_distance_to_protein(node=node4), 5) == round(
-        grid.estimate_diagonal_h(node=node4, destination=node5), 5
+        grid.calculate_diagonal_distance(node=node4, destination=node5), 5
     )
 
-    assert round(grid.estimate_diagonal_h(node=node3, destination=node5), 4) == 1.7321
-    assert round(grid.estimate_diagonal_h(node=node2, destination=node5), 4) == 1.4142
-    assert grid.estimate_diagonal_h(node=node1, destination=node5) == 1
+    assert round(grid.calculate_diagonal_distance(node=node3, destination=node5), 4) == 1.7321
+    assert round(grid.calculate_diagonal_distance(node=node2, destination=node5), 4) == 1.4142
+    assert grid.calculate_diagonal_distance(node=node1, destination=node5) == 1
 
 
 def test_write_ccp4():
