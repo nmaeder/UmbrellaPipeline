@@ -98,8 +98,8 @@ class TreeNode(Node):
         z=0,
         distance_to_wall: float = 0,
         distance_walked: float = float("inf"),
-        unit= u.nanometer,
-        parent = None,
+        unit=u.nanometer,
+        parent=None,
     ) -> None:
         super().__init__(
             x=x,
@@ -110,7 +110,6 @@ class TreeNode(Node):
         )
         self.parent: TreeNode = parent
         self.unit = unit
-        
 
     @property
     def unit(self) -> u.Unit:

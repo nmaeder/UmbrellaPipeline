@@ -306,7 +306,7 @@ class TreeEscapeRoom(EscapeRoom3D):
             [type]: [description]
         """
         try:
-            if node.distance_to_wall*node.unit >= distance:
+            if node.distance_to_wall * node.unit >= distance:
                 return True
             else:
                 return False
@@ -348,9 +348,13 @@ class TreeEscapeRoom(EscapeRoom3D):
         )
         child.distance_walked = (
             parent.distance_walked
-            + self.tree.calculate_diagonal_distance(node=parent, destination=child).value_in_unit(self.tree.unit)
+            + self.tree.calculate_diagonal_distance(
+                node=parent, destination=child
+            ).value_in_unit(self.tree.unit)
         )
-        child.distance_to_wall = self.tree.get_distance_to_protein(node=child).value_in_unit(self.tree.unit)
+        child.distance_to_wall = self.tree.get_distance_to_protein(
+            node=child
+        ).value_in_unit(self.tree.unit)
         child.parent = parent
         return child
 
@@ -369,7 +373,7 @@ class TreeEscapeRoom(EscapeRoom3D):
         ret = []
         for neighbour in self.tree.POSSIBLE_NEIGHBOURS:
             child = self.create_child(neighbour=neighbour, parent=parent)
-            if not child.distance_to_wall == 0*unit.meter:
+            if not child.distance_to_wall == 0 * unit.meter:
                 ret.append(child)
         return ret
 
@@ -420,8 +424,10 @@ class TreeEscapeRoom(EscapeRoom3D):
         Returns:
             List[TreeNode]: shortest path from a to b if class settint backtrace is true. else returns all searched nodes.
         """
-        self.start.distance_to_wall = self.tree.get_distance_to_protein(node=self.start).value_in_unit(self.tree.unit)
-        self.start.distance_walked = 0 
+        self.start.distance_to_wall = self.tree.get_distance_to_protein(
+            node=self.start
+        ).value_in_unit(self.tree.unit)
+        self.start.distance_walked = 0
         open_list = [self.start]
         while open_list:
             q = open_list[0]
@@ -479,16 +485,12 @@ class TreeEscapeRoom(EscapeRoom3D):
             try:
                 if newstep < stepsize:
                     newstep = stepsize
-                diff = (
-                    self.tree.calculate_diagonal_distance(current, new)
-                )
+                diff = self.tree.calculate_diagonal_distance(current, new)
                 if diff < stepsize:
                     current = new
                     new = next(iterator)
                     newstep -= diff
-                    diff = (
-                        self.tree.calculate_diagonal_distance(current, new)
-                    )
+                    diff = self.tree.calculate_diagonal_distance(current, new)
                 factor = newstep / diff
                 current.x += (new.x - current.x) * factor
                 current.y += (new.y - current.y) * factor

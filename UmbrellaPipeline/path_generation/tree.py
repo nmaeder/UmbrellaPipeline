@@ -228,11 +228,12 @@ class Tree:
             float: euclidean distance
         """
         return u.Quantity(
-            value = math.sqrt(
-            (node.x - destination.x) ** 2
-            + (node.y - destination.y) ** 2
-            + (node.z - destination.z) ** 2),
-            unit=node.unit
+            value=math.sqrt(
+                (node.x - destination.x) ** 2
+                + (node.y - destination.y) ** 2
+                + (node.z - destination.z) ** 2
+            ),
+            unit=node.unit,
         )
 
     def calculate_diagonal_distance(
@@ -255,4 +256,6 @@ class Tree:
         D3 = math.sqrt(3)
         D2 = math.sqrt(2)
         D1 = math.sqrt(1)
-        return u.Quantity(value=(D3 - D2) * dmin + (D2 - D1) * dmid + D1 * dmax, unit=node.unit)
+        return u.Quantity(
+            value=(D3 - D2) * dmin + (D2 - D1) * dmid + D1 * dmax, unit=node.unit
+        )
