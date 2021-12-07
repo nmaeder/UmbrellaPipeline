@@ -88,7 +88,6 @@ class Grid:
             [1, 1, 0],
             [1, 1, 1],
         ]
-    
 
     @classmethod
     def from_files(
@@ -188,13 +187,13 @@ class Grid:
             psf = app.CharmmPsfFile(psf)
         except TypeError:
             psf = psf
-            
+
         indices = get_residue_indices(atom_list=psf.atom_list, name=name)
         coordinates = get_centroid_coordinates(positions=pdb.positions, indices=indices)
         ret = GridNode(
-            x = math.floor((coordinates[0] - self.offset[0]) / self.a),
-            y = math.floor((coordinates[1] - self.offset[1]) / self.a),
-            z = math.floor((coordinates[2] - self.offset[2]) / self.a),
+            x=math.floor((coordinates[0] - self.offset[0]) / self.a),
+            y=math.floor((coordinates[1] - self.offset[1]) / self.a),
+            z=math.floor((coordinates[2] - self.offset[2]) / self.a),
         )
         if not self.position_is_valid(ret):
             raise ValueError("Node not within grid")
@@ -254,7 +253,9 @@ class Grid:
         """
         return self.get_grid_value(node=node, coordinates=coordinates)
 
-    def calculate_diagonal_distance(self, node: GridNode, destination: GridNode) -> float:
+    def calculate_diagonal_distance(
+        self, node: GridNode, destination: GridNode
+    ) -> float:
         """
         calculates diagonal distance between node and destination.
         Args:
@@ -292,7 +293,9 @@ class Grid:
                     continue
                 try:
                     if self.get_grid_value(node=node2):
-                        return self.calculate_diagonal_distance(node=node, destination=node2)
+                        return self.calculate_diagonal_distance(
+                            node=node, destination=node2
+                        )
                 except IndexError:
                     continue
         return 0
@@ -313,7 +316,7 @@ class Grid:
         ccp4_map.update_ccp4_header()
         ccp4_map.write_ccp4_map(filename)
         return None
-    
+
     def get_cartesian_distance(self, node1: GridNode, node2: GridNode) -> unit.Quantity:
         """
         Helper function for get_path_for_sampling(). Returns the true distance between two grid points.
@@ -333,7 +336,7 @@ class Grid:
         )
         return unit.Quantity(value=ret, unit=u)
 
-    def cartesian_coordinates_of_node(self, node:GridNode) -> unit.Quantity:
+    def cartesian_coordinates_of_node(self, node: GridNode) -> unit.Quantity:
         """
         returns the cartesian coordinates of a node in a grid.
 
@@ -356,15 +359,17 @@ class Grid:
             raise ValueError("Node outside of grid!")
         u = self.a.unit
         return unit.Quantity(
-            value = Vec3(
-                x = node.x * self.a.value_in_unit(u) + self.offset[0].value_in_unit(u),
-                y = node.y * self.b.value_in_unit(u) + self.offset[1].value_in_unit(u),
-                z = node.z * self.c.value_in_unit(u) + self.offset[2].value_in_unit(u)
+            value=Vec3(
+                x=node.x * self.a.value_in_unit(u) + self.offset[0].value_in_unit(u),
+                y=node.y * self.b.value_in_unit(u) + self.offset[1].value_in_unit(u),
+                z=node.z * self.c.value_in_unit(u) + self.offset[2].value_in_unit(u),
             ),
-            unit=u
+            unit=u,
         )
 
-    def cartesian_coordinates_w_increment(self, node1:GridNode, node2:GridNode, to_go:float):
+    def cartesian_coordinates_w_increment(
+        self, node1: GridNode, node2: GridNode, to_go: float
+    ):
         """
         returns the coordinates between node 1 and 2 where factor gives the total increment in all 3 dimenstions.
         factor has to be smaller than the distance between the two nodes!
@@ -388,24 +393,21 @@ class Grid:
         ValueError
             [description]
         """
-        if to_go > self.get_cartesian_distance(node1=node1, node2=node2):
+        u = self.a.unit
+        if to_go * u > self.get_cartesian_distance(node1=node1, node2=node2):
             raise ValueError("to_go is bigger than distance between two nodes")
         if not self.position_is_valid(node1) or not self.position_is_valid(node2):
             raise ValueError("Either Node is outside of the grid")
-        u = self.a.unit
         return unit.Quantity(
             value=Vec3(
-                x=((node2.x - node1.x) * to_go + node1.x)
-                * self.grid.a.value_in_unit(u)
-                + self.grid.offset[0].value_in_unit(u),
-                y=((node2.y - node1.y) * to_go + node1.y)
-                * self.grid.b.value_in_unit(u)
-                + self.grid.offset[1].value_in_unit(u),
-                z=((node2.z - node1.z) * to_go + node1.z)
-                * self.grid.c.value_in_unit(u)
-                + self.grid.offset[2].value_in_unit(u),
+                x=((node2.x - node1.x) * to_go + node1.x) * self.a.value_in_unit(u)
+                + self.offset[0].value_in_unit(u),
+                y=((node2.y - node1.y) * to_go + node1.y) * self.b.value_in_unit(u)
+                + self.offset[1].value_in_unit(u),
+                z=((node2.z - node1.z) * to_go + node1.z) * self.c.value_in_unit(u)
+                + self.offset[2].value_in_unit(u),
             ),
-            unit=u
+            unit=u,
         )
 
     def to_cartesian_coordinates(self) -> List[float]:

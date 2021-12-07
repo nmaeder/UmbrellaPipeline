@@ -71,7 +71,6 @@ def test_script_writing():
         "run_umbrella_0.sh",
         "run_umbrella_1.sh",
         "serialized_sys.xml",
-        "serialized_int.xml",
     ]
     pdbo = read_pdb()
     psfo = read_psf()

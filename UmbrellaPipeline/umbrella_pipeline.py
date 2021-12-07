@@ -9,8 +9,8 @@ from UmbrellaPipeline.utils import (
     SimulationSystem,
 )
 from UmbrellaPipeline.path_generation import (
-    GridAStar,
-    TreeAStar,
+    GridEscapeRoom,
+    TreeEscapeRoom,
     Tree,
     Grid,
     parse_params,
@@ -59,10 +59,10 @@ class UmbrellaPipeline:
                 pdb=self.system_info.pdb_object,
                 name=self.system_info.ligand_name,
             )
-            astar = TreeAStar(tree=tree, start=start)
-            p = astar.astar_3d(distance=distance_to_protein)
+            escape_room = TreeEscapeRoom(tree=tree, start=start)
+            p = escape_room.escape_room(distance=distance_to_protein)
 
-            self.path = astar.get_path_for_sampling(stepsize=path_interval)
+            self.path = escape_room.get_path_for_sampling(stepsize=path_interval)
 
         else:
             grid = Grid.from_files(
@@ -75,9 +75,9 @@ class UmbrellaPipeline:
                 pdb=self.system_info.pdb_object,
                 name=self.system_info.ligand_name,
             )
-            astar = GridAStar(grid=grid, start=start)
-            p = astar.astar_3d(distance=distance_to_protein)
-            self.path = astar.get_path_for_sampling(path_interval)
+            escape_room = GridEscapeRoom(grid=grid, start=start)
+            p = escape_room.escape_room(distance=distance_to_protein)
+            self.path = escape_room.get_path_for_sampling(path_interval)
 
         return self.path
 

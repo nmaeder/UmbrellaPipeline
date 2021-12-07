@@ -79,7 +79,7 @@ class Tree:
     @property
     def unit(self):
         return self._unit
-    
+
     @unit.setter
     def unit(self, value: u.Unit):
         if not value.is_compatible(u.nanometer):
@@ -215,7 +215,9 @@ class Tree:
         dist = dist * self.unit - vdw_radius.in_units_of(self.unit)
         return dist
 
-    def calculate_euclidean_distance(self, node: TreeNode, destination: TreeNode) -> float:
+    def calculate_euclidean_distance(
+        self, node: TreeNode, destination: TreeNode
+    ) -> u.Quantity:
         """
         calculates euclidean distance heuristics between node and destination.
         NOT USED
@@ -225,13 +227,17 @@ class Tree:
         Returns:
             float: euclidean distance
         """
-        return math.sqrt(
+        return u.Quantity(
+            value = math.sqrt(
             (node.x - destination.x) ** 2
             + (node.y - destination.y) ** 2
-            + (node.z - destination.z) ** 2
+            + (node.z - destination.z) ** 2),
+            unit=node.unit
         )
 
-    def calculate_diagonal_distance(self, node: TreeNode, destination: TreeNode) -> float:
+    def calculate_diagonal_distance(
+        self, node: TreeNode, destination: TreeNode
+    ) -> u.Quantity:
         """
         calculates diagonal distance heuristics between node and destination.
         Args:
@@ -249,4 +255,4 @@ class Tree:
         D3 = math.sqrt(3)
         D2 = math.sqrt(2)
         D1 = math.sqrt(1)
-        return (D3 - D2) * dmin + (D2 - D1) * dmid + D1 * dmax
+        return u.Quantity(value=(D3 - D2) * dmin + (D2 - D1) * dmid + D1 * dmax, unit=node.unit)

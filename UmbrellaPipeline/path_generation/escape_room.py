@@ -17,7 +17,8 @@ class EscapeRoom3D:
     """
 
     def __init__(
-        self, start: GridNode or TreeNode,
+        self,
+        start: GridNode or TreeNode,
     ) -> None:
 
         self.start = start
@@ -64,7 +65,7 @@ class GridEscapeRoom(EscapeRoom3D):
 
     def backtrace_path(self) -> List[GridNode]:
         """
-        removes all the unsuccesfull path legs and returns the direct path from start to end. Does only make sense to run with or after self.astar_3d
+        removes all the unsuccesfull path legs and returns the direct path from start to end. Does only make sense to run with or after self.escape_room
         Returns:
             List[GridNode]: direct path from self.start to self.end
         """
@@ -77,7 +78,7 @@ class GridEscapeRoom(EscapeRoom3D):
         self.shortest_path = new
         return self.shortest_path
 
-    def create_child(self, neighbour:List[int], parent:GridNode) -> GridNode:
+    def create_child(self, neighbour: List[int], parent: GridNode) -> GridNode:
         """
         Create child at neighbour position of parent.
         Parameters
@@ -99,12 +100,12 @@ class GridEscapeRoom(EscapeRoom3D):
         except ValueError:
             return None
         child.distance_to_wall = self.grid.get_distance_to_protein(child)
-        child.distance_walked = parent.distance_walked + self.grid.calculate_diagonal_distance(
-            node=parent, destination=child
+        child.distance_walked = (
+            parent.distance_walked
+            + self.grid.calculate_diagonal_distance(node=parent, destination=child)
         )
         child.parent = parent
         return child
-
 
     def generate_successors(self, parent: GridNode) -> List[GridNode]:
         """
@@ -118,7 +119,7 @@ class GridEscapeRoom(EscapeRoom3D):
         ret = []
         for neighbour in self.grid.POSSIBLE_NEIGHBOURS:
             child = self.create_child(neighbour, parent)
-            if child == None:
+            if child is None:
                 continue
             if not self.grid.position_is_valid(node=child):
                 continue
@@ -126,10 +127,8 @@ class GridEscapeRoom(EscapeRoom3D):
                 continue
             ret.append(child)
         return ret
-    
-    def is_child_good(
-        self, child:GridNode, open_list:List[GridNode]
-    ) -> None:
+
+    def is_child_good(self, child: GridNode, open_list: List[GridNode]) -> None:
         """
         Checks if there is already a child in open list or shortest path that has the same position but had a shorter way to get there.
         Parameters
@@ -145,19 +144,25 @@ class GridEscapeRoom(EscapeRoom3D):
             [description]
         """
         if any(
-            (list_entry == child and list_entry.distance_walked <= child.distance_walked)
+            (
+                list_entry == child
+                and list_entry.distance_walked <= child.distance_walked
+            )
             for list_entry in open_list
         ):
             return False
         elif any(
-            (list_entry == child and list_entry.distance_walked <= child.distance_walked)
+            (
+                list_entry == child
+                and list_entry.distance_walked <= child.distance_walked
+            )
             for list_entry in self.shortest_path
         ):
             return False
         else:
             return True
 
-    def escape_room_3d(
+    def escape_room(
         self, distance: unit.Quantity = 2 * unit.nanometer
     ) -> List[GridNode]:
         """
@@ -180,7 +185,10 @@ class GridEscapeRoom(EscapeRoom3D):
                 if node.distance_to_wall > q.distance_to_wall:
                     q = node
                 # if two nodes are equally large apart from the protein, take the one that took less traveling to get there.
-                if node.distance_to_wall == q.distance_to_wall and node.distance_walked < q.distance_walked:
+                if (
+                    node.distance_to_wall == q.distance_to_wall
+                    and node.distance_walked < q.distance_walked
+                ):
                     q = node
             open_list.remove(q)
             children = self.generate_successors(parent=q)
@@ -220,10 +228,8 @@ class GridEscapeRoom(EscapeRoom3D):
         diffo = self.grid.get_cartesian_distance(node1=new, node2=current)
         to_go = stepsize / diff
         newstep = stepsize
-    
-        ret.append(
-            self.grid.cartesian_coordinates_of_node(current)
-        )
+
+        ret.append(self.grid.cartesian_coordinates_of_node(current))
 
         while not end_reached:
             try:
@@ -238,8 +244,8 @@ class GridEscapeRoom(EscapeRoom3D):
                     newstep = stepsize - diff
                     current = new
                     new = next(iterator)
-                    diff = self.get_diff(node1=new, node2=current)
-                    diffo = self.get_diff(node1=new, node2=current)
+                    diff = self.grid.get_cartesian_distance(node1=new, node2=current)
+                    diffo = self.grid.get_cartesian_distance(node1=new, node2=current)
                     to_go = newstep / diffo
             except StopIteration:
                 end_reached = True
@@ -300,11 +306,11 @@ class TreeEscapeRoom(EscapeRoom3D):
             [type]: [description]
         """
         try:
-            if node.distance_to_wall >= distance:
+            if node.distance_to_wall*node.unit >= distance:
                 return True
             else:
                 return False
-        except AttributeError:
+        except TypeError:
             pass
         try:
             return (
@@ -314,12 +320,8 @@ class TreeEscapeRoom(EscapeRoom3D):
             )
         except (TypeError):
             raise TypeError("Either give distance_to_protein or box vectors!")
-    
-    def create_child(
-        self,
-        neighbour: List[int],
-        parent:TreeNode
-    ) -> TreeNode:
+
+    def create_child(self, neighbour: List[int], parent: TreeNode) -> TreeNode:
         """
         Creates child node at given neighbour position.
 
@@ -337,16 +339,18 @@ class TreeEscapeRoom(EscapeRoom3D):
         """
         child = TreeNode.from_coords(
             [
-                a + b for a, b in zip(
-                    parent.get_coordinates_for_query(self.tree.unit),
-                    neighbour*self.stepsize.value_in_unit(self.tree.unit)
+                a + b * self.stepsize.value_in_unit(self.tree.unit)
+                for a, b in zip(
+                    parent.get_coordinates_for_query(self.tree.unit), neighbour
                 )
-            ]
+            ],
+            unit=parent.unit,
         )
-        child.distance_walked = parent.distance_walked + self.tree.calculate_diagonal_distance(
-                node=parent, destination=child
-            )
-        child.distance_to_wall = self.tree.get_distance_to_protein(node=child)
+        child.distance_walked = (
+            parent.distance_walked
+            + self.tree.calculate_diagonal_distance(node=parent, destination=child).value_in_unit(self.tree.unit)
+        )
+        child.distance_to_wall = self.tree.get_distance_to_protein(node=child).value_in_unit(self.tree.unit)
         child.parent = parent
         return child
 
@@ -365,13 +369,13 @@ class TreeEscapeRoom(EscapeRoom3D):
         ret = []
         for neighbour in self.tree.POSSIBLE_NEIGHBOURS:
             child = self.create_child(neighbour=neighbour, parent=parent)
-            if not child.distance_to_wall == 0:
+            if not child.distance_to_wall == 0*unit.meter:
                 ret.append(child)
         return ret
 
     def backtrace_path(self) -> List[TreeNode]:
         """
-        removes all the unsuccesfull path legs and returns the direct path from start to end. Does only make sense to run with or after self.astar_3d
+        removes all the unsuccesfull path legs and returns the direct path from start to end. Does only make sense to run with or after self.escape_room
         Returns:
             List[TreeNode]: direct path from self.start to self.end
         """
@@ -383,24 +387,20 @@ class TreeEscapeRoom(EscapeRoom3D):
             current = current.parent
         self.shortest_path = new
         return self.shortest_path
-    
-    def is_child_good(
-        self,
-        child:TreeNode,
-        open_list:List[TreeNode]
-    ) -> bool:
+
+    def is_child_good(self, child: TreeNode, open_list: List[TreeNode]) -> bool:
         if any(
             (
-            round(list_entry, 3) == round(child,3)
-            and list_entry.distance_walked <= child.distance_walked
+                round(list_entry, 3) == round(child, 3)
+                and list_entry.distance_walked <= child.distance_walked
             )
             for list_entry in open_list
-        ):        
+        ):
             return False
         elif any(
             (
-            round(list_entry, 3) == round(child,3)
-            and list_entry.distance_walked <= child.distance_walked
+                round(list_entry, 3) == round(child, 3)
+                and list_entry.distance_walked <= child.distance_walked
             )
             for list_entry in self.shortest_path
         ):
@@ -410,7 +410,6 @@ class TreeEscapeRoom(EscapeRoom3D):
 
     def escape_room(
         self,
-        backtrace: bool = True,
         distance: unit.Quantity = None,
         box: List[unit.Quantity] = None,
     ) -> List[TreeNode]:
@@ -421,14 +420,18 @@ class TreeEscapeRoom(EscapeRoom3D):
         Returns:
             List[TreeNode]: shortest path from a to b if class settint backtrace is true. else returns all searched nodes.
         """
-        self.start.distance_to_wall = self.tree.get_distance_to_protein(node=self.start)
+        self.start.distance_to_wall = self.tree.get_distance_to_protein(node=self.start).value_in_unit(self.tree.unit)
+        self.start.distance_walked = 0 
         open_list = [self.start]
         while open_list:
             q = open_list[0]
             for node in open_list:
                 if node.distance_to_wall > q.distance_to_wall:
                     q = node
-                if node.distance_to_wall == q.distance_to_wall and node.distance_walked < q.distance_walked:
+                if (
+                    node.distance_to_wall == q.distance_to_wall
+                    and node.distance_walked < q.distance_walked
+                ):
                     q = node
             open_list.remove(q)
             children = self.generate_successors(parent=q)
@@ -476,12 +479,16 @@ class TreeEscapeRoom(EscapeRoom3D):
             try:
                 if newstep < stepsize:
                     newstep = stepsize
-                diff = self.tree.calculate_diagonal_distance(current, new) * self.tree.unit
+                diff = (
+                    self.tree.calculate_diagonal_distance(current, new)
+                )
                 if diff < stepsize:
                     current = new
                     new = next(iterator)
                     newstep -= diff
-                    diff = self.tree.calculate_diagonal_distance(current, new) * self.tree.unit
+                    diff = (
+                        self.tree.calculate_diagonal_distance(current, new)
+                    )
                 factor = newstep / diff
                 current.x += (new.x - current.x) * factor
                 current.y += (new.y - current.y) * factor

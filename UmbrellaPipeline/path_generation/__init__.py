@@ -1,9 +1,9 @@
 """Umbrella Sampling Pipeline for PMF of Protein Ligand Unbinding"""
 
 # Add imports here
-from .astar import (
-    GridAStar,
-    TreeAStar,
+from .escape_room import (
+    GridEscapeRoom,
+    TreeEscapeRoom,
 )
 from .grid import (
     Grid,

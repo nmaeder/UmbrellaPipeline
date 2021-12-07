@@ -105,8 +105,14 @@ def test_distance_calculations():
         grid.calculate_diagonal_distance(node=node4, destination=node5), 5
     )
 
-    assert round(grid.calculate_diagonal_distance(node=node3, destination=node5), 4) == 1.7321
-    assert round(grid.calculate_diagonal_distance(node=node2, destination=node5), 4) == 1.4142
+    assert (
+        round(grid.calculate_diagonal_distance(node=node3, destination=node5), 4)
+        == 1.7321
+    )
+    assert (
+        round(grid.calculate_diagonal_distance(node=node2, destination=node5), 4)
+        == 1.4142
+    )
     assert grid.calculate_diagonal_distance(node=node1, destination=node5) == 1
 
 

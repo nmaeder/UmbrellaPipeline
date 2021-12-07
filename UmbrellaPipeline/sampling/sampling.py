@@ -166,11 +166,8 @@ class SamplingHydra(UmbrellaSimulation):
         self.gpu = gpu
         self.conda_environment = conda_environment
         self.serialized_sys = self.hydra_working_dir + "/serialized_sys.xml"
-        self.serialized_int = self.hydra_working_dir + "/serialized_int.xml"
 
-    def write_hydra_scripts(
-        self, window: int, serializedSystem: str, serializedIntegrator: str
-    ):
+    def write_hydra_scripts(self, window: int, serializedSystem: str):
         command = "#$ -S /bin/bash\n#$ -m e\n"
         if self.mail:
             command += f"#$ -M {self.mail}\n"
@@ -199,7 +196,7 @@ class SamplingHydra(UmbrellaSimulation):
 
         command += (
             f" -psf {self.sys_info.psf_file} -pdb {self.sys_info.pdb_file} -sys {serializedSystem}"
-            f" {pos} -int {serializedIntegrator} -to {self.traj_write_path}"
+            f" {pos} -to {self.traj_write_path}"
             f" -ne {self.sim_props.n_equilibration_steps} -np {self.sim_props.n_production_steps} -nw {window} -io {self.sim_props.write_out_frequency}"
         )
 
@@ -207,19 +204,16 @@ class SamplingHydra(UmbrellaSimulation):
             f.write(command)
         return f"{self.hydra_working_dir}/run_umbrella_{window}.sh"
 
-    def prepare_simulations(self) -> Tuple[str]:
+    def prepare_simulations(self) -> str:
         super().prepare_simulations()
         with open(file=self.serialized_sys, mode="w") as f:
             f.write(mm.openmm.XmlSerializer.serialize(self.openmm_system))
-        with open(file=self.serialized_int, mode="w") as f:
-            f.write(mm.openmm.XmlSerializer.serialize(self.integrator))
         for window in range(self.lamdas):
             newfile = self.write_hydra_scripts(
                 window=window,
                 serializedSystem=self.serialized_sys,
-                serializedIntegrator=self.serialized_int,
             )
-        return self.serialized_sys, self.serialized_int
+        return self.serialized_sys
 
     def run_sampling(self):
         command: List[str] = []

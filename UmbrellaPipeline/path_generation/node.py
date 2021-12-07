@@ -6,7 +6,13 @@ from openmm import Vec3
 
 class Node:
     def __init__(
-        self, x=-1, y=-1, z=-1, distance_to_wall: float = 0, distance_walked: float = 0, parent=None
+        self,
+        x=0,
+        y=0,
+        z=0,
+        distance_to_wall: float = 0,
+        distance_walked: float = float("inf"),
+        parent=None,
     ) -> None:
         self.x = x
         self.y = y
@@ -20,7 +26,7 @@ class Node:
 
     def __repr__(self) -> str:
         return f"[{self.x},{self.y},{self.z}]"
-    
+
     def __eq__(self, o: object) -> bool:
         return self.get_coordinates() == o.get_coordinates()
 
@@ -42,73 +48,80 @@ class Node:
     @property
     def distance_to_wall(self):
         return self._distance_to_wall
-    
+
     @property
     def distance_walked(self):
         return self._distance_walked
 
     @x.setter
-    def x(self,value:float):
+    def x(self, value: float):
         try:
             self._x = float(value)
         except TypeError as err:
             raise err
 
     @y.setter
-    def y(self,value:float):
+    def y(self, value: float):
         try:
             self._y = float(value)
         except TypeError as err:
             raise err
 
     @z.setter
-    def z(self,value:float):
+    def z(self, value: float):
         try:
             self._z = float(value)
         except TypeError as err:
             raise err
 
     @distance_to_wall.setter
-    def distance_to_wall(self, value:float):
+    def distance_to_wall(self, value: float):
         self._distance_to_wall = 0 if value < 0 else value
-    
+
     @distance_walked.setter
-    def distance_walked(self, value:float):
+    def distance_walked(self, value: float):
         if value < 0:
             raise ValueError("Walked distance can not be negative!")
         else:
-            self._distance_walked = 0 if value < 0 else value
-        
+            self._distance_walked = value
+
 
 class TreeNode(Node):
     """
-    Used in context with Tree and TreeAStar
+    Used in context with Tree and TreeEscapeRoom
     """
 
     def __init__(
         self,
-        x: float = 0,
-        y: float = 0,
-        z: float = 0,
+        x=0,
+        y=0,
+        z=0,
         distance_to_wall: float = 0,
-        distance_walked: float = 0,
-        unit: u.Unit = u.nanometer,
+        distance_walked: float = float("inf"),
+        unit= u.nanometer,
         parent = None,
-    ):
-        super().__init__(x=x, y=y, z=z, distance_to_wall=distance_to_wall, distance_walked=distance_walked)
-        self.unit = unit
+    ) -> None:
+        super().__init__(
+            x=x,
+            y=y,
+            z=z,
+            distance_walked=distance_walked,
+            distance_to_wall=distance_to_wall,
+        )
         self.parent: TreeNode = parent
-    
+        self.unit = unit
+        
+
     @property
-    def unit(self):
+    def unit(self) -> u.Unit:
         return self._unit
-    
+
     @unit.setter
     def unit(self, value: u.Unit):
-        if not value.is_compatible(u.nanometer):
-            raise TypeError("The unit of tree node has to be a Length.")
-        else:
+        if value.is_compatible(u.nanometer):
             self._unit = value
+        else:
+            raise TypeError("The unit of tree node has to be a Length.")
 
     @classmethod
     def from_coords(
@@ -156,7 +169,7 @@ class TreeNode(Node):
 
 class GridNode(Node):
     """
-    Used in combination with Grid and GridAStar.
+    Used in combination with Grid and GridEscapeRoom.
     """
 
     def __init__(
@@ -168,7 +181,13 @@ class GridNode(Node):
         distance_walked: float = 0,
         parent=None,
     ):
-        super().__init__(x=x, y=y, z=z, distance_to_wall=distance_to_wall, distance_walked=distance_walked)
+        super().__init__(
+            x=x,
+            y=y,
+            z=z,
+            distance_to_wall=distance_to_wall,
+            distance_walked=distance_walked,
+        )
         self.parent: GridNode = parent
 
     @classmethod
@@ -184,17 +203,17 @@ class GridNode(Node):
     @property
     def x(self):
         return self._x
-    
+
     @property
     def y(self):
         return self._y
-    
+
     @property
     def z(self):
         return self._z
 
     @x.setter
-    def x(self, value:int):
+    def x(self, value: int):
         if value < 0:
             raise ValueError("GridNode coordinate has to be non-negative Integer!")
         try:
@@ -203,7 +222,7 @@ class GridNode(Node):
             raise TypeError("GridNode coordinate has to be non-negative Integer!")
 
     @z.setter
-    def z(self, value:int):
+    def z(self, value: int):
         if value < 0:
             raise ValueError("GridNode coordinate has to be non-negative Integer!")
         try:
@@ -212,13 +231,10 @@ class GridNode(Node):
             raise TypeError("GridNode coordinate has to be non-negative Integer!")
 
     @y.setter
-    def y(self, value:int):
+    def y(self, value: int):
         if value < 0:
             raise ValueError("GridNode coordinate has to be non-negative Integer!")
         try:
             self._y = int(value)
         except TypeError:
             raise TypeError("GridNode coordinate has to be non-negative Integer!")
-
-
-
