@@ -210,7 +210,7 @@ class SamplingHydra(UmbrellaSimulation):
     def run_sampling(self):
         command: List[str] = []
         out: List[str] = []
-        orgCoords = open(file=f"{self.traj_write_path}coordinates.dat", mode="w")
+        orgCoords = open(file=f"{self.traj_write_path}/coordinates.dat", mode="w")
         orgCoords.write("lamda, x0, y0, z0\n")
 
         for window in range(self.lamdas):

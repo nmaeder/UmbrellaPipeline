@@ -39,7 +39,6 @@ def main():
     parser.add_argument("-psf", type=str, required=True)
     parser.add_argument("-pdb", type=str, required=True)
     parser.add_argument("-sys", type=str, required=True)
-    parser.add_argument("-int", type=str, required=True)
     parser.add_argument("-to", type=str, required=True)
     parser.add_argument("-ne", type=int, required=True)
     parser.add_argument("-np", type=int, required=True)
@@ -99,7 +98,6 @@ def main():
         ttot += t
 
     fileHandle.close()
-    orgCoords.close()
 
 
 if __name__ == "__main__":
