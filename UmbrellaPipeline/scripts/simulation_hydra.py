@@ -77,12 +77,6 @@ def main():
     if not args.to.endswith("/"):
         args.to += "/"
 
-    orgCoords = open(f"{args.to}coordinates.dat", "w")
-    orgCoords.write("nwin, x0, y0, z0\n")
-
-    orgCoords.write(
-        f"{args.nw}, {simulation.context.getParameter('x0')}, {simulation.context.getParameter('y0')}, {simulation.context.getParameter('z0')}\n"
-    )
     simulation.context.setPositions(pdb.positions)
     simulation.context.setParameter("x0", args.x)
     simulation.context.setParameter("y0", args.y)

@@ -135,6 +135,9 @@ class SimulationProperties:
         if value < 0:
             raise ValueError("Output frequency cannot be negative!")
         try:
-            self._write_out_frequency = int(value)
+            if value == 0:
+                self._write_out_frequency = self.n_production_steps
+            else:
+                self._write_out_frequency = int(value)
         except:
             raise TypeError("Write out Frequency has to be an integer!")
