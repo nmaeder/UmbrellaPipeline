@@ -224,7 +224,6 @@ class Grid:
     ) -> bool:
         """
         Checks if a Node is within the grid.
-        NOT USED
         Args:
             node (Node, optional): Node type object. Defaults to None.
             coordinates (List[int], optional): grid cell coordinates. Defaults to None.

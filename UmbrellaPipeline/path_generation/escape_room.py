@@ -412,6 +412,16 @@ class TreeEscapeRoom(EscapeRoom3D):
         return self.shortest_path
 
     def is_child_good(self, child: TreeNode, open_list: List[TreeNode]) -> bool:
+        """
+        Checks if a there is already a node with the same coordinates but lower distance_walked in either open_list or shortest_path.
+
+        Args:
+            child (TreeNode): node that should be checked
+            open_list (List[TreeNode]): list of nodes to go through.
+
+        Returns:
+            bool: True if no child with same coordinates and lower distance_walked is in open_list and shortes_path
+        """
         if any(
             (
                 round(list_entry, 3) == round(child, 3)
