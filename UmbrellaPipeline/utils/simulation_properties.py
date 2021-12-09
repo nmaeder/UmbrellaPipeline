@@ -35,7 +35,7 @@ class SimulationProperties:
         self.n_equilibration_steps = n_equilibration_steps
         self.n_production_steps = n_production_steps
         self.write_out_frequency = write_out_frequency
-        self.number_of_runs = (n_production_steps, write_out_frequency)
+        self.number_of_rounds = (n_production_steps, write_out_frequency)
 
     # Getters
     @property
