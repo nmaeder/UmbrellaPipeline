@@ -41,7 +41,6 @@ def main():
     parser.add_argument("-sys", type=str, required=True)
     parser.add_argument("-to", type=str, required=True)
     parser.add_argument("-ne", type=int, required=True)
-    parser.add_argument("-np", type=int, required=True)
     parser.add_argument("-nw", type=int, required=True)
     parser.add_argument("-x", type=float, required=True)
     parser.add_argument("-y", type=float, required=True)
@@ -50,6 +49,7 @@ def main():
     parser.add_argument("-t", type=float, required=True)
     parser.add_argument("-fric", type=float, required=True)
     parser.add_argument("-dt", type=float, required=True)
+    parser.add_argument("-nf", type=int, required=True)
 
     args, unkn = parser.parse_known_args()
     pdb = app.PDBFile(args.pdb)
@@ -84,8 +84,7 @@ def main():
     dcdFile = app.DCDFile(fileHandle, simulation.topology, dt=args.dt)
 
     ttot = 0
-    totruns = int(args.np / args.io)
-    for i in range(totruns):
+    for i in range(args.nf):
         st = time.time()
         simulation.step(args.io)
         dcdFile.writeModel(

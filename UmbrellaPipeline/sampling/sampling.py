@@ -112,11 +112,7 @@ class UmbrellaSimulation:
                 topology=self.simulation.topology,
                 dt=self.simulation_properties.time_step,
             )
-            num = (
-                self.simulation_properties.n_production_steps
-                / self.simulation_properties.write_out_frequency
-            )
-            for i in tqdm(range(int(num))):
+            for i in tqdm(range(self.simulation_properties.number_of_frames)):
                 self.simulation.step(self.simulation_properties.write_out_frequency)
                 dcdFile.writeModel(
                     self.simulation.context.getState(getPositions=True).getPositions()
@@ -197,8 +193,8 @@ class SamplingHydra(UmbrellaSimulation):
 
         command += (
             f" -psf {self.system_info.psf_file} -pdb {self.system_info.pdb_file} -sys {serializedSystem}"
-            f" {pos} -to {self.traj_write_path}"
-            f" -ne {self.simulation_properties.n_equilibration_steps} -np {self.simulation_properties.n_production_steps} -nw {window} -io {self.simulation_properties.write_out_frequency}"
+            f" {pos} -to {self.traj_write_path} -nf {self.simulation_properties.number_of_frames}"
+            f" -ne {self.simulation_properties.n_equilibration_steps} -nw {window} -io {self.simulation_properties.write_out_frequency}"
         )
 
         with open(f"{self.hydra_working_dir}/run_umbrella_{window}.sh", "w") as f:
