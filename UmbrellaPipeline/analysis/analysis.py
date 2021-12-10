@@ -1,12 +1,14 @@
+from UmbrellaPipeline.path_generation.path_helper import get_center_of_mass_coordinates
 from UmbrellaPipeline.utils import (
     SimulationProperties,
     SimulationSystem,
 )
-from UmbrellaPipeline.path_generation import get_centroid_coordinates
+from UmbrellaPipeline.path_generation import get_center_of_mass_coordinates
 from typing import List
 import math
 import numpy as np
 import openmm.unit as unit
+import openmm as mm
 import mdtraj
 import torch
 from FastMBAR import FastMBAR
@@ -28,13 +30,10 @@ class PMFCalculator:
         self.number_of_bins = number_of_bins
         self.path = path
         self.trajectory_directory = trajectory_directory
-        self.coordinates: np.zeros(
-            shape=(
-                len(self.path),
-                self.simulation_properties.number_of_rounds,
-            ),
-            dtype=unit.Quantity,
-        )
+        self.coordinates = [
+            [[] for i in range(len(self.path))]
+            for i in range(self.simulation_properties.number_of_rounds)
+        ]
         self.center_pmf: List[float]
         self.pmf: List[float]
         self.distance: List[unit.Quantity] = []
@@ -45,10 +44,14 @@ class PMFCalculator:
             trajectory = mdtraj.load_dcd(
                 f"{self.trajectory_directory}/traj_{i}.dcd", self.system_info.pdb_file
             )
-            for frame in range(self.simulation_properties.number_of_rounds):
-                self.coordinates[i][frame] = get_centroid_coordinates(
-                    trajectory[frame],
-                    self.system_info.ligand_indices,
+            for frame in range(trajectory.n_frames):
+                self.coordinates[i][frame] = (
+                    get_center_of_mass_coordinates(
+                        positions=trajectory.xyz[frame],
+                        indices=self.system_info.ligand_indices,
+                        masses=self.system_info.psf_object.system,
+                    )
+                    / unit.nanometer
                 )
                 self.distance.append(
                     math.sqrt(
@@ -72,9 +75,18 @@ class PMFCalculator:
         ).value_in_unit(unit.kilocalorie_per_mole)
         num_conf = []
         for window in range(len(self.path)):
-            dx = abs(self.coordinates[0:-1][0] - self.path[window].x)
-            dy = abs(self.coordinates[0:-1][1] - self.path[window].y)
-            dz = abs(self.coordinates[0:-1][2] - self.path[window].z)
+            dx = abs(
+                self.coordinates[0:-1][0].value_in_unit(unit.nanometer)
+                - self.path[window].x
+            )
+            dy = abs(
+                self.coordinates[0:-1][1].value_in_unit(unit.nanometer)
+                - self.path[window].y
+            )
+            dz = abs(
+                self.coordinates[0:-1][2].value_in_unit(unit.nanometer)
+                - self.path[window].z
+            )
             A[window, :] = (
                 0.5
                 * self.simulation_properties.force_constant
@@ -85,7 +97,7 @@ class PMFCalculator:
         wham = FastMBAR(
             energy=A, num_conf=num_conf, cuda=torch.cuda.is_available(), verbose=True
         )
-        width = self.path_interval
+        width = self.path_interval.value_in_unit(unit.nanometer)
         center_pmf = np.linspace(
             0, len(self.path) * width, self.number_of_bins, endpoint=False
         )

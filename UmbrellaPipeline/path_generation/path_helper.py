@@ -80,12 +80,22 @@ def get_centroid_coordinates(
     Returns:
         unit.Quantity: Centroid coordinates of the specified atoms
     """
-    ret = [0 * positions.unit, 0 * positions.unit, 0 * positions.unit]
-    for coordinate in range(3):
-        for i in indices:
-            ret[coordinate] += positions[i][coordinate]
-        ret[coordinate] /= len(indices) * positions.unit
-    return unit.Quantity(value=Vec3(x=ret[0], y=ret[1], z=ret[2]), unit=positions.unit)
+    try:
+        ret = [0 * positions.unit, 0 * positions.unit, 0 * positions.unit]
+        for coordinate in range(3):
+            for i in indices:
+                ret[coordinate] += positions[i][coordinate]
+            ret[coordinate] /= len(indices) * positions.unit
+        return unit.Quantity(
+            value=Vec3(x=ret[0], y=ret[1], z=ret[2]), unit=positions.unit
+        )
+    except AttributeError:
+        ret = [0, 0, 0]
+        for coordinates in range(3):
+            for i in indices:
+                ret[coordinates] += positions[i][coordinates]
+            ret[coordinates] /= len(indices)
+        return ret
 
 
 def get_center_of_mass_coordinates(
@@ -105,21 +115,40 @@ def get_center_of_mass_coordinates(
     Returns:
         unit.Quantity: center of mass coordinates of the specified atoms
     """
-    ret = [0 * unit.dalton, 0 * unit.dalton, 0 * unit.dalton]
-    mass = 0 * unit.dalton
-    for coordinate in range(3):
-        for atomnr in indices:
-            if (
-                not include_hydrogens
-                and masses.getParticleMass(atomnr) < 1.2 * unit.dalton
-            ):
-                continue
-            ret[coordinate] += positions[atomnr][coordinate].value_in_unit(
-                positions.unit
-            ) * masses.getParticleMass(atomnr)
-            mass += masses.getParticleMass(atomnr)
-        ret[coordinate] /= mass
-    return unit.Quantity(value=Vec3(x=ret[0], y=ret[1], z=ret[2]), unit=positions.unit)
+    try:
+        ret = [0 * unit.dalton, 0 * unit.dalton, 0 * unit.dalton]
+        mass = 0 * unit.dalton
+        for coordinate in range(3):
+            for atomnr in indices:
+                if (
+                    not include_hydrogens
+                    and masses.getParticleMass(atomnr) < 1.2 * unit.dalton
+                ):
+                    continue
+                ret[coordinate] += positions[atomnr][coordinate].value_in_unit(
+                    positions.unit
+                ) * masses.getParticleMass(atomnr)
+                mass += masses.getParticleMass(atomnr)
+            ret[coordinate] /= mass
+        return unit.Quantity(
+            value=Vec3(x=ret[0], y=ret[1], z=ret[2]), unit=positions.unit
+        )
+    except AttributeError:
+        ret = [0 * unit.angstroms, 0 * unit.angstroms, 0 * unit.angstroms]
+        for coordinate in range(len(ret)):
+            c = 0.0
+            m = 0.0
+            for atomnr in indices[0:2]:
+                c += (
+                    positions[int(atomnr)][int(coordinate)]
+                    * masses.getParticleMass(atomnr)
+                    / unit.dalton
+                )
+                m += masses.getParticleMass(atomnr) / unit.dalton
+            ret[coordinate] = c / m
+        return unit.Quantity(
+            value=Vec3(x=ret[0], y=ret[1], z=ret[2]), unit=unit.nanometer
+        )
 
 
 def parse_params(
