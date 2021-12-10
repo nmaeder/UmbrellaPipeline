@@ -42,11 +42,12 @@ class PMFCalculator:
 
     def parse_trajectories(self):
         for i in range(len(self.path)):
-            trajectory = mdtraj.load_dcd(f"{self.trajectory_directory}/traj_{i}_.dcd")
+            trajectory = mdtraj.load_dcd(
+                f"{self.trajectory_directory}/traj_{i}.dcd", self.system_info.pdb_file
+            )
             for frame in range(self.simulation_properties.number_of_rounds):
                 self.coordinates[i][frame] = get_centroid_coordinates(
                     trajectory[frame],
-                    self.system_info.psf_object.atom_list,
                     self.system_info.ligand_indices,
                 )
                 self.distance.append(
