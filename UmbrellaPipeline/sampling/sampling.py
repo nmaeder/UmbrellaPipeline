@@ -37,7 +37,6 @@ class UmbrellaSimulation:
         self.lamdas = len(path)
         self.path = path
         self.openmm_system = openmm_system
-        self.traj_write_path = traj_write_path
         self.simulation: app.Simulation
         self.integrator: mm.openmm.Integrator
 
@@ -47,6 +46,14 @@ class UmbrellaSimulation:
         else:
             self.platform = mm.Platform.getPlatformByName("CPU")
             self.platformProperties = None
+
+        self.traj_write_path = traj_write_path
+
+        if not traj_write_path:
+            self.traj_write_path = os.getcwd()
+
+        if self.traj_write_path.endswith("/"):
+            self.traj_write_path.rstrip("/")
 
     def prepare_simulations(self) -> None:
         """
@@ -155,6 +162,8 @@ class SamplingHydra(UmbrellaSimulation):
             traj_write_path=traj_write_path,
         )
         self.hydra_working_dir = hydra_working_dir if hydra_working_dir else os.getcwd()
+        if self.hydra_working_dir.endswith("/"):
+            self.hydra_working_dir.rstrip("/")
         self.mail = mail
         self.log = log_prefix.rstrip(".log")
         self.gpu = gpu

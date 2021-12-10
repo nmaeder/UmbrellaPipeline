@@ -73,9 +73,6 @@ def main():
         platformProperties=properties,
     )
 
-    if not args.to.endswith("/"):
-        args.to += "/"
-
     simulation.context.setPositions(pdb.positions)
     simulation.context.setParameter("x0", args.x)
     simulation.context.setParameter("y0", args.y)
@@ -83,7 +80,7 @@ def main():
     simulation.minimizeEnergy()
     simulation.context.setVelocitiesToTemperature(integrator.getTemperature())
     simulation.step(args.ne)
-    fileHandle = open(f"{args.to}traj_{args.nw}.dcd", "bw")
+    fileHandle = open(f"{args.to}/traj_{args.nw}.dcd", "bw")
     dcdFile = app.DCDFile(fileHandle, simulation.topology, dt=args.dt)
 
     ttot = 0
