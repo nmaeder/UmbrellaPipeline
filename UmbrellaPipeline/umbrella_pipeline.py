@@ -76,7 +76,7 @@ class UmbrellaPipeline:
                 name=self.system_info.ligand_name,
             )
             escape_room = GridEscapeRoom(grid=grid, start=start)
-            p = escape_room.escape_room(distance=distance_to_protein)
+            escape_room.escape_room(distance=distance_to_protein)
             self.path = escape_room.get_path_for_sampling(path_interval)
 
         return self.path
@@ -98,6 +98,12 @@ class UmbrellaPipeline:
             constraints=constraints,
             rigidWater=rigid_water,
         )
+        if self.simulation_parameters.pressure:
+            barostat = mm.openmm.MonteCarloBarostat(
+                self.simulation_parameters.pressure,
+                self.simulation_parameters.temperature,
+            )
+            self.openmm_system.addForce(barostat)
 
     def run_simulations_cluster(
         self,

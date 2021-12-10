@@ -32,12 +32,11 @@ class UmbrellaSimulation:
         openmm_system: mm.openmm.System = None,
         traj_write_path: str = None,
     ) -> None:
-        self.sim_props = properties
-        self.sys_info = info
+        self.simulation_properties = properties
+        self.system_info = info
         self.lamdas = len(path)
         self.path = path
         self.openmm_system = openmm_system
-        self.traj_write_path = traj_write_path
         self.simulation: app.Simulation
         self.integrator: mm.openmm.Integrator
 
@@ -47,6 +46,14 @@ class UmbrellaSimulation:
         else:
             self.platform = mm.Platform.getPlatformByName("CPU")
             self.platformProperties = None
+
+        self.traj_write_path = traj_write_path
+
+        if not traj_write_path:
+            self.traj_write_path = os.getcwd()
+
+        if self.traj_write_path.endswith("/"):
+            self.traj_write_path.rstrip("/")
 
     def prepare_simulations(self) -> None:
         """
@@ -58,9 +65,9 @@ class UmbrellaSimulation:
         """
         add_harmonic_restraint(
             system=self.openmm_system,
-            atom_group=self.sys_info.ligand_indices,
+            atom_group=self.system_info.ligand_indices,
             values=[
-                self.sim_props.force_constant,
+                self.simulation_properties.force_constant,
                 self.path[0].x,
                 self.path[0].y,
                 self.path[0].z,
@@ -68,13 +75,13 @@ class UmbrellaSimulation:
         )
 
         self.integrator = openmmtools.integrators.LangevinIntegrator(
-            temperature=self.sim_props.temperature,
-            collision_rate=self.sim_props.friction_coefficient,
-            timestep=self.sim_props.time_step,
+            temperature=self.simulation_properties.temperature,
+            collision_rate=self.simulation_properties.friction_coefficient,
+            timestep=self.simulation_properties.time_step,
         )
 
         self.simulation = app.Simulation(
-            topology=self.sys_info.psf_object.topology,
+            topology=self.system_info.psf_object.topology,
             system=self.openmm_system,
             integrator=self.integrator,
             platform=self.platform,
@@ -85,10 +92,10 @@ class UmbrellaSimulation:
         """
         runs the actual umbrella sampling.
         """
-        orgCoords = open(file=f"{self.traj_write_path}coordinates.dat", mode="w")
+        orgCoords = open(file=f"{self.traj_write_path}/coordinates.dat", mode="w")
         orgCoords.write("lamda, x0, y0, z0\n")
 
-        self.simulation.context.setPositions(self.sys_info.pdb_object.positions)
+        self.simulation.context.setPositions(self.system_info.pdb_object.positions)
 
         for window in range(self.lamdas):
             orgCoords.write(
@@ -96,19 +103,21 @@ class UmbrellaSimulation:
             )
             self.simulation.minimizeEnergy()
             self.simulation.context.setVelocitiesToTemperature(
-                self.sim_props.temperature
+                self.simulation_properties.temperature
             )
-            self.simulation.step(self.sim_props.n_equilibration_steps)
-            fileHandle = open(f"{self.traj_write_path}traj_{window}.dcd", "bw")
+            self.simulation.step(self.simulation_properties.n_equilibration_steps)
+            fileHandle = open(f"{self.traj_write_path}/traj_{window}.dcd", "bw")
             dcdFile = app.dcdfile.DCDFile(
                 file=fileHandle,
                 topology=self.simulation.topology,
-                dt=self.sim_props.time_step,
+                dt=self.simulation_properties.time_step,
             )
-            for i in range(self.sim_props.number_of_rounds):
-                self.simulation.step(
-                    self.sim_props.n_production_steps / self.sim_props.number_of_rounds
-                )
+            num = (
+                self.simulation_properties.n_production_steps
+                / self.simulation_properties.write_out_frequency
+            )
+            for i in tqdm(range(int(num))):
+                self.simulation.step(self.simulation_properties.write_out_frequency)
                 dcdFile.writeModel(
                     self.simulation.context.getState(getPositions=True).getPositions()
                 )
@@ -116,15 +125,15 @@ class UmbrellaSimulation:
             try:
                 self.simulation.context.setParameter(
                     "x0",
-                    self.path[window + 1].x.in_units_of(self.pdb_object.positions.unit),
+                    self.path[window + 1].x,
                 )
                 self.simulation.context.setParameter(
                     "y0",
-                    self.path[window + 1].y.in_units_of(self.pdb_object.positions.unit),
+                    self.path[window + 1].y,
                 )
                 self.simulation.context.setParameter(
                     "z0",
-                    self.path[window + 1].z.in_units_of(self.pdb_object.positions.unit),
+                    self.path[window + 1].z,
                 )
             except IndexError:
                 pass
@@ -153,6 +162,8 @@ class SamplingHydra(UmbrellaSimulation):
             traj_write_path=traj_write_path,
         )
         self.hydra_working_dir = hydra_working_dir if hydra_working_dir else os.getcwd()
+        if self.hydra_working_dir.endswith("/"):
+            self.hydra_working_dir.rstrip("/")
         self.mail = mail
         self.log = log_prefix.rstrip(".log")
         self.gpu = gpu
@@ -176,20 +187,18 @@ class SamplingHydra(UmbrellaSimulation):
         command += f"conda activate {self.conda_environment}\n"
         command += f"python {os.path.abspath(os.path.dirname(__file__)+'/../scripts/simulation_hydra.py')} "
         pos = (
-            f"-x {self.path[window][0].value_in_unit(self.sys_info.pdb_object.positions.unit)} "
-            f"-y {self.path[window][1].value_in_unit(self.sys_info.pdb_object.positions.unit)} "
-            f"-z {self.path[window][2].value_in_unit(self.sys_info.pdb_object.positions.unit)}"
+            f"-x {self.path[window][0].value_in_unit(self.system_info.pdb_object.positions.unit)} "
+            f"-y {self.path[window][1].value_in_unit(self.system_info.pdb_object.positions.unit)} "
+            f"-z {self.path[window][2].value_in_unit(self.system_info.pdb_object.positions.unit)}"
         )
-        command += f" -t {self.sim_props.temperature.value_in_unit(unit=unit.kelvin)}"
-        command += (
-            f" -dt {self.sim_props.time_step.value_in_unit(unit=unit.femtosecond)}"
-        )
-        command += f" -fric {self.sim_props.friction_coefficient.value_in_unit(unit=unit.picosecond**-1)}"
+        command += f" -t {self.simulation_properties.temperature.value_in_unit(unit=unit.kelvin)}"
+        command += f" -dt {self.simulation_properties.time_step.value_in_unit(unit=unit.femtosecond)}"
+        command += f" -fric {self.simulation_properties.friction_coefficient.value_in_unit(unit=unit.picosecond**-1)}"
 
         command += (
-            f" -psf {self.sys_info.psf_file} -pdb {self.sys_info.pdb_file} -sys {serializedSystem}"
+            f" -psf {self.system_info.psf_file} -pdb {self.system_info.pdb_file} -sys {serializedSystem}"
             f" {pos} -to {self.traj_write_path}"
-            f" -ne {self.sim_props.n_equilibration_steps} -np {self.sim_props.n_production_steps} -nw {window} -io {self.sim_props.write_out_frequency}"
+            f" -ne {self.simulation_properties.n_equilibration_steps} -np {self.simulation_properties.n_production_steps} -nw {window} -io {self.simulation_properties.write_out_frequency}"
         )
 
         with open(f"{self.hydra_working_dir}/run_umbrella_{window}.sh", "w") as f:
@@ -210,7 +219,13 @@ class SamplingHydra(UmbrellaSimulation):
     def run_sampling(self):
         command: List[str] = []
         out: List[str] = []
+        orgCoords = open(file=f"{self.traj_write_path}/coordinates.dat", mode="w")
+        orgCoords.write("lamda, x0, y0, z0\n")
+
         for window in range(self.lamdas):
+            orgCoords.write(
+                f"{window},{self.path[window][0]},{self.path[window][0]},{self.path[window][0]}\n"
+            )
             command.append(f"qsub {self.hydra_working_dir}/run_umbrella_{window}.sh")
         try:
             out = execute_bash_parallel(command=command)
