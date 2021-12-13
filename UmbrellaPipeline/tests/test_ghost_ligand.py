@@ -93,6 +93,5 @@ def test_ghosting():
                 # update parameter change that was done in system, su that context knows about it
                 # and the changes can be used by the siulation object
                 force.updateParametersInContext(context)
-                sim.simulation.step(10)
-
-        print(force)
+                # now we make simulation steps
+                # sim.simulation.step(10) # commented out because particle positions have not been set
