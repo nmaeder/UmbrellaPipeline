@@ -32,8 +32,10 @@ def create_system() -> mm.openmm.System:
     return p.createSystem(params=par)
 
 
-def scale(value: unit.Quantity, lamb: float):
-    return (1 - lamb) * value + lamb * value
+def scale(initial_value: unit.Quantity, final_value: unit.Quantity, lamb: float):
+    # linearly scale between intial_value and final_value; lamb=1 is the initial_value; lamb=0 is the final_value 
+    assert 1. <= lamb and lamb >= 0. 
+    return (1 - lamb) * final_value + lamb * initial_value
 
 
 def test_ghosting():
@@ -88,7 +90,7 @@ def test_ghosting():
                 print(lamb)
                 for idx, atom_idx in enumerate(ligand_idx):
                     charge, sigma, epsilon = ligand_nonbonded_parameters[idx]
-                    charge_, sigma_, epsilon_ = scale(charge, lamb), sigma, epsilon
+                    charge_, sigma_, epsilon_ = scale(charge, 0,  lamb), sigma, epsilon
                     force.setParticleParameters(idx, charge_, sigma_, epsilon_)
                 # update parameter change that was done in system, su that context knows about it
                 # and the changes can be used by the siulation object
