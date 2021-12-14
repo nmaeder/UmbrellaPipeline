@@ -10,13 +10,13 @@ from UmbrellaPipeline.sampling import (
 from UmbrellaPipeline.utils import (
     SimulationProperties,
     SimulationSystem,
+    gen_pbc_box,
 )
 from UmbrellaPipeline.path_generation import (
     GridEscapeRoom,
     TreeEscapeRoom,
     Tree,
     Grid,
-    gen_pbc_box,
 )
 
 

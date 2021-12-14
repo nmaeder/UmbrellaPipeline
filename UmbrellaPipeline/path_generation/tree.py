@@ -5,7 +5,7 @@ import openmm.unit as u
 from openmm import Vec3
 from scipy.spatial import KDTree
 
-from UmbrellaPipeline.path_generation import (
+from UmbrellaPipeline.utils import (
     get_residue_indices,
     get_centroid_coordinates,
 )

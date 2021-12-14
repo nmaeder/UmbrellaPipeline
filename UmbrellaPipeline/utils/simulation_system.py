@@ -3,7 +3,7 @@ import openmm.app as app
 import os
 from typing import Tuple, List
 
-from UmbrellaPipeline.path_generation.path_helper import (
+from UmbrellaPipeline.utils import (
     parse_params,
     get_residue_indices,
 )

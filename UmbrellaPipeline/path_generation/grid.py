@@ -7,7 +7,7 @@ import openmm.unit as unit
 import gemmi
 import numpy as np
 
-from UmbrellaPipeline.path_generation import (
+from UmbrellaPipeline.utils import (
     gen_pbc_box,
     get_residue_indices,
     get_centroid_coordinates,

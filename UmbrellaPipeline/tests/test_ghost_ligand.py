@@ -3,15 +3,14 @@ import numpy as np
 import openmm as mm
 import openmm.app as app
 
-from UmbrellaPipeline.path_generation import (
-    Tree,
-    parse_params,
-)
-from UmbrellaPipeline.sampling import SamplingHydra
 from UmbrellaPipeline.utils import (
+    parse_params,
     SimulationProperties,
     SimulationSystem,
 )
+from UmbrellaPipeline.path_generation import Tree
+from UmbrellaPipeline.sampling import SamplingHydra
+
 
 psf = "UmbrellaPipeline/data/step5_input.psf"
 pdb = "UmbrellaPipeline/data/step5_input.pdb"

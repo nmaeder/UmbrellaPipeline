@@ -2,7 +2,7 @@ import openmm.app as app
 import openmm.unit as unit
 
 from UmbrellaPipeline.sampling import add_harmonic_restraint
-from UmbrellaPipeline.path_generation import (
+from UmbrellaPipeline.utils import (
     gen_pbc_box,
     parse_params,
     get_residue_indices,

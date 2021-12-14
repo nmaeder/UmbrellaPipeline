@@ -6,13 +6,6 @@ from .node import (
     TreeNode,
     GridNode,
 )
-from .path_helper import (
-    gen_pbc_box,
-    get_residue_indices,
-    parse_params,
-    get_center_of_mass_coordinates,
-    get_centroid_coordinates,
-)
 from .tree import (
     Tree,
 )
