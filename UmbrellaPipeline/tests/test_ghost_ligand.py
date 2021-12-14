@@ -101,3 +101,12 @@ def test_ghosting():
                 force.updateParametersInContext(context)
                 # now we make simulation steps
                 # sim.simulation.step(10) # commented out because particle positions have not been set
+    output = [
+        "run_umbrella_0.sh",
+        "run_umbrella_1.sh",
+        "serialized_sys.xml",
+    ]
+    for i in output:
+        p = os.path.abspath(os.path.dirname(__file__) + "/" + i)
+        assert os.path.exists(p)
+        os.remove(p)
