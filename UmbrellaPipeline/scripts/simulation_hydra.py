@@ -1,10 +1,9 @@
 import argparse
-from numpy import mod
 import openmm as mm
 import openmm.app as app
-import time
 import openmm.unit as unit
-from typing import List
+import time
+
 
 """
 Worker script for the sampling.py script. Highly specific, not encouraged to use on its own.

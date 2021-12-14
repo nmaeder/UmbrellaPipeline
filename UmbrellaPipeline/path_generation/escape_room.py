@@ -1,14 +1,16 @@
 import copy
-import math
 from typing import List
-
 import gemmi
 import numpy as np
 import openmm.unit as unit
 from openmm import Vec3
-from UmbrellaPipeline.path_generation.grid import Grid
-from UmbrellaPipeline.path_generation.node import GridNode, Node, TreeNode
-from UmbrellaPipeline.path_generation.tree import Tree
+
+from UmbrellaPipeline.path_generation import (
+    GridNode,
+    TreeNode,
+    Grid,
+    Tree,
+)
 
 
 class EscapeRoom3D:

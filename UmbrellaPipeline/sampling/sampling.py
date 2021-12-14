@@ -1,26 +1,18 @@
 import torch
 import os
-
 import openmm.unit as unit
 import openmm as mm
 import openmm.app as app
-from tqdm import tqdm
-from typing import (
-    List,
-    Tuple,
-)
-from UmbrellaPipeline.sampling.sampling_helper import add_harmonic_restraint
-from UmbrellaPipeline.path_generation.node import Node
 import openmmtools
+from tqdm import tqdm
+from typing import List
+
+from UmbrellaPipeline.sampling import add_harmonic_restraint
 from UmbrellaPipeline.utils import (
-    execute_bash,
     execute_bash_parallel,
+    SimulationProperties,
+    SimulationSystem,
 )
-from UmbrellaPipeline.path_generation.path_helper import (
-    get_residue_indices,
-)
-from UmbrellaPipeline.utils import SimulationProperties
-from UmbrellaPipeline.utils import SimulationSystem
 
 
 class UmbrellaSimulation:

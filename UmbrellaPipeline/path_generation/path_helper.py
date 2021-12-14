@@ -1,6 +1,5 @@
 import os
 from typing import List
-
 import openmm as mm
 import openmm.app as app
 import openmm.unit as unit

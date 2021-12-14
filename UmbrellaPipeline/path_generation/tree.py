@@ -1,15 +1,15 @@
 import math
 from typing import List
-
 import openmm.app as app
 import openmm.unit as u
 from openmm import Vec3
 from scipy.spatial import KDTree
-from UmbrellaPipeline.path_generation.path_helper import (
+
+from UmbrellaPipeline.path_generation import (
     get_residue_indices,
     get_centroid_coordinates,
 )
-from UmbrellaPipeline.path_generation.node import TreeNode
+from UmbrellaPipeline.path_generation import TreeNode
 
 
 class Tree:

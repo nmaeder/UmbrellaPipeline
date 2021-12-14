@@ -1,8 +1,8 @@
 import os
-
 import numpy as np
 import openmm.app as app
 import openmm.unit as unit
+
 from UmbrellaPipeline.path_generation import Grid, GridNode
 
 pdb = "UmbrellaPipeline/data/step5_input.pdb"

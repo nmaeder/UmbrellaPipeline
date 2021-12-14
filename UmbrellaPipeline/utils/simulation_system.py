@@ -1,14 +1,12 @@
 from copy import Error
-import openmm.unit as u
 import openmm.app as app
-import openmm as mm
-import os, logging
+import os
+from typing import Tuple, List
 
 from UmbrellaPipeline.path_generation.path_helper import (
     parse_params,
     get_residue_indices,
 )
-from typing import Tuple, List
 
 
 class SimulationSystem:

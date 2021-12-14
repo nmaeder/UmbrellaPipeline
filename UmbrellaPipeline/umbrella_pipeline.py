@@ -1,4 +1,7 @@
 from typing import List
+import openmm as mm
+import openmm.app as app
+import openmm.unit as unit
 
 from UmbrellaPipeline.sampling import (
     SamplingHydra,
@@ -13,13 +16,8 @@ from UmbrellaPipeline.path_generation import (
     TreeEscapeRoom,
     Tree,
     Grid,
-    parse_params,
     gen_pbc_box,
 )
-
-import openmm as mm
-import openmm.app as app
-import openmm.unit as unit
 
 
 class UmbrellaPipeline:

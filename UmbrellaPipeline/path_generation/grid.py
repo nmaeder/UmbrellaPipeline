@@ -1,18 +1,18 @@
 import math
 from itertools import product
-from typing import List, ValuesView
+from typing import List
 from openmm import Vec3
-
-import gemmi
-import numpy as np
 import openmm.app as app
 import openmm.unit as unit
-from UmbrellaPipeline.path_generation.path_helper import (
+import gemmi
+import numpy as np
+
+from UmbrellaPipeline.path_generation import (
     gen_pbc_box,
     get_residue_indices,
     get_centroid_coordinates,
 )
-from UmbrellaPipeline.path_generation.node import GridNode
+from UmbrellaPipeline.path_generation import GridNode
 
 
 class Grid:

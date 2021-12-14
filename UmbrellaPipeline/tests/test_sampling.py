@@ -1,18 +1,17 @@
 import os
-from UmbrellaPipeline.sampling import (
-    UmbrellaSimulation,
-    SamplingHydra,
-    SamplingLSF,
-)
+import openmm.app as app
+import openmm as mm
+
 from UmbrellaPipeline.path_generation import (
     Tree,
     parse_params,
 )
-import openmm.app as app
-import openmm as mm
+from UmbrellaPipeline.utils import (
+    SimulationProperties,
+    SimulationSystem,
+)
+from UmbrellaPipeline.sampling import SamplingHydra
 
-from UmbrellaPipeline.utils.simulation_properties import SimulationProperties
-from UmbrellaPipeline.utils.simulation_system import SimulationSystem
 
 psf = "UmbrellaPipeline/data/step5_input.psf"
 pdb = "UmbrellaPipeline/data/step5_input.pdb"

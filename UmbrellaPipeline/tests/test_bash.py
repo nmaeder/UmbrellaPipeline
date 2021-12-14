@@ -1,9 +1,10 @@
+import time, os, sys
+import pytest
+
 from UmbrellaPipeline.utils import (
     execute_bash,
     execute_bash_parallel,
 )
-import time, os, sys
-import pytest
 
 
 @pytest.mark.skipif("win" in sys.platform, reason="Bash not supported on Windows.")

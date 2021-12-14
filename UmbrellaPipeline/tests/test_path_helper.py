@@ -1,6 +1,7 @@
 import openmm.unit as unit
-import os
+import openmm.app as app
 from openmm import Vec3
+
 from UmbrellaPipeline.path_generation import (
     gen_pbc_box,
     get_residue_indices,
@@ -8,7 +9,6 @@ from UmbrellaPipeline.path_generation import (
     get_centroid_coordinates,
     parse_params,
 )
-import openmm.app as app
 
 pdb = "UmbrellaPipeline/data/step5_input.pdb"
 psf = "UmbrellaPipeline/data/step5_input.psf"
