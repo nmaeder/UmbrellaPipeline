@@ -1,4 +1,3 @@
-import torch
 import os
 import openmm.unit as unit
 import openmm as mm
@@ -16,14 +15,26 @@ from UmbrellaPipeline.utils import (
 
 
 class UmbrellaSimulation:
+    """
+    holds all necessary information for your simulation on your local computer.
+    """
+
     def __init__(
         self,
         properties: SimulationProperties,
         info: SimulationSystem,
         path: List[unit.Quantity],
-        openmm_system: mm.openmm.System = None,
+        openmm_system: mm.openmm.System,
         traj_write_path: str = None,
     ) -> None:
+        """
+        Args:
+            properties (SimulationProperties): simulation properties object, holding temp, pressure, etc
+            info (SimulationSystem): simulation system object holding psf, pdb objects etc.
+            path (List[unit.Quantity]): path for the ligand to walk trough.
+            openmm_system (mm.openmm.System): openmm System object. Defaults to None.
+            traj_write_path (str, optional): output directory where the trajectories are written to. Defaults to None.
+        """
         self.simulation_properties = properties
         self.system_info = info
         self.lamdas = len(path)
@@ -32,18 +43,15 @@ class UmbrellaSimulation:
         self.simulation: app.Simulation
         self.integrator: mm.openmm.Integrator
 
-        if torch.cuda.is_available():
-            self.platform = mm.Platform.getPlatformByName("CUDA")
+        self.platform = openmmtools.utils.get_fastest_platform()
+        if self.platform.getName() == ("CUDA" or "OpenCL"):
             self.platformProperties = {"Precision": "mixed"}
         else:
-            self.platform = mm.Platform.getPlatformByName("CPU")
             self.platformProperties = None
 
         self.traj_write_path = traj_write_path
-
         if not traj_write_path:
             self.traj_write_path = os.getcwd()
-
         if self.traj_write_path.endswith("/"):
             self.traj_write_path.rstrip("/")
 
@@ -80,9 +88,21 @@ class UmbrellaSimulation:
             platformProperties=self.platformProperties,
         )
 
+    def update_restraint(self, window: int) -> None:
+        """Updates the constraint coordinates of the simulation
+
+        Args:
+            window (int): path window.
+        """
+        for a, b in zip(
+            ["x0", "y0", "z0"],
+            [self.path[window + 1].x, self.path[window + 1].y, self.path[window + 1].z],
+        ):
+            self.simulation.context.setParameter(a, b)
+
     def run_sampling(self):
         """
-        runs the actual umbrella sampling.
+        Runs the actual umbrella sampling on your local machine.
         """
         orgCoords = open(file=f"{self.traj_write_path}/coordinates.dat", mode="w")
         orgCoords.write("lamda, x0, y0, z0\n")
@@ -111,24 +131,17 @@ class UmbrellaSimulation:
                 )
             fileHandle.close()
             try:
-                self.simulation.context.setParameter(
-                    "x0",
-                    self.path[window + 1].x,
-                )
-                self.simulation.context.setParameter(
-                    "y0",
-                    self.path[window + 1].y,
-                )
-                self.simulation.context.setParameter(
-                    "z0",
-                    self.path[window + 1].z,
-                )
+                self.update_restraint(window=window)
             except IndexError:
                 pass
         orgCoords.close()
 
 
 class SamplingHydra(UmbrellaSimulation):
+    """
+    This class holds all information for running your umbrella simulation on the hydra cluster. it works entirely differnt than the UmbrellaSimulation class.
+    It first writes bash scirpts which it then submits to the submission system.
+    """
     def __init__(
         self,
         properties: SimulationProperties,
@@ -193,10 +206,14 @@ class SamplingHydra(UmbrellaSimulation):
             f.write(command)
         return f"{self.hydra_working_dir}/run_umbrella_{window}.sh"
 
+    def serialize_system(self) -> str:
+        return mm.openmm.XmlSerializer.serialize(self.openmm_system)
+
     def prepare_simulations(self) -> str:
         super().prepare_simulations()
+        serialized_sys = self.serialize_system()
         with open(file=self.serialized_sys, mode="w") as f:
-            f.write(mm.openmm.XmlSerializer.serialize(self.openmm_system))
+            f.write(self.serialize_sys)
         for window in range(self.lamdas):
             newfile = self.write_hydra_scripts(
                 window=window,

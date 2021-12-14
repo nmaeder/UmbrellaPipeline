@@ -3,6 +3,7 @@ import openmm as mm
 import openmm.unit as unit
 from openmm import Vec3
 
+
 def get_centroid_coordinates(
     positions: unit.Quantity,
     indices: List[int],

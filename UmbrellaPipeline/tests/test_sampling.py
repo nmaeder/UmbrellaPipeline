@@ -2,11 +2,7 @@ import os
 import openmm.app as app
 import openmm as mm
 
-from UmbrellaPipeline.utils import (
-    SimulationProperties,
-    SimulationSystem,
-    parse_params
-)
+from UmbrellaPipeline.utils import SimulationProperties, SimulationSystem, parse_params
 from UmbrellaPipeline.path_generation import Tree
 from UmbrellaPipeline.sampling import SamplingHydra
 

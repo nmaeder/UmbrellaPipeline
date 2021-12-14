@@ -3,6 +3,7 @@ from typing import List
 import openmm.app as app
 import openmm.unit as unit
 
+
 def parse_params(
     toppar_directory: str, toppar_str_file: str
 ) -> app.charmmparameterset.CharmmParameterSet:
