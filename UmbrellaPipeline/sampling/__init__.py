@@ -5,5 +5,4 @@ from .sampling_helper import add_harmonic_restraint
 from .sampling import (
     UmbrellaSimulation,
     SamplingHydra,
-    SamplingLSF,
 )
