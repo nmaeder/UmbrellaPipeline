@@ -1,4 +1,4 @@
-import copy
+import copy, time, logging
 from typing import List
 import gemmi
 import numpy as np
@@ -11,6 +11,9 @@ from UmbrellaPipeline.path_generation import (
     Grid,
     Tree,
 )
+from UmbrellaPipeline.utils import display_time
+
+logger = logging.getLogger(__name__)
 
 
 class EscapeRoom3D:

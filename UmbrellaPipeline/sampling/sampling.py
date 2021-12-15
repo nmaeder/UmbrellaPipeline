@@ -1,4 +1,4 @@
-import os
+import os, time, logging
 import openmm.unit as unit
 import openmm as mm
 import openmm.app as app
@@ -9,9 +9,12 @@ from typing import List
 from UmbrellaPipeline.sampling import add_harmonic_restraint
 from UmbrellaPipeline.utils import (
     execute_bash_parallel,
+    display_time,
     SimulationProperties,
     SimulationSystem,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class UmbrellaSimulation:
@@ -124,7 +127,9 @@ class UmbrellaSimulation:
                 topology=self.simulation.topology,
                 dt=self.simulation_properties.time_step,
             )
+            ttot = 0
             for i in tqdm(range(self.simulation_properties.number_of_frames)):
+                st = time.time()
                 self.simulation.step(self.simulation_properties.write_out_frequency)
                 dcdFile.writeModel(
                     self.simulation.context.getState(getPositions=True).getPositions()
@@ -132,10 +137,10 @@ class UmbrellaSimulation:
                 t = time.time() - st
                 ttot += t
                 logger.info(
-                    f"Step {i+1} of {num} simulated. "
+                    f"Step {i+1} of {self.simulation_properties.number_of_frames} simulated. "
                     f"Elapsed Time: {display_time(t)}. "
                     f"Elapsed total time: {display_time(ttot)}. "
-                    f"Estimated time until finish: {display_time((num - i -1) * t) }."
+                    f"Estimated time until finish: {display_time((self.simulation_properties.number_of_frames - i -1) * t) }."
                 )
             fileHandle.close()
             try:
@@ -239,7 +244,7 @@ class SamplingHydra(UmbrellaSimulation):
             f" {pos} -to {self.traj_write_path} -nf {self.simulation_properties.number_of_frames}"
             f" -ne {self.simulation_properties.n_equilibration_steps} -nw {window} -io {self.simulation_properties.write_out_frequency}"
         )
-        logger.info()
+        logger.info(f"{path} written.")
 
         with open(path, "w") as f:
             f.write(c)

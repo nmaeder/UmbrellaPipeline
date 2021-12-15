@@ -2,8 +2,11 @@ import argparse
 import openmm as mm
 import openmm.app as app
 import openmm.unit as unit
-import time
+import time, logging
 
+from UmbrellaPipeline.utils import display_time
+
+logger = logging.getLogger(__name__)
 
 """
 Worker script for the sampling.py script. Highly specific, not encouraged to use on its own.
@@ -72,10 +75,10 @@ def main():
         t = time.time() - st
         ttot += t
         logger.info(
-            f"Step {i+1} of {totruns} simulated. "
+            f"Step {i+1} of {args.nf} simulated. "
             f"Elapsed Time: {display_time(t)}. "
             f"Elapsed total time: {display_time(ttot)}. "
-            f"Estimated time until finish: {display_time((totruns - i -1) * t) }."
+            f"Estimated time until finish: {display_time((args.nf - i -1) * t) }."
         )
 
     fileHandle.close()
