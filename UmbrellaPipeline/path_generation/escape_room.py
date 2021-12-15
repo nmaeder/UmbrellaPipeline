@@ -453,11 +453,11 @@ class TreeEscapeRoom(EscapeRoom3D):
             List[TreeNode]: shortest path from a to b if class settint backtrace is true. else returns all searched nodes.
         """
         start = time.time()
-        if self.is_goal_reached(node=start, box=box, distance=distance):
+        if self.is_goal_reached(node=self.start, box=box, distance=distance):
             logger.warning(
                 "Start point does already a goal point. Try using a bigger distance, or giving the method a box instead of a distance :)."
             )
-            self.shortest_path.append(start)
+            self.shortest_path.append(self.start)
             return self.shortest_path
         self.start.distance_to_wall = self.tree.get_distance_to_protein(
             node=self.start
