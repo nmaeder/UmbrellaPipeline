@@ -98,7 +98,7 @@ class SimulationSystem:
             raise FileNotFoundError
 
     @params.setter
-    def params(self, value: Tuple[str]) -> None:
+    def params(self, value: Tuple[str, str]) -> None:
         try:
             dir, file = value
             self._params = parse_params(toppar_directory=dir, toppar_str_file=file)

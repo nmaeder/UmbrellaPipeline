@@ -149,7 +149,7 @@ class SimulationProperties:
             raise TypeError("Write out Frequency has to be an integer!")
 
     @number_of_frames.setter
-    def number_of_frames(self, value: Tuple[int]) -> None:
+    def number_of_frames(self, value: Tuple[int, int]) -> None:
         np, f = value
         try:
             if f == 0:
