@@ -58,6 +58,13 @@ class UmbrellaSimulation:
         if self.traj_write_path.endswith("/"):
             self.traj_write_path.rstrip("/")
 
+        self.ligand_non_bonded_parameters = []
+
+        for force in self.openmm_system.getForces():
+            if type(force).__name__ == "NonbondedForce":
+                for index in self.system_info.ligand_indices:
+                    self.ligand_non_bonded_parameters.append(force.getParticleParameters(index))
+
     def prepare_simulations(self) -> None:
         """
         Adds a harmonic restraint to the residue with the name given in self.name to the first position in self.path.
@@ -102,6 +109,7 @@ class UmbrellaSimulation:
             [self.path[window + 1].x, self.path[window + 1].y, self.path[window + 1].z],
         ):
             self.simulation.context.setParameter(a, b)
+    
 
     def run_sampling(self):
         """
@@ -111,7 +119,8 @@ class UmbrellaSimulation:
         orgCoords.write("lamda, x0, y0, z0\n")
 
         self.simulation.context.setPositions(self.system_info.pdb_object.positions)
-
+        
+        
         for window in range(self.lamdas):
             orgCoords.write(
                 f"{window}, {self.simulation.context.getParameter('x0')}, {self.simulation.context.getParameter('y0')}, {self.simulation.context.getParameter('z0')}\n"
@@ -300,6 +309,7 @@ class SamplingHydra(UmbrellaSimulation):
             List[str]: returns output of the simulations if no logger is used.
         """
         try:
+            self.write_path_to_file()
             self.simulation_output = execute_bash_parallel(command=self.commands)
         except FileNotFoundError:
             raise FileNotFoundError(
