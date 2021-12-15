@@ -9,8 +9,9 @@ dependencies:
   - numpy
   - gemmi
   - openmm
+  - openmmtools
   - scipy
-
+  - tqdm
     # Testing
   - pytest
   - pytest-cov
