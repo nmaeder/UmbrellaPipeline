@@ -1,5 +1,6 @@
 import openmm.unit as unit
 from openmm import Vec3
+
 from UmbrellaPipeline.path_generation import GridNode, Node, TreeNode
 
 

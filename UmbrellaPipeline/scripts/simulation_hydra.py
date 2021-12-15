@@ -1,14 +1,9 @@
 import argparse
-from numpy import mod
 import openmm as mm
 import openmm.app as app
-import time
 import openmm.unit as unit
-from typing import List
-from UmbrellaPipeline.utils import display_time
-import logging
+import time
 
-logger = logging.getLogger(__name__)
 
 """
 Worker script for the sampling.py script. Highly specific, not encouraged to use on its own.
@@ -23,10 +18,8 @@ def main():
     parser.add_argument("-psf", type=str, required=True)
     parser.add_argument("-pdb", type=str, required=True)
     parser.add_argument("-sys", type=str, required=True)
-    parser.add_argument("-int", type=str, required=True)
     parser.add_argument("-to", type=str, required=True)
     parser.add_argument("-ne", type=int, required=True)
-    parser.add_argument("-np", type=int, required=True)
     parser.add_argument("-nw", type=int, required=True)
     parser.add_argument("-x", type=float, required=True)
     parser.add_argument("-y", type=float, required=True)
@@ -35,6 +28,7 @@ def main():
     parser.add_argument("-t", type=float, required=True)
     parser.add_argument("-fric", type=float, required=True)
     parser.add_argument("-dt", type=float, required=True)
+    parser.add_argument("-nf", type=int, required=True)
 
     args, unkn = parser.parse_known_args()
     pdb = app.PDBFile(args.pdb)
@@ -58,9 +52,6 @@ def main():
         platformProperties=properties,
     )
 
-    if not args.to.endswith("/"):
-        args.to += "/"
-
     simulation.context.setPositions(pdb.positions)
     simulation.context.setParameter("x0", args.x)
     simulation.context.setParameter("y0", args.y)
@@ -68,12 +59,11 @@ def main():
     simulation.minimizeEnergy()
     simulation.context.setVelocitiesToTemperature(integrator.getTemperature())
     simulation.step(args.ne)
-    fileHandle = open(f"{args.to}traj_{args.nw}.dcd", "bw")
+    fileHandle = open(f"{args.to}/traj_{args.nw}.dcd", "bw")
     dcdFile = app.DCDFile(fileHandle, simulation.topology, dt=args.dt)
 
     ttot = 0
-    totruns = int(args.np / args.io)
-    for i in range(totruns):
+    for i in range(args.nf):
         st = time.time()
         simulation.step(args.io)
         dcdFile.writeModel(

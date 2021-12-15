@@ -1,4 +1,7 @@
 from typing import List
+import openmm as mm
+import openmm.app as app
+import openmm.unit as unit
 
 from UmbrellaPipeline.sampling import (
     SamplingHydra,
@@ -7,22 +10,22 @@ from UmbrellaPipeline.sampling import (
 from UmbrellaPipeline.utils import (
     SimulationProperties,
     SimulationSystem,
+    gen_pbc_box,
 )
 from UmbrellaPipeline.path_generation import (
     GridEscapeRoom,
     TreeEscapeRoom,
     Tree,
     Grid,
-    parse_params,
-    gen_pbc_box,
 )
-
-import openmm as mm
-import openmm.app as app
-import openmm.unit as unit
 
 
 class UmbrellaPipeline:
+    """
+    wrapper for the whole package. Runs the pipeline (almost) automatically.
+    it creates a simulation_system object upon construction, which stores paths and pdb/psf objects.
+    """
+
     def __init__(
         self,
         psf_file: str,
@@ -32,6 +35,15 @@ class UmbrellaPipeline:
         ligand_residue_name: str,
         simulation_properties: SimulationProperties = SimulationProperties(),
     ) -> None:
+        """
+        Args:
+            psf_file (str): psf file provided by charmm_gui
+            pdb_file (str): pdb file provided by charmm_gui
+            toppar_stream_file (str): toppar str file provided by charmm-gui. Don't move it around beforehand.
+            toppar_directory (str): toppar directory provided by charmm-gui
+            ligand_residue_name (str): name of the ligand that you want to pull out.
+            simulation_properties (SimulationProperties, optional): Simulation property object. refer to the README for further info. Defaults to SimulationProperties().
+        """
         self.simulation_parameters = simulation_properties
         self.system_info = SimulationSystem(
             psf_file=psf_file,
@@ -48,8 +60,18 @@ class UmbrellaPipeline:
         distance_to_protein: unit.Quantity = 1.5 * unit.nanometer,
         path_interval=2 * unit.angstrom,
         use_grid: bool = False,
-    ):
+    ) -> List[unit.Quantity]:
+        """
+        Creates the path out of the protein. use_grid is not recommended.
 
+        Args:
+            distance_to_protein (unit.Quantity, optional): Distance to protein, at which to stop. Defaults to 1.5*unit.nanometer.
+            path_interval ([type], optional): Stepsize of your umbrella sampling pathz. Defaults to 2*unit.angstrom.
+            use_grid (bool, optional): If you want to deploy the grid version of the escape room algorithm, set to True. Not encouraged. Defaults to False.
+
+        Returns:
+            List[unit.Quantity]: path for the umbrella sampling.
+        """
         if not use_grid:
             tree = Tree.from_files(
                 psf=self.system_info.psf_object, pdb=self.system_info.pdb_object
@@ -76,7 +98,7 @@ class UmbrellaPipeline:
                 name=self.system_info.ligand_name,
             )
             escape_room = GridEscapeRoom(grid=grid, start=start)
-            p = escape_room.escape_room(distance=distance_to_protein)
+            escape_room.escape_room(distance=distance_to_protein)
             self.path = escape_room.get_path_for_sampling(path_interval)
 
         return self.path
@@ -88,6 +110,14 @@ class UmbrellaPipeline:
         rigid_water: bool = True,
         constraints: app.forcefield = app.HBonds,
     ) -> None:
+        """
+        This function creates the openmm_system. is called inside run_simulations/run_simulations_cluster, so no need to run it on its own.
+        Args:
+            nonbonded_method (app.forcefield, optional): Nonbonded method to use. PME is highly encouraged. Defaults to app.PME.
+            nonbonded_cutoff (unit.Quantity, optional): nonbonded cutoff value. Defaults to 1.2*unit.nanometer.
+            rigid_water (bool, optional): wheter to use rigid water. Defaults to True.
+            constraints (app.forcefield, optional): constraints to use. Defaults to app.HBonds.
+        """
         gen_pbc_box(psf=self.system_info.psf_object, pdb=self.system_info.pdb_object)
         params = self.system_info.params
 
@@ -98,6 +128,12 @@ class UmbrellaPipeline:
             constraints=constraints,
             rigidWater=rigid_water,
         )
+        if self.simulation_parameters.pressure:
+            barostat = mm.openmm.MonteCarloBarostat(
+                self.simulation_parameters.pressure,
+                self.simulation_parameters.temperature,
+            )
+            self.openmm_system.addForce(barostat)
 
     def run_simulations_cluster(
         self,
@@ -108,6 +144,17 @@ class UmbrellaPipeline:
         gpu: int = 1,
         log_prefix: str = "umbrella_simulation",
     ) -> None:
+        """
+        Prepares and runs simulations on a cluster.
+
+        Args:
+            conda_environment (str): name of the conda environment, this package and all dependencies are installed.
+            trajectory_path (str): output directory where the trajectories are stored.
+            hydra_working_dir (str): if working on the hydra cluster, give the working dir you are running your script from.
+            mail (str, optional): if you want to receive emails, when a simulation ended, give your email-adress here. Defaults to None.
+            gpu (int, optional): set to one if you want to use CUDA. Defaults to 1.
+            log_prefix (str, optional): name of the log files. Defaults to "umbrella_simulation".
+        """
         simulation = SamplingHydra(
             properties=self.simulation_parameters,
             path=self.path,
@@ -127,6 +174,12 @@ class UmbrellaPipeline:
         self,
         trajectory_path,
     ) -> None:
+        """
+        Prepares and runs simulations on your local machine.
+
+        Args:
+            trajectory_path ([type]): output directory for the trajectories.
+        """
         simulation = UmbrellaSimulation(
             properties=self.simulation_parameters,
             path=self.path,

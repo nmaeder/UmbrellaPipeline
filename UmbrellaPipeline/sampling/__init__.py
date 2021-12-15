@@ -7,5 +7,4 @@ from .sampling_helper import (
 from .sampling import (
     UmbrellaSimulation,
     SamplingHydra,
-    SamplingLSF,
 )

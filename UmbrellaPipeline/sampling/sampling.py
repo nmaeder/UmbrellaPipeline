@@ -1,46 +1,59 @@
-import torch
-import os, time, logging
-
+import os
 import openmm.unit as unit
 import openmm as mm
 import openmm.app as app
-from typing import List
 import openmmtools
-from UmbrellaPipeline import (
+from tqdm import tqdm
+from typing import List
+
+from UmbrellaPipeline.sampling import add_harmonic_restraint
+from UmbrellaPipeline.utils import (
     execute_bash_parallel,
     SimulationProperties,
     SimulationSystem,
-    add_harmonic_restraint,
-    display_time,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class UmbrellaSimulation:
+    """
+    holds all necessary information for your simulation on your local computer.
+    """
+
     def __init__(
         self,
         properties: SimulationProperties,
         info: SimulationSystem,
         path: List[unit.Quantity],
-        openmm_system: mm.openmm.System = None,
+        openmm_system: mm.openmm.System,
         traj_write_path: str = None,
     ) -> None:
+        """
+        Args:
+            properties (SimulationProperties): simulation properties object, holding temp, pressure, etc
+            info (SimulationSystem): simulation system object holding psf, pdb objects etc.
+            path (List[unit.Quantity]): path for the ligand to walk trough.
+            openmm_system (mm.openmm.System): openmm System object. Defaults to None.
+            traj_write_path (str, optional): output directory where the trajectories are written to. Defaults to None.
+        """
         self.simulation_properties = properties
         self.system_info = info
         self.lamdas = len(path)
         self.path = path
         self.openmm_system = openmm_system
-        self.traj_write_path = traj_write_path
         self.simulation: app.Simulation
         self.integrator: mm.openmm.Integrator
 
-        if torch.cuda.is_available():
-            self.platform = mm.Platform.getPlatformByName("CUDA")
+        self.platform = openmmtools.utils.get_fastest_platform()
+        if self.platform.getName() == ("CUDA" or "OpenCL"):
             self.platformProperties = {"Precision": "mixed"}
         else:
-            self.platform = mm.Platform.getPlatformByName("CPU")
             self.platformProperties = None
+
+        self.traj_write_path = traj_write_path
+        if not traj_write_path:
+            self.traj_write_path = os.getcwd()
+        if self.traj_write_path.endswith("/"):
+            self.traj_write_path.rstrip("/")
 
     def prepare_simulations(self) -> None:
         """
@@ -75,11 +88,23 @@ class UmbrellaSimulation:
             platformProperties=self.platformProperties,
         )
 
+    def update_restraint(self, window: int) -> None:
+        """Updates the constraint coordinates of the simulation
+
+        Args:
+            window (int): path window.
+        """
+        for a, b in zip(
+            ["x0", "y0", "z0"],
+            [self.path[window + 1].x, self.path[window + 1].y, self.path[window + 1].z],
+        ):
+            self.simulation.context.setParameter(a, b)
+
     def run_sampling(self):
         """
-        runs the actual umbrella sampling.
+        Runs the actual umbrella sampling on your local machine.
         """
-        orgCoords = open(file=f"{self.traj_write_path}coordinates.dat", mode="w")
+        orgCoords = open(file=f"{self.traj_write_path}/coordinates.dat", mode="w")
         orgCoords.write("lamda, x0, y0, z0\n")
 
         self.simulation.context.setPositions(self.system_info.pdb_object.positions)
@@ -93,20 +118,13 @@ class UmbrellaSimulation:
                 self.simulation_properties.temperature
             )
             self.simulation.step(self.simulation_properties.n_equilibration_steps)
-            fileHandle = open(f"{self.traj_write_path}traj_{window}.dcd", "bw")
+            fileHandle = open(f"{self.traj_write_path}/traj_{window}.dcd", "bw")
             dcdFile = app.dcdfile.DCDFile(
                 file=fileHandle,
                 topology=self.simulation.topology,
                 dt=self.simulation_properties.time_step,
             )
-
-            num = (
-                self.simulation_properties.n_production_steps
-                / self.simulation_properties.write_out_frequency
-            )
-            ttot = 0
-            for i in range(int(num)):
-                st = time.time()
+            for i in tqdm(range(self.simulation_properties.number_of_frames)):
                 self.simulation.step(self.simulation_properties.write_out_frequency)
                 dcdFile.writeModel(
                     self.simulation.context.getState(getPositions=True).getPositions()
@@ -121,24 +139,18 @@ class UmbrellaSimulation:
                 )
             fileHandle.close()
             try:
-                self.simulation.context.setParameter(
-                    "x0",
-                    self.path[window + 1].x.in_units_of(self.pdb_object.positions.unit),
-                )
-                self.simulation.context.setParameter(
-                    "y0",
-                    self.path[window + 1].y.in_units_of(self.pdb_object.positions.unit),
-                )
-                self.simulation.context.setParameter(
-                    "z0",
-                    self.path[window + 1].z.in_units_of(self.pdb_object.positions.unit),
-                )
+                self.update_restraint(window=window)
             except IndexError:
                 pass
         orgCoords.close()
 
 
 class SamplingHydra(UmbrellaSimulation):
+    """
+    This class holds all information for running your umbrella simulation on the hydra cluster. it works entirely differnt than the UmbrellaSimulation class.
+    It first writes bash scirpts which it then submits to the submission system.
+    """
+
     def __init__(
         self,
         properties: SimulationProperties,
@@ -152,6 +164,19 @@ class SamplingHydra(UmbrellaSimulation):
         gpu: str = 1,
         hydra_working_dir: str = None,
     ) -> None:
+        """
+        Args:
+            properties (SimulationProperties): simulation_property object.
+            path (List[unit.Quantity]): path for the ligand to walk through.
+            openmm_system (mm.openmm.System): openmm system of your simulation.
+            info (SimulationSystem): simulation system object.
+            traj_write_path (str): output directory where the trajectories will be written to.
+            conda_environment (str): name of the conda environment where this package and all its dependencies are installed.
+            mail (str, optional): [description]. if given, a mail will be sent to this adress if a production run has finished.
+            log_prefix (str, optional): [description]. give if you want a certain path for your log file.
+            gpu (str, optional): how much cpu cores to use. on hydra choose 1. Defaults to 1.
+            hydra_working_dir (str, optional): the working dir from which you are runnnig this package. Defaults to None.
+        """
         super().__init__(
             properties=properties,
             info=info,
@@ -159,87 +184,120 @@ class SamplingHydra(UmbrellaSimulation):
             openmm_system=openmm_system,
             traj_write_path=traj_write_path,
         )
-        self.hydra_working_dir = hydra_working_dir if hydra_working_dir else os.getcwd()
-        self.mail = mail
-        self.log = log_prefix.rstrip(".log")
-        self.gpu = gpu
-        self.conda_environment = conda_environment
-        self.serialized_sys = self.hydra_working_dir + "/serialized_sys.xml"
+        self.hydra_working_dir: str = (
+            hydra_working_dir if hydra_working_dir else os.getcwd()
+        )
+        if self.hydra_working_dir.endswith("/"):
+            self.hydra_working_dir.rstrip("/")
+        self.mail: str = mail
+        self.log: str = log_prefix.rstrip(".log")
+        self.gpu: int = gpu
+        self.conda_environment: str = conda_environment
+        self.serialized_system_file: str = (
+            self.hydra_working_dir + "/serialized_sys.xml"
+        )
+        self.commands: List[str] = []
+        self.simulation_output: List[str] = []
 
-    def write_hydra_scripts(self, window: int, serializedSystem: str):
-        command = "#$ -S /bin/bash\n#$ -m e\n"
+    def write_hydra_scripts(self, window: int, serializedSystem: str) -> str:
+        """
+        Writes shell script which is then submitted to the cluster que.
+
+        Args:
+            window (int): lambda of your simulation
+            serializedSystem (str): path to the serialized system file.
+
+        Returns:
+            str: the path where the file is written to.
+        """
+        path = f"{self.hydra_working_dir}/run_umbrella_{window}.sh"
+        c = "#$ -S /bin/bash\n#$ -m e\n"
+        c += "#$ -j y\n"
+        c += "#$ -p -1000\n"
+        c += "#$ -cwd\n"
         if self.mail:
-            command += f"#$ -M {self.mail}\n"
-            command += "#$ -pe smp 1\n"
-        command += "#$ -j y\n"
+            c += f"#$ -M {self.mail}\n"
+            c += "#$ -pe smp 1\n"
         if self.gpu:
-            command += f"#$ -l gpu={self.gpu}\n"
+            c += f"#$ -l gpu={self.gpu}\n"
         if self.log:
-            command += f"#$ -o {self.log}_{window}.log\n"
-        command += "#$ -p -1000\n"
-        command += "#$ -cwd\n"
-        command += "\n"
-        command += "hostname\n"
-        command += f"conda activate {self.conda_environment}\n"
-        command += f"python {os.path.abspath(os.path.dirname(__file__)+'/../scripts/simulation_hydra.py')} "
+            c += f"#$ -o {self.log}_{window}.log\n\n"
+        c += "hostname\n"
+        c += f"conda activate {self.conda_environment}\n"
+        c += f"python {os.path.abspath(os.path.dirname(__file__)+'/../scripts/simulation_hydra.py')} "
         pos = (
             f"-x {self.path[window][0].value_in_unit(self.system_info.pdb_object.positions.unit)} "
             f"-y {self.path[window][1].value_in_unit(self.system_info.pdb_object.positions.unit)} "
             f"-z {self.path[window][2].value_in_unit(self.system_info.pdb_object.positions.unit)}"
         )
-        command += f" -t {self.simulation_properties.temperature.value_in_unit(unit=unit.kelvin)}"
-        command += f" -dt {self.simulation_properties.time_step.value_in_unit(unit=unit.femtosecond)}"
-        command += f" -fric {self.simulation_properties.friction_coefficient.value_in_unit(unit=unit.picosecond**-1)}"
+        c += f" -t {self.simulation_properties.temperature.value_in_unit(unit=unit.kelvin)}"
+        c += f" -dt {self.simulation_properties.time_step.value_in_unit(unit=unit.femtosecond)}"
+        c += f" -fric {self.simulation_properties.friction_coefficient.value_in_unit(unit=unit.picosecond**-1)}"
 
-        command += (
+        c += (
             f" -psf {self.system_info.psf_file} -pdb {self.system_info.pdb_file} -sys {serializedSystem}"
-            f" {pos} -to {self.traj_write_path}"
-            f" -ne {self.simulation_properties.n_equilibration_steps} -np {self.simulation_properties.n_production_steps} -nw {window} -io {self.simulation_properties.write_out_frequency}"
+            f" {pos} -to {self.traj_write_path} -nf {self.simulation_properties.number_of_frames}"
+            f" -ne {self.simulation_properties.n_equilibration_steps} -nw {window} -io {self.simulation_properties.write_out_frequency}"
         )
         logger.info()
 
-        with open(f"{self.hydra_working_dir}/run_umbrella_{window}.sh", "w") as f:
-            f.write(command)
-        logger.info(f"Bash script written for Simulation window {window}.")
-        return f"{self.hydra_working_dir}/run_umbrella_{window}.sh"
+        with open(path, "w") as f:
+            f.write(c)
+        return path
 
-    def prepare_simulations(self) -> str:
-        super().prepare_simulations()
-        with open(file=self.serialized_sys, mode="w") as f:
+    def serialize_system(self) -> str:
+        """
+        Serializes the openmm system object
+
+        Returns:
+            str: path to serialized system xmlfile.
+        """
+        with open(file=self.serialized_system_file, mode="w") as f:
             f.write(mm.openmm.XmlSerializer.serialize(self.openmm_system))
+        return self.serialized_system_file
+
+    def prepare_simulations(self) -> None:
+        """
+        Prepares simulation, by creating all necessary objects and writing the bash scripts which are then submitted to the cluster.
+        """
+        super().prepare_simulations()
         for window in range(self.lamdas):
             newfile = self.write_hydra_scripts(
                 window=window,
-                serializedSystem=self.serialized_sys,
+                serializedSystem=self.serialize_system(),
             )
-        return self.serialized_sys
+            self.commands.append(newfile)
 
-    def run_sampling(self):
-        command: List[str] = []
-        out: List[str] = []
-        if not self.traj_write_path.endswith("/"):
-            self.traj_write_path += "/"
-        f = open(f"{self.traj_write_path}coordinates.dat", "w")
-        f.write("window, x0, y0, z0\n")
+    def write_path_to_file(self) -> str:
+        """
+        Writes the restrain coordinates to a file, so analysis is still possible without the umbrellapipeline object
+
+        Returns:
+            str: path for the coordinates file
+        """
+        path = f"{self.traj_write_path}/coordinates.dat"
+        orgCoords = open(file=path, mode="w")
+        orgCoords.write("lamda, x0, y0, z0\n")
         for window in range(self.lamdas):
-            f.write(
-                f"{window}, {self.path[window][0]}, {self.path[window][1]}, {self.path[window][2]}"
+            orgCoords.write(
+                f"{window},{self.path[window][0]},{self.path[window][0]},{self.path[window][0]}\n"
             )
-            command.append(f"qsub {self.hydra_working_dir}/run_umbrella_{window}.sh")
+        return path
+
+    def run_sampling(self) -> List[str]:
+        """
+        Submits the generated bash scripts to the hydra cluster
+
+        Raises:
+            FileNotFoundError: if no bash scripts are written with this pipeline, they cannot be submitted.
+
+        Returns:
+            List[str]: returns output of the simulations if no logger is used.
+        """
         try:
-            out = execute_bash_parallel(command=command)
+            self.simulation_output = execute_bash_parallel(command=self.commands)
         except FileNotFoundError:
             raise FileNotFoundError(
                 "Oops, something went wrong. Make sure you are logged in on the Hydra cluster and all the paths you specified are in acceptance with the best practice manual."
             )
-        f.close()
-        return out
-
-
-class SamplingLSF(UmbrellaSimulation):
-    "TODO"
-    pass
-
-    def write_lsf_scripts(self):
-        "TODO"
-        pass
+        return self.simulation_output

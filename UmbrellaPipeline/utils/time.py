@@ -1,4 +1,12 @@
 def display_time(seconds: float) -> str:
+    """
+    Nice string representation for time
+    Args:
+        seconds (float): time you want a strin gfrom
+
+    Returns:
+        str: formatted time.
+    """
     ret = ""
     tot = seconds
     intervals = [

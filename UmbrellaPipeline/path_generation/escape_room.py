@@ -1,20 +1,16 @@
-import copy, time
-import logging
+import copy
 from typing import List
-
 import gemmi
 import numpy as np
 import openmm.unit as unit
 from openmm import Vec3
+
 from UmbrellaPipeline.path_generation import (
-    Grid,
     GridNode,
     TreeNode,
+    Grid,
     Tree,
 )
-from UmbrellaPipeline.utils import display_time
-
-logger = logging.getLogger(__name__)
 
 
 class EscapeRoom3D:

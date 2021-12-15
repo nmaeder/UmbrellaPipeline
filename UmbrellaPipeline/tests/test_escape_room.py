@@ -3,13 +3,14 @@ import numpy as np
 import openmm.app as app
 import openmm.unit as unit
 from openmm import Vec3
+
 from UmbrellaPipeline.path_generation import (
+    GridNode,
     Grid,
     GridEscapeRoom,
-    GridNode,
+    TreeNode,
     Tree,
     TreeEscapeRoom,
-    TreeNode,
 )
 
 pdb = "UmbrellaPipeline/data/step5_input.pdb"
