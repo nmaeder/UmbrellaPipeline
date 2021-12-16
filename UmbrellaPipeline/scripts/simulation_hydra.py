@@ -2,9 +2,15 @@ import argparse
 import openmm as mm
 import openmm.app as app
 import openmm.unit as unit
+from openmm import Vec3
 import time, logging
 
-from UmbrellaPipeline.utils import display_time
+from UmbrellaPipeline.utils import (
+    display_time,
+    get_residue_indices,
+)
+from UmbrellaPipeline.sampling import update_restraint
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +38,7 @@ def main():
     parser.add_argument("-fric", type=float, required=True)
     parser.add_argument("-dt", type=float, required=True)
     parser.add_argument("-nf", type=int, required=True)
+    parser.add_argument("-ln", type=str, required=True)
 
     args, unkn = parser.parse_known_args()
     pdb = app.PDBFile(args.pdb)
@@ -56,11 +63,27 @@ def main():
     )
 
     simulation.context.setPositions(pdb.positions)
+    simulation.minimizeEnergy()
+    simulation.context.setVelocitiesToTemperature(integrator.getTemperature())
+
+    indices = get_residue_indices(atom_list=psf.atom_list, name=args.ln)
+    original_parameters = []
+    for force in simulation.context.getSystem().getForces():
+        if type(force).__name__ == "NonbondedForce":
+            for index in indices:
+                original_parameters.append(force.getParticleParameters(index))
+
+    update_restraint(
+        simulation=simulation,
+        ligand_indices=indices,
+        original_parameters=original_parameters,
+        path=[unit.Quantity(Vec3(x=args.x, y=args.y, z=args.z), unit=unit.nanometer)],
+        window=0,
+    )
     simulation.context.setParameter("x0", args.x)
     simulation.context.setParameter("y0", args.y)
     simulation.context.setParameter("z0", args.z)
-    simulation.minimizeEnergy()
-    simulation.context.setVelocitiesToTemperature(integrator.getTemperature())
+
     simulation.step(args.ne)
     fileHandle = open(f"{args.to}/traj_{args.nw}.dcd", "bw")
     dcdFile = app.DCDFile(fileHandle, simulation.topology, dt=args.dt)
