@@ -66,23 +66,27 @@ def main():
     simulation.minimizeEnergy()
     simulation.context.setVelocitiesToTemperature(integrator.getTemperature())
 
-    indices = get_residue_indices(atom_list=psf.atom_list, name=args.ln)
-    original_parameters = []
-    for force in simulation.context.getSystem().getForces():
-        if type(force).__name__ == "NonbondedForce":
-            for index in indices:
-                original_parameters.append(force.getParticleParameters(index))
+    if args.nw > 0:
+        indices = get_residue_indices(atom_list=psf.atom_list, name=args.ln)
+        original_parameters = []
+        for force in simulation.context.getSystem().getForces():
+            if type(force).__name__ == "NonbondedForce":
+                for index in indices:
+                    original_parameters.append(force.getParticleParameters(index))
 
-    update_restraint(
-        simulation=simulation,
-        ligand_indices=indices,
-        original_parameters=original_parameters,
-        path=[unit.Quantity(Vec3(x=args.x, y=args.y, z=args.z), unit=unit.nanometer)],
-        window=0,
-    )
-    simulation.context.setParameter("x0", args.x)
-    simulation.context.setParameter("y0", args.y)
-    simulation.context.setParameter("z0", args.z)
+        update_restraint(
+            simulation=simulation,
+            ligand_indices=indices,
+            original_parameters=original_parameters,
+            path=[
+                unit.Quantity(Vec3(x=args.x, y=args.y, z=args.z), unit=unit.nanometer)
+            ],
+            window=0,
+        )
+    else:
+        simulation.context.setParameter("x0", args.x)
+        simulation.context.setParameter("y0", args.y)
+        simulation.context.setParameter("z0", args.z)
 
     simulation.step(args.ne)
     fileHandle = open(f"{args.to}/traj_{args.nw}.dcd", "bw")
