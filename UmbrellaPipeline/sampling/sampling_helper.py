@@ -206,5 +206,5 @@ def serialize_system(system: mm.openmm.System, path: str) -> str:
         str: path to serialized system xmlfile.
     """
     with open(file=path, mode="w") as f:
-        f.write(mm.openmm.XmlSerializer.serialize(sysetm))
+        f.write(mm.openmm.XmlSerializer.serialize(system))
     return path
