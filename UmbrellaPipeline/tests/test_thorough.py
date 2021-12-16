@@ -295,6 +295,7 @@ def test_ghosting():
                 ]
 
     simulation.context.setPositions(pipeline.system_info.pdb_object.positions)
+    simulation.context.setVelocitiesToTemperature(300 * unit.kelvin)
     ghost_busters_ligand(
         simulation=simulation,
         ligand_indices=pipeline.system_info.ligand_indices,
