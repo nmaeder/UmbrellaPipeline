@@ -234,8 +234,8 @@ def test_ghosting():
 
     # create simulation, system and context
     platform=openmmtools.utils.get_fastest_platform()
-    if platform.getName() == "CUDA" or "OpenCL":
-        props = {"Precision" : "mixed"}
+    if platform.getName() == ("CUDA" or "OpenCL"):
+        props = {"Precision": "mixed"}
     else:
         props = None
     system = pipeline.system_info.psf_object.createSystem(pipeline.system_info.params)
