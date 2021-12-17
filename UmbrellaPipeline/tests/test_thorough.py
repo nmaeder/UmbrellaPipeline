@@ -240,7 +240,7 @@ def test_ghosting():
         system=system,
         integrator=integrator,
     )
-
+    simulation.context.setPositions(pipeline.system_info.pdb_object.getPositions())
     orig_params = []
 
     f = simulation.context.getSystem().getForces()
@@ -294,8 +294,6 @@ def test_ghosting():
                     0.5 * orig_params[it][2],
                 ]
 
-    simulation.context.setPositions(pipeline.system_info.pdb_object.positions)
-    simulation.context.setVelocitiesToTemperature(300 * unit.kelvin)
     ghost_busters_ligand(
         simulation=simulation,
         ligand_indices=pipeline.system_info.ligand_indices,
