@@ -1,6 +1,7 @@
 import os, pytest, sys, time, math
 import openmm.app as app
 import openmm.unit as unit
+import openmm as mm
 import openmmtools
 from openmm import Vec3
 import numpy as np
@@ -239,7 +240,8 @@ def test_ghosting():
         topology=pipeline.system_info.pdb_object.topology,
         system=system,
         integrator=integrator,
-    )
+        platform=openmmtools.utils.get_fastest_platform()
+        )
     simulation.context.setPositions(pipeline.system_info.pdb_object.getPositions())
     orig_params = []
 

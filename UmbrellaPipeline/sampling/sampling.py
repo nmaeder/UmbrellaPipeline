@@ -1,11 +1,9 @@
-import os, time, logging
+import os, time, logging, stat
 import openmm.unit as unit
 import openmm as mm
 import openmm.app as app
 import openmmtools
-from tqdm import tqdm
 from typing import List
-import numpy as np
 
 from UmbrellaPipeline.sampling import (
     add_harmonic_restraint,
@@ -130,7 +128,7 @@ class UmbrellaSimulation:
                 dt=self.simulation_properties.time_step,
             )
             total_time = 0
-            for i in tqdm(range(self.simulation_properties.number_of_frames)):
+            for i in range(self.simulation_properties.number_of_frames):
                 start_time = time.time()
                 self.simulation.step(self.simulation_properties.write_out_frequency)
                 dcdFile.writeModel(
@@ -226,15 +224,15 @@ class SamplingHydra(UmbrellaSimulation):
         path = f"{self.hydra_working_dir}/run_umbrella_{window}.sh"
         c = "#$ -S /bin/bash\n#$ -m e\n"
         c += "#$ -j y\n"
-        c += "#$ -p -1000\n"
         c += "#$ -cwd\n"
-        if self.mail:
-            c += f"#$ -M {self.mail}\n"
-            c += "#$ -pe smp 1\n"
+        c += "#$ -p -1000\n"
         if self.gpu:
             c += f"#$ -l gpu={self.gpu}\n"
         if self.log:
             c += f"#$ -o {self.log}_{window}.log\n\n"
+        if self.mail:
+            c += f"#$ -M {self.mail}\n"
+            c += "#$ -pe smp 1\n"
         c += "hostname\n"
         c += f"conda activate {self.conda_environment}\n"
         c += f"python {os.path.abspath(os.path.dirname(__file__)+'/../scripts/simulation_hydra.py')} "
@@ -256,6 +254,7 @@ class SamplingHydra(UmbrellaSimulation):
 
         with open(path, "w") as f:
             f.write(c)
+
         return path
 
     def prepare_simulations(self) -> None:
@@ -279,7 +278,7 @@ class SamplingHydra(UmbrellaSimulation):
             newfile = self.write_hydra_scripts(
                 window=window, serializedSystem=self.serialized_system_file
             )
-            self.commands.append(newfile)
+            self.commands.append(f"qsub {newfile}")
 
     def write_path_to_file(self) -> str:
         """
