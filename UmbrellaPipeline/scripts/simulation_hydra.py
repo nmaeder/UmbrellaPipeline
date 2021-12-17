@@ -2,6 +2,7 @@ import argparse
 import openmm as mm
 import openmm.app as app
 import openmm.unit as unit
+import openmmtools
 from openmm import Vec3
 import time, logging
 
@@ -43,8 +44,11 @@ def main():
     args, unkn = parser.parse_known_args()
     pdb = app.PDBFile(args.pdb)
     psf = app.CharmmPsfFile(args.psf)
-    platform = mm.Platform.getPlatformByName("CUDA")
-    properties = {"Precision": "mixed"}
+    platform = openmmtools.utils.get_fastest_platform()
+    if platform.getName() == "CUDA" or "OpenCL":
+        properties = {"Precision": "mixed"}
+    else:
+        properties = None
 
     with open(args.sys, mode="r") as f:
         system = f.read()
@@ -64,7 +68,7 @@ def main():
 
     simulation.context.setPositions(pdb.positions)
     simulation.minimizeEnergy()
-    simulation.context.setVelocitiesToTemperature(integrator.getTemperature())
+    simulation.context.setVelocitiesToTemperature(args.t * unit.kelvin)
 
     if args.nw > 0:
         indices = get_residue_indices(atom_list=psf.atom_list, name=args.ln)
