@@ -300,22 +300,7 @@ def test_ghosting():
                     0.5 * orig_params[it][1],
                     0.5 * orig_params[it][2],
                 ]
-    """
-    ghost_busters_ligand(
-        simulation=simulation,
-        ligand_indices=pipeline.system_info.ligand_indices,
-        original_parameters=orig_params,
-        nr_steps=10,
-    )
-    for fs in f:
-        if type(fs).__name__ == "NonbondedForce":
-            for it, index in enumerate(pipeline.system_info.ligand_indices):
-                assert fs.getParticleParameters(index) == [
-                    orig_params[it][0],
-                    orig_params[it][1],
-                    orig_params[it][2],
-                ]
-    """
+
 
 def test_grid_escape_room_basic():
     grid = Grid(grid=np.zeros(shape=(10, 10, 10), dtype=bool))
