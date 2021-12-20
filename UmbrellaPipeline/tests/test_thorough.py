@@ -233,8 +233,8 @@ def test_parallel_bash():
 def test_ghosting():
 
     # create simulation, system and context
-    platform = openmmtools.utils.get_fastest_platform()
-    if platform.getName() == "CUDA" or "OpenCL":
+    platform=openmmtools.utils.get_fastest_platform()
+    if platform.getName() == ("CUDA" or "OpenCL"):
         props = {"Precision": "mixed"}
     else:
         props = None
@@ -300,22 +300,7 @@ def test_ghosting():
                     0.5 * orig_params[it][1],
                     0.5 * orig_params[it][2],
                 ]
-    """
-    ghost_busters_ligand(
-        simulation=simulation,
-        ligand_indices=pipeline.system_info.ligand_indices,
-        original_parameters=orig_params,
-        nr_steps=10,
-    )
-    for fs in f:
-        if type(fs).__name__ == "NonbondedForce":
-            for it, index in enumerate(pipeline.system_info.ligand_indices):
-                assert fs.getParticleParameters(index) == [
-                    orig_params[it][0],
-                    orig_params[it][1],
-                    orig_params[it][2],
-                ]
-    """
+
 
 
 def test_grid_escape_room_basic():
