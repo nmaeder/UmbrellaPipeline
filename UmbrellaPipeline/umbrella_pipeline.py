@@ -2,6 +2,7 @@ from typing import List
 import openmm as mm
 import openmm.app as app
 import openmm.unit as unit
+import logging
 
 from UmbrellaPipeline.sampling import (
     SamplingHydra,
@@ -18,6 +19,9 @@ from UmbrellaPipeline.path_generation import (
     GridEscapeRoom,
     TreeEscapeRoom,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class UmbrellaPipeline:

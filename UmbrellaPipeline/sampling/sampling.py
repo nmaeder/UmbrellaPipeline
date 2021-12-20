@@ -151,7 +151,9 @@ class UmbrellaSimulation:
                     path=self.path,
                     window=window + 1,
                 )
-                logger.info(f"Ligand moved to position {window + 1} of {len(self.lamdas)}.")
+                logger.info(
+                    f"Ligand moved to position {window + 1} of {len(self.lamdas)}."
+                )
             except IndexError:
                 pass
         orgCoords.close()
