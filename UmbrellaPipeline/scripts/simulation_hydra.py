@@ -1,34 +1,23 @@
 import argparse
-from numpy import mod
 import openmm as mm
 import openmm.app as app
-import time
 import openmm.unit as unit
-from typing import List
+import openmmtools
+from openmm import Vec3
+import time, logging
+
+from UmbrellaPipeline.utils import (
+    display_time,
+    get_residue_indices,
+)
+from UmbrellaPipeline.sampling import update_restraint
+
+
+logger = logging.getLogger(__name__)
 
 """
 Worker script for the sampling.py script. Highly specific, not encouraged to use on its own.
 """
-
-
-def displayTime(seconds: float) -> str:
-    ret = ""
-    tot = seconds
-    intervals = [
-        (604800, 0),
-        (86400, 0),
-        (3600, 0),
-        (60, 0),
-        (1, 0),
-    ]
-    for number, count in intervals:
-        while tot >= number:
-            count += 1
-            tot -= number
-        if count:
-            ret += f"{count:02d}:"
-    ret = ret.rstrip(":")
-    return f"00:{ret}"
 
 
 def main():
@@ -41,7 +30,6 @@ def main():
     parser.add_argument("-sys", type=str, required=True)
     parser.add_argument("-to", type=str, required=True)
     parser.add_argument("-ne", type=int, required=True)
-    parser.add_argument("-np", type=int, required=True)
     parser.add_argument("-nw", type=int, required=True)
     parser.add_argument("-x", type=float, required=True)
     parser.add_argument("-y", type=float, required=True)
@@ -50,12 +38,17 @@ def main():
     parser.add_argument("-t", type=float, required=True)
     parser.add_argument("-fric", type=float, required=True)
     parser.add_argument("-dt", type=float, required=True)
+    parser.add_argument("-nf", type=int, required=True)
+    parser.add_argument("-ln", type=str, required=True)
 
     args, unkn = parser.parse_known_args()
     pdb = app.PDBFile(args.pdb)
     psf = app.CharmmPsfFile(args.psf)
-    platform = mm.Platform.getPlatformByName("CUDA")
-    properties = {"Precision": "mixed"}
+    platform = openmmtools.utils.get_fastest_platform()
+    if platform.getName() == "CUDA" or "OpenCL":
+        properties = {"Precision": "mixed"}
+    else:
+        properties = None
 
     with open(args.sys, mode="r") as f:
         system = f.read()
@@ -74,18 +67,36 @@ def main():
     )
 
     simulation.context.setPositions(pdb.positions)
-    simulation.context.setParameter("x0", args.x)
-    simulation.context.setParameter("y0", args.y)
-    simulation.context.setParameter("z0", args.z)
+
+    if args.nw > 0:
+        indices = get_residue_indices(atom_list=psf.atom_list, name=args.ln)
+        original_parameters = []
+        for force in simulation.context.getSystem().getForces():
+            if type(force).__name__ == "NonbondedForce":
+                for index in indices:
+                    original_parameters.append(force.getParticleParameters(index))
+
+        update_restraint(
+            simulation=simulation,
+            ligand_indices=indices,
+            original_parameters=original_parameters,
+            path=[
+                unit.Quantity(Vec3(x=args.x, y=args.y, z=args.z), unit=unit.nanometer)
+            ],
+            window=0,
+        )
+    else:
+        simulation.context.setParameter("x0", args.x)
+        simulation.context.setParameter("y0", args.y)
+        simulation.context.setParameter("z0", args.z)
     simulation.minimizeEnergy()
-    simulation.context.setVelocitiesToTemperature(integrator.getTemperature())
+    simulation.context.setVelocitiesToTemperature(args.t * unit.kelvin)
     simulation.step(args.ne)
     fileHandle = open(f"{args.to}/traj_{args.nw}.dcd", "bw")
     dcdFile = app.DCDFile(fileHandle, simulation.topology, dt=args.dt)
 
     ttot = 0
-    totruns = int(args.np / args.io)
-    for i in range(totruns):
+    for i in range(args.nf):
         st = time.time()
         simulation.step(args.io)
         dcdFile.writeModel(
@@ -93,6 +104,12 @@ def main():
         )
         t = time.time() - st
         ttot += t
+        logger.info(
+            f"Step {i+1} of {args.nf} simulated. "
+            f"Elapsed Time: {display_time(t)}. "
+            f"Elapsed total time: {display_time(ttot)}. "
+            f"Estimated time until finish: {display_time((args.nf - i -1) * t) }."
+        )
 
     fileHandle.close()
 

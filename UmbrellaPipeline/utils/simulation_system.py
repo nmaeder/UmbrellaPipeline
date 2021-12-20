@@ -1,14 +1,12 @@
 from copy import Error
-import openmm.unit as u
 import openmm.app as app
-import openmm as mm
-import os, logging
+import os
+from typing import Tuple, List
 
-from UmbrellaPipeline.path_generation.path_helper import (
+from UmbrellaPipeline.utils import (
     parse_params,
     get_residue_indices,
 )
-from typing import Tuple, List
 
 
 class SimulationSystem:
@@ -107,6 +105,14 @@ class SimulationSystem:
     def pdb_object(self, value: str) -> None:
         try:
             self._pdb_object = app.PDBFile(os.path.abspath(value))
+        except:
+            raise FileNotFoundError
+
+    @params.setter
+    def params(self, value: Tuple[str, str]) -> None:
+        try:
+            dir, file = value
+            self._params = parse_params(toppar_directory=dir, toppar_str_file=file)
         except:
             raise FileNotFoundError
 

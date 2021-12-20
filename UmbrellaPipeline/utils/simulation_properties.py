@@ -1,4 +1,5 @@
 import openmm.unit as u
+from typing import Tuple
 
 
 class SimulationProperties:
@@ -71,7 +72,7 @@ class SimulationProperties:
         return self._write_out_frequency
 
     @property
-    def number_of_frames(self):
+    def number_of_frames(self) -> int:
         return self._number_of_frames
 
     # Setters
@@ -148,9 +149,14 @@ class SimulationProperties:
             raise TypeError("Write out Frequency has to be an integer!")
 
     @number_of_frames.setter
-    def number_of_frames(self, value):
+    def number_of_frames(self, value: Tuple[int, int]) -> None:
         np, f = value
         try:
-            self._number_of_frames = int(np / f)
-        except ZeroDivisionError:
-            self._number_of_frames = 1
+            if f == 0:
+                self._number_of_frames = 1
+            else:
+                self._number_of_frames = int(np / f)
+        except:
+            raise TypeError(
+                "Write out frequency as well as number of production steps need to be non negative integers!"
+            )
