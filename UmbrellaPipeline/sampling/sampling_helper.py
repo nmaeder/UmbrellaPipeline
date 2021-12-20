@@ -3,6 +3,9 @@ import openmm.unit as unit
 import openmm.app as app
 from typing import List
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 HARMONIC_FORMULA = (
     "0.5 * k * (dx^2 + dy^2 + dz^2); dx=abs(x1-x0); dy=abs(y1-y0); dz=abs(z1-z0)"
@@ -183,11 +186,15 @@ def update_restraint(
         window (int): path window.
     """
     ghost_ligand(simulation=simulation, ligand_indices=ligand_indices)
+    logger.info("Liggand turned to dummy.")
     for a, b in zip(
         ["x0", "y0", "z0"],
         [path[window].x, path[window].y, path[window].z],
     ):
         simulation.context.setParameter(a, b)
+        logger.info(
+            f"Restraint position updated to x={path[window].x} y={path[window].y} z={path[window].z}"
+        )
     simulation.minimizeEnergy()
     simulation.step(250000)
     ghost_busters_ligand(
@@ -196,6 +203,7 @@ def update_restraint(
         original_parameters=original_parameters,
         nr_steps=nr_steps,
     )
+    logger.info("Ligand back to full throttle. :)")
     return simulation
 
 
