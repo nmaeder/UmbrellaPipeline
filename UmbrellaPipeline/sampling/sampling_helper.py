@@ -183,20 +183,19 @@ def update_restraint(
         window (int): path window.
     """
     ghost_ligand(simulation=simulation, ligand_indices=ligand_indices)
-    simulation.step(250000)
     for a, b in zip(
         ["x0", "y0", "z0"],
         [path[window].x, path[window].y, path[window].z],
     ):
         simulation.context.setParameter(a, b)
+    simulation.minimizeEnergy()
+    simulation.step(250000)
     ghost_busters_ligand(
         simulation=simulation,
         ligand_indices=ligand_indices,
         original_parameters=original_parameters,
         nr_steps=nr_steps,
     )
-    simulation.minimizeEnergy()
-    simulation.step(250000)
     return simulation
 
 

@@ -1,8 +1,8 @@
 """Umbrella Sampling Pipeline for PMF of Protein Ligand Unbinding"""
 
 # Add imports here
-from .test import *
 from .umbrella_pipeline import UmbrellaPipeline
+from .test import *
 
 # Handle versioneer
 from ._version import get_versions
