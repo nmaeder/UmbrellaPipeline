@@ -201,7 +201,7 @@ def test_com_coords():
     )
 
 
-@pytest.mark.skipif("win" in sys.platform, reason="Bash not supported on Windows.")
+@pytest.mark.skipif("W64" in sys.platform, reason="Bash not supported on Windows.")
 def test_execute_bash():
     command1 = "echo Hello World"
     command2 = ["echo", "Hello World"]
@@ -218,7 +218,7 @@ def test_execute_bash():
     os.remove(stdout)
 
 
-@pytest.mark.skipif("win" in sys.platform, reason="Bash not supported on Windows.")
+@pytest.mark.skipif("W64" in sys.platform, reason="Bash not supported on Windows.")
 def test_parallel_bash():
     commands = ["sleep 3", "sleep 3", "sleep 3", "echo World"]
     start = time.time()
