@@ -231,7 +231,7 @@ def test_parallel_bash():
 def test_ghosting():
 
     # create simulation, system and context
-    platform=openmmtools.utils.get_fastest_platform()
+    platform = openmmtools.utils.get_fastest_platform()
     if platform.getName() == ("CUDA" or "OpenCL"):
         props = {"Precision": "mixed"}
     else:
@@ -298,7 +298,6 @@ def test_ghosting():
                     0.5 * orig_params[it][1],
                     0.5 * orig_params[it][2],
                 ]
-
 
 
 def test_grid_escape_room_basic():
