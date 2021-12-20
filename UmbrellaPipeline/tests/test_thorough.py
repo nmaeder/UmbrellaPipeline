@@ -1,7 +1,6 @@
 import os, pytest, sys, time, math
 import openmm.app as app
 import openmm.unit as unit
-import openmm as mm
 import openmmtools
 from openmm import Vec3
 import numpy as np
@@ -17,7 +16,6 @@ from UmbrellaPipeline.path_generation import (
 )
 from UmbrellaPipeline.sampling import (
     add_harmonic_restraint,
-    ghost_busters_ligand,
     ghost_ligand,
     ramp_up_coulomb,
     ramp_up_vdw,
