@@ -67,8 +67,6 @@ def main():
     )
 
     simulation.context.setPositions(pdb.positions)
-    simulation.minimizeEnergy()
-    simulation.context.setVelocitiesToTemperature(args.t * unit.kelvin)
 
     if args.nw > 0:
         indices = get_residue_indices(atom_list=psf.atom_list, name=args.ln)
@@ -91,7 +89,8 @@ def main():
         simulation.context.setParameter("x0", args.x)
         simulation.context.setParameter("y0", args.y)
         simulation.context.setParameter("z0", args.z)
-
+    simulation.minimizeEnergy()
+    simulation.context.setVelocitiesToTemperature(args.t * unit.kelvin)
     simulation.step(args.ne)
     fileHandle = open(f"{args.to}/traj_{args.nw}.dcd", "bw")
     dcdFile = app.DCDFile(fileHandle, simulation.topology, dt=args.dt)
