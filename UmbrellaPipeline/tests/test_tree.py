@@ -1,20 +1,8 @@
-import openmm.app as app
 import openmm.unit as unit
 from openmm import Vec3
 import pytest
 
 from UmbrellaPipeline.path_generation import Tree, TreeNode
-
-pdb = "UmbrellaPipeline/data/step5_input.pdb"
-psf = "UmbrellaPipeline/data/step5_input.psf"
-
-
-def read_pdb(pdb: str = pdb) -> app.PDBFile:
-    return app.PDBFile(pdb)
-
-
-def read_psf(psf: str = psf) -> app.CharmmPsfFile:
-    return app.CharmmPsfFile(psf)
 
 
 def test_tree_generation():
@@ -28,19 +16,6 @@ def test_tree_generation():
     tree = Tree(coordinates=nodesnu, unit=unit.angstrom)
     with pytest.raises(ValueError):
         tree = Tree(coordinates=nodesnu)
-
-
-def test_from_files():
-    tree = Tree.from_files(pdb=pdb, psf=psf)
-    pdbo = read_pdb()
-    psfo = read_psf()
-    tree = Tree.from_files(pdb=pdbo, psf=psfo)
-
-
-def test_node_from_files():
-    tree = Tree.from_files(pdb=pdb, psf=psf)
-    node = tree.node_from_files(psf=psf, pdb=pdb, name="UNL")
-    node = tree.node_from_files(psf=psf, pdb=pdb, name="UNL", include_hydrogens=False)
 
 
 def test_functions():

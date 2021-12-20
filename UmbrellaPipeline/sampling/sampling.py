@@ -1,17 +1,23 @@
-import os
+import os, time, logging, stat
 import openmm.unit as unit
 import openmm as mm
 import openmm.app as app
 import openmmtools
-from tqdm import tqdm
 from typing import List
 
-from UmbrellaPipeline.sampling import add_harmonic_restraint
+from UmbrellaPipeline.sampling import (
+    add_harmonic_restraint,
+    update_restraint,
+    serialize_system,
+)
 from UmbrellaPipeline.utils import (
     execute_bash_parallel,
+    display_time,
     SimulationProperties,
     SimulationSystem,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class UmbrellaSimulation:
@@ -55,6 +61,15 @@ class UmbrellaSimulation:
         if self.traj_write_path.endswith("/"):
             self.traj_write_path.rstrip("/")
 
+        self.ligand_non_bonded_parameters = []
+
+        for force in self.openmm_system.getForces():
+            if type(force).__name__ == "NonbondedForce":
+                for index in self.system_info.ligand_indices:
+                    self.ligand_non_bonded_parameters.append(
+                        force.getParticleParameters(index)
+                    )
+
     def prepare_simulations(self) -> None:
         """
         Adds a harmonic restraint to the residue with the name given in self.name to the first position in self.path.
@@ -88,18 +103,6 @@ class UmbrellaSimulation:
             platformProperties=self.platformProperties,
         )
 
-    def update_restraint(self, window: int) -> None:
-        """Updates the constraint coordinates of the simulation
-
-        Args:
-            window (int): path window.
-        """
-        for a, b in zip(
-            ["x0", "y0", "z0"],
-            [self.path[window + 1].x, self.path[window + 1].y, self.path[window + 1].z],
-        ):
-            self.simulation.context.setParameter(a, b)
-
     def run_sampling(self):
         """
         Runs the actual umbrella sampling on your local machine.
@@ -108,15 +111,15 @@ class UmbrellaSimulation:
         orgCoords.write("lamda, x0, y0, z0\n")
 
         self.simulation.context.setPositions(self.system_info.pdb_object.positions)
-
+        self.simulation.minimizeEnergy()
+        self.simulation.context.setVelocitiesToTemperature(
+            self.simulation_properties.temperature
+        )
         for window in range(self.lamdas):
             orgCoords.write(
                 f"{window}, {self.simulation.context.getParameter('x0')}, {self.simulation.context.getParameter('y0')}, {self.simulation.context.getParameter('z0')}\n"
             )
-            self.simulation.minimizeEnergy()
-            self.simulation.context.setVelocitiesToTemperature(
-                self.simulation_properties.temperature
-            )
+
             self.simulation.step(self.simulation_properties.n_equilibration_steps)
             fileHandle = open(f"{self.traj_write_path}/traj_{window}.dcd", "bw")
             dcdFile = app.dcdfile.DCDFile(
@@ -124,14 +127,30 @@ class UmbrellaSimulation:
                 topology=self.simulation.topology,
                 dt=self.simulation_properties.time_step,
             )
-            for i in tqdm(range(self.simulation_properties.number_of_frames)):
+            total_time = 0
+            for i in range(self.simulation_properties.number_of_frames):
+                start_time = time.time()
                 self.simulation.step(self.simulation_properties.write_out_frequency)
                 dcdFile.writeModel(
                     self.simulation.context.getState(getPositions=True).getPositions()
                 )
+                elapsed_time = time.time() - start_time
+                total_time += elapsed_time
+                logger.info(
+                    f"Step {i+1} of {self.simulation_properties.number_of_frames} simulated. "
+                    f"Elapsed Time: {display_time(elapsed_time)}. "
+                    f"Elapsed total time: {display_time(total_time)}. "
+                    f"Estimated time until finish: {display_time((self.simulation_properties.number_of_frames - i -1) * total_time) }."
+                )
             fileHandle.close()
             try:
-                self.update_restraint(window=window)
+                update_restraint(
+                    simulation=self.simulation,
+                    ligand_indices=self.system_info.ligand_indices,
+                    original_parameters=self.ligand_non_bonded_parameters,
+                    path=self.path,
+                    window=window + 1,
+                )
             except IndexError:
                 pass
         orgCoords.close()
@@ -205,15 +224,15 @@ class SamplingHydra(UmbrellaSimulation):
         path = f"{self.hydra_working_dir}/run_umbrella_{window}.sh"
         c = "#$ -S /bin/bash\n#$ -m e\n"
         c += "#$ -j y\n"
-        c += "#$ -p -1000\n"
         c += "#$ -cwd\n"
-        if self.mail:
-            c += f"#$ -M {self.mail}\n"
-            c += "#$ -pe smp 1\n"
+        c += "#$ -p -1000\n"
         if self.gpu:
             c += f"#$ -l gpu={self.gpu}\n"
         if self.log:
             c += f"#$ -o {self.log}_{window}.log\n\n"
+        if self.mail:
+            c += f"#$ -M {self.mail}\n"
+            c += "#$ -pe smp 1\n"
         c += "hostname\n"
         c += f"conda activate {self.conda_environment}\n"
         c += f"python {os.path.abspath(os.path.dirname(__file__)+'/../scripts/simulation_hydra.py')} "
@@ -228,36 +247,38 @@ class SamplingHydra(UmbrellaSimulation):
 
         c += (
             f" -psf {self.system_info.psf_file} -pdb {self.system_info.pdb_file} -sys {serializedSystem}"
-            f" {pos} -to {self.traj_write_path} -nf {self.simulation_properties.number_of_frames}"
+            f" {pos} -to {self.traj_write_path} -nf {self.simulation_properties.number_of_frames} -ln {self.system_info.ligand_name}"
             f" -ne {self.simulation_properties.n_equilibration_steps} -nw {window} -io {self.simulation_properties.write_out_frequency}"
         )
+        logger.info(f"{path} written.")
 
         with open(path, "w") as f:
             f.write(c)
+
         return path
-
-    def serialize_system(self) -> str:
-        """
-        Serializes the openmm system object
-
-        Returns:
-            str: path to serialized system xmlfile.
-        """
-        with open(file=self.serialized_system_file, mode="w") as f:
-            f.write(mm.openmm.XmlSerializer.serialize(self.openmm_system))
-        return self.serialized_system_file
 
     def prepare_simulations(self) -> None:
         """
         Prepares simulation, by creating all necessary objects and writing the bash scripts which are then submitted to the cluster.
         """
-        super().prepare_simulations()
+        add_harmonic_restraint(
+            system=self.openmm_system,
+            atom_group=self.system_info.ligand_indices,
+            values=[
+                self.simulation_properties.force_constant,
+                self.path[0].x,
+                self.path[0].y,
+                self.path[0].z,
+            ],
+        )
+
+        serialize_system(system=self.openmm_system, path=self.serialized_system_file)
+
         for window in range(self.lamdas):
             newfile = self.write_hydra_scripts(
-                window=window,
-                serializedSystem=self.serialize_system(),
+                window=window, serializedSystem=self.serialized_system_file
             )
-            self.commands.append(newfile)
+            self.commands.append(f"qsub {newfile}")
 
     def write_path_to_file(self) -> str:
         """
@@ -286,6 +307,7 @@ class SamplingHydra(UmbrellaSimulation):
             List[str]: returns output of the simulations if no logger is used.
         """
         try:
+            self.write_path_to_file()
             self.simulation_output = execute_bash_parallel(command=self.commands)
         except FileNotFoundError:
             raise FileNotFoundError(

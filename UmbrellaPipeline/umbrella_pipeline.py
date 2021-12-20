@@ -13,10 +13,10 @@ from UmbrellaPipeline.utils import (
     gen_pbc_box,
 )
 from UmbrellaPipeline.path_generation import (
-    GridEscapeRoom,
-    TreeEscapeRoom,
     Tree,
     Grid,
+    GridEscapeRoom,
+    TreeEscapeRoom,
 )
 
 

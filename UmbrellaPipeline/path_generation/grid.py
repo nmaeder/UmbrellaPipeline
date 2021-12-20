@@ -119,8 +119,7 @@ class Grid:
             psf = psf
 
         inx = get_residue_indices(psf.atom_list)
-        if psf.boxVectors == None:
-            min_c = gen_pbc_box(psf, pdb)
+        min_c = gen_pbc_box(psf, pdb)
 
         n = [
             round(psf.boxLengths[0] / gridsize),
@@ -224,7 +223,6 @@ class Grid:
     ) -> bool:
         """
         Checks if a Node is within the grid.
-        NOT USED
         Args:
             node (Node, optional): Node type object. Defaults to None.
             coordinates (List[int], optional): grid cell coordinates. Defaults to None.
