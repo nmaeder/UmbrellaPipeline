@@ -67,7 +67,8 @@ def main():
     )
 
     simulation.context.setPositions(pdb.positions)
-
+    simulation.minimizeEnergy()
+    simulation.context.setVelocitiesToTemperature(args.t * unit.kelvin)
     if args.nw > 0:
         indices = get_residue_indices(atom_list=psf.atom_list, name=args.ln)
         original_parameters = []

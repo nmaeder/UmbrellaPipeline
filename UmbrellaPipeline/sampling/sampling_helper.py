@@ -195,6 +195,8 @@ def update_restraint(
         original_parameters=original_parameters,
         nr_steps=nr_steps,
     )
+    simulation.minimizeEnergy()
+    simulation.step(250000)
     return simulation
 
 
