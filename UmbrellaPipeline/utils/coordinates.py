@@ -44,8 +44,8 @@ def get_center_of_mass_coordinates(
         unit.Quantity: center of mass coordinates of the specified atoms
     """
     ret = [0 * unit.dalton, 0 * unit.dalton, 0 * unit.dalton]
-    mass = 0 * unit.dalton
     for coordinate in range(3):
+        mass = 0 * unit.dalton
         for atomnr in indices:
             if (
                 not include_hydrogens
