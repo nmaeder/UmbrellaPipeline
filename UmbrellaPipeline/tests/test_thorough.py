@@ -187,7 +187,7 @@ def test_com_coords():
         masses=system,
         include_hydrogens=True,
     ) == unit.Quantity(
-        value=Vec3(x=4.7843512147078195, y=5.147002688734077, z=5.2472210022360315),
+        value=Vec3(x=4.7843512147078195, y=5.141559081004136, z=5.174510539400082),
         unit=unit.nanometer,
     )
     assert get_center_of_mass_coordinates(
@@ -196,7 +196,7 @@ def test_com_coords():
         masses=system,
         include_hydrogens=False,
     ) == unit.Quantity(
-        value=Vec3(x=4.782878540555002, y=5.146058796857897, z=5.251182983148111),
+        value=Vec3(x=4.782878540555002, y=5.139775262056617, z=5.1789321528969205),
         unit=unit.nanometer,
     )
 
