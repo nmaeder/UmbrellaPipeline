@@ -63,13 +63,13 @@ class PMFCalculator:
             # saving com coordinates of the ligand ot self.coordinates
             for frame in range(self.simulation_properties.number_of_frames):
                 coordinates[window][frame] = get_center_of_mass_coordinates(
-                    positions=trajectory.xyz[frame],
+                    positions=trajectory.openmm_positions(frame),
                     indices=self.system_info.ligand_indices,
                     masses=self.system_info.psf_object.system,
                 )
             del trajectory
         # make one list out of the data frame.
-        self.coordinates = np.concatenate(coordinates).tolist()
+        self.coordinates = np.concatenate(coordinates)
 
     def calculate_pmf(self):
         # whatever that is for, they do it so i do it
@@ -78,20 +78,23 @@ class PMFCalculator:
         # actual science :D
         A = np.zeros((self.n_windows, self.n_frames_tot))
         for window in range(self.n_windows):
-
+            
+            dx, dy, dz = [],[],[]
             # calculate the distances from the potential, path holds the coordinates of the potentials.
             for i in range(len(self.coordinates)):
-                dx = abs(self.coordinates[i].x - self.path[window].x)
-                dy = abs(self.coordinates[i].y - self.path[window].y)
-                dz = abs(self.coordinates[i].z - self.path[window].z)
+                dx.append(self.coordinates[i].x - self.path[window].x)
+                dy.append(self.coordinates[i].y - self.path[window].y)
+                dz.append(self.coordinates[i].z - self.path[window].z)
 
             # calcualate constraint energies and add them to reduced potential energy matrix A
+            dx = np.array(dx)
+            dy = np.array(dy)
+            dz = np.array(dz)
             A[window, :] = (
                 0.5
                 * self.simulation_properties.force_constant
                 * (dx ** 2 + dy ** 2 + dz ** 2)
             ) / self.KBT
-
             # again some funky stuff
             num_conf.append(self.simulation_properties.number_of_frames)
         num_conf = np.array(num_conf).astype(np.float64)
@@ -105,7 +108,7 @@ class PMFCalculator:
         B = np.zeros(
             (
                 self.number_of_bins,
-                self.n_windows * self.simulation_properties.number_of_frames,
+                self.n_frames_tot,
             )
         )
 
@@ -122,12 +125,12 @@ class PMFCalculator:
                 self.distance.append(
                     math.sqrt(
                         (center.x - c.x) ** 2
+                        + (center.y - c.y) ** 2
                         + (center.z - c.z) ** 2
-                        + (center.z - c.z) ** 2
-                    )
+                    ) * unit.nanometer
                 )
             # check if distance is smaller than boundaries
-            indicator = self.distance < 0.5 * self.path_interval
+            indicator = np.array([d < 0.5 * self.path_interval for d in self.distance])
             # do the infinity thing
             B[i, ~indicator] = np.inf
             # empty distance vector for next round
