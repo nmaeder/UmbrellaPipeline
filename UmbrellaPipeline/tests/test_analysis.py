@@ -30,7 +30,15 @@ def create_extra_bin_points(path, stepsize):
     """
     tree = Tree(path)
     er = TreeEscapeRoom(tree=Tree, start=TreeNode)
-    er.shortest_path = path
+    newp = []
+    for i in path:
+        newp.append(TreeNode(
+            x=i.x,
+            y=i.y,
+            z=i.z,
+            unit=i.unit,
+        ))
+    er.shortest_path = newp
     return er.get_path_for_sampling(stepsize=stepsize)
 
 
@@ -46,7 +54,7 @@ def test_marcus():
     # here below the simulation systems to use, use according.
     sim_sys_105 = SimulationSystem(
         psf_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/01-CE-105/charmm-gui/openmm/step5_input.psf",
-        pdb_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/01-CE-105/charmm-gui/openmm/step5_input.psf",
+        pdb_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/01-CE-105/charmm-gui/openmm/step5_input.pdb",
         toppar_directory="/data/shared/projects/DAT_enhanced_sampling/00DATA/01-CE-105/charmm-gui/toppar",
         toppar_stream_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/01-CE-105/charmm-gui/openmm/toppar.str",
         ligand_name="UNL",
@@ -54,7 +62,7 @@ def test_marcus():
 
     sim_sys_110 = SimulationSystem(
         psf_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/02-CE-110/charmm-gui/openmm/step5_input.psf",
-        pdb_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/02-CE-110/charmm-gui/openmm/step5_input.psf",
+        pdb_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/02-CE-110/charmm-gui/openmm/step5_input.pdb",
         toppar_directory="/data/shared/projects/DAT_enhanced_sampling/00DATA/02-CE-110/charmm-gui/toppar",
         toppar_stream_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/02-CE-110/charmm-gui/openmm/toppar.str",
         ligand_name="UNL",
@@ -62,7 +70,7 @@ def test_marcus():
 
     sim_sys_115 = SimulationSystem(
         psf_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/03-CE-115/charmm-gui/openmm/step5_input.psf",
-        pdb_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/03-CE-115/charmm-gui/openmm/step5_input.psf",
+        pdb_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/03-CE-115/charmm-gui/openmm/step5_input.pdb",
         toppar_directory="/data/shared/projects/DAT_enhanced_sampling/00DATA/03-CE-115/charmm-gui/toppar",
         toppar_stream_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/03-CE-115/charmm-gui/openmm/toppar.str",
         ligand_name="UNL",
@@ -70,7 +78,7 @@ def test_marcus():
 
     sim_sys_116 = SimulationSystem(
         psf_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/04-CE-116/charmm-gui/openmm/step5_input.psf",
-        pdb_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/04-CE-116/charmm-gui/openmm/step5_input.psf",
+        pdb_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/04-CE-116/charmm-gui/openmm/step5_input.pdb",
         toppar_directory="/data/shared/projects/DAT_enhanced_sampling/00DATA/04-CE-116/charmm-gui/toppar",
         toppar_stream_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/04-CE-116/charmm-gui/openmm/toppar.str",
         ligand_name="UNL",
@@ -78,7 +86,7 @@ def test_marcus():
 
     sim_sys_117 = SimulationSystem(
         psf_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/05-CE-117/charmm-gui/openmm/step5_input.psf",
-        pdb_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/05-CE-117/charmm-gui/openmm/step5_input.psf",
+        pdb_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/05-CE-117/charmm-gui/openmm/step5_input.pdb",
         toppar_directory="/data/shared/projects/DAT_enhanced_sampling/00DATA/05-CE-117/charmm-gui/toppar",
         toppar_stream_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/05-CE-117/charmm-gui/openmm/toppar.str",
         ligand_name="UNL",
@@ -87,9 +95,9 @@ def test_marcus():
     normal_interval = 2 * unit.angstrom
     short_interval = 1 * unit.angstrom
 
-    # To generate the path, go to the coordinates file and remove the "nm"s from the file before doing this. not nice but it is what it is :( :).
-
-    coordinate_file = "path_to_the_fixed_coordinates.dat_file"
+    coordinate_file = (
+        "/data/shared/projects/enhanced_sampling/traj_ce_105/coordinates.dat"
+    )
 
     dat = np.loadtxt(fname=coordinate_file, delimiter=",", skiprows=1)
     path = []
@@ -107,31 +115,31 @@ def test_marcus():
 
     # use the accordint property and system object generated above for the right trajectory
 
-    trajectory_directory = "path_to_trajectory_folder_you_want_to_analyze"
+    trajectory_directory = "/data/shared/projects/enhanced_sampling/traj_ce_105"
 
     bin_path = path
-    number_of_bins = 100
+    number_of_bins = 24
 
     # calculates positions of binpoints that do not equal restraint points.
 
     pmf = PMFCalculator(
         simulation_properties=sim_properties_ghost,
-        simulation_system=sim_sys_110,
+        simulation_system=sim_sys_105,
         path=path,
         path_interval=normal_interval,
         trajectory_directory=trajectory_directory,
         n_bins=number_of_bins,
     )
-
+    pmf.system_info.psf_object.createSystem(pmf.system_info.params)
     if not number_of_bins == pmf.n_windows:
-        new_size = len(pmf.path) * normal_interval / number_of_bins
+        new_size = pmf.n_windows * normal_interval / number_of_bins
         bin_path = create_extra_bin_points(path=pmf.path, stepsize=new_size)
 
     pmf.parse_trajectories()
 
     # i've implemented both versions now, one that bins according to nearest neighbour, and one that makes the spherical bins around the binpoints. use true if you want the nearest neighbour binning.
-    # this is not tested yet, but i'm pretty sure it does what it is supposed to.
-    pmf.calculate_pmf(bin_path=bin_path, nearest_neighbour_method=True)
-    pmf.create_pdf("pdffilepath")
+    # this is not tested yet, but i'm pretty sure it does what it is supposed to. falls es nicht geht auf false setzen, das geht auf jeden fall!!
+    pmf.calculate_pmf(bin_path=bin_path, nearest_neighbour_method=False)
+    # pmf.create_pdf("pdffilepath")
 
     # for testing purposes ive made the matrices A and B class attributes of PMFCalculator so you can easily access them via pmf.A in this case. only usefull after deploying calculate_pmf of course :)
