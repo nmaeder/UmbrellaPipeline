@@ -289,10 +289,10 @@ class SamplingHydra(UmbrellaSimulation):
         """
         path = f"{self.traj_write_path}/coordinates.dat"
         orgCoords = open(file=path, mode="w")
-        orgCoords.write("lamda, x0, y0, z0\n")
+        orgCoords.write(f"lamda, x0, y0, z0, all in units of {self.path[0].unit}\n")
         for window in range(self.lamdas):
             orgCoords.write(
-                f"{window},{self.path[window][0]},{self.path[window][0]},{self.path[window][0]}\n"
+                f"{window},{self.path[window].x},{self.path[window].y},{self.path[window].z}\n"
             )
         return path
 
