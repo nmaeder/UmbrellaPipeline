@@ -32,12 +32,14 @@ def create_extra_bin_points(path, stepsize):
     er = TreeEscapeRoom(tree=Tree, start=TreeNode)
     newp = []
     for i in path:
-        newp.append(TreeNode(
-            x=i.x,
-            y=i.y,
-            z=i.z,
-            unit=i.unit,
-        ))
+        newp.append(
+            TreeNode(
+                x=i.x,
+                y=i.y,
+                z=i.z,
+                unit=i.unit,
+            )
+        )
     er.shortest_path = newp
     return er.get_path_for_sampling(stepsize=stepsize)
 
@@ -49,6 +51,10 @@ def test_marcus():
     # use this second variant for the pmfcalculator when analysing the 110_lower versions, the above for everything else
     sim_properties_lower = SimulationProperties(
         force_constant=10 * unit.kilocalorie_per_mole / (unit.angstrom ** 2)
+    )
+
+    sim_shorty = SimulationProperties(
+        n_equilibration_steps=2000, n_production_steps=2000, write_out_frequency=100
     )
 
     # here below the simulation systems to use, use according.
@@ -95,9 +101,7 @@ def test_marcus():
     normal_interval = 2 * unit.angstrom
     short_interval = 1 * unit.angstrom
 
-    coordinate_file = (
-        "/data/shared/projects/enhanced_sampling/traj_ce_105/coordinates.dat"
-    )
+    coordinate_file = "/data/shared/projects/enhanced_sampling/test/coordinates.dat"
 
     dat = np.loadtxt(fname=coordinate_file, delimiter=",", skiprows=1)
     path = []
@@ -115,7 +119,7 @@ def test_marcus():
 
     # use the accordint property and system object generated above for the right trajectory
 
-    trajectory_directory = "/data/shared/projects/enhanced_sampling/traj_ce_105"
+    trajectory_directory = "/data/shared/projects/enhanced_sampling/test"
 
     bin_path = path
     number_of_bins = 24
@@ -123,7 +127,7 @@ def test_marcus():
     # calculates positions of binpoints that do not equal restraint points.
 
     pmf = PMFCalculator(
-        simulation_properties=sim_properties_ghost,
+        simulation_properties=sim_shorty,
         simulation_system=sim_sys_105,
         path=path,
         path_interval=normal_interval,
