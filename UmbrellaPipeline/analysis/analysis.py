@@ -7,6 +7,7 @@ import torch
 from FastMBAR import FastMBAR
 import matplotlib.pyplot as plt
 
+from UmbrellaPipeline.path_generation import Tree
 from UmbrellaPipeline.utils import (
     SimulationProperties,
     SimulationSystem,
@@ -22,6 +23,7 @@ class PMFCalculator:
         path: List[unit.Quantity],
         trajectory_directory: str,
         path_interval: unit.Quantity,
+        n_bins: int,
     ) -> None:
         self.simulation_properties = simulation_properties
         self.system_info = simulation_system
@@ -40,11 +42,19 @@ class PMFCalculator:
         self.pmf: List[float] = []
         self.distance: List[unit.Quantity] = []
         self.path_interval = path_interval
+        self.n_bins = n_bins
         self.KBT = (
             unit.BOLTZMANN_CONSTANT_kB
             * self.simulation_properties.temperature
             * unit.AVOGADRO_CONSTANT_NA
         ).value_in_unit(unit.kilocalorie_per_mole)
+        self.A = np.zeros((self.n_windows, self.n_frames_tot))
+        self.B = np.zeros(
+            (
+                n_bins,
+                self.n_frames_tot,
+            )
+        )
 
     def parse_trajectories(self) -> None:
         # lazy loading so it doesnt use the memory upon object construction. (SE nerdness, i know.)
@@ -71,15 +81,17 @@ class PMFCalculator:
         # make one list out of the data frame.
         self.coordinates = np.concatenate(coordinates)
 
-    def calculate_pmf(self):
+    def calculate_pmf(
+        self, bin_path=List[unit.Quantity], nearest_neighbour_method: bool = True
+    ):
         # whatever that is for, they do it so i do it
         num_conf = []
 
         # actual science :D
         A = np.zeros((self.n_windows, self.n_frames_tot))
         for window in range(self.n_windows):
-            
-            dx, dy, dz = [],[],[]
+
+            dx, dy, dz = [], [], []
             # calculate the distances from the potential, path holds the coordinates of the potentials.
             for i in range(len(self.coordinates)):
                 dx.append(self.coordinates[i].x - self.path[window].x)
@@ -90,7 +102,7 @@ class PMFCalculator:
             dx = np.array(dx)
             dy = np.array(dy)
             dz = np.array(dz)
-            A[window, :] = (
+            self.A[window, :] = (
                 0.5
                 * self.simulation_properties.force_constant
                 * (dx ** 2 + dy ** 2 + dz ** 2)
@@ -107,7 +119,7 @@ class PMFCalculator:
         # initializing perturbed reduced potential energy matrix B.
         B = np.zeros(
             (
-                self.number_of_bins,
+                len(bin_path),
                 self.n_frames_tot,
             )
         )
@@ -115,24 +127,34 @@ class PMFCalculator:
         # loop over windows and check for every sample if center of mass is within the boundaries. boundaries are set to have the stepsize of the path,
         # but in all 3 dimensions. i could also always put a sample in to the nearest bin, so i dont have to define the bins, i think this would make
         # life a lot easier, pls comment on that.
-        for i in range(self.n_windows):
+        for i in range(len(bin_path)):
             # for simplicity, number of bins is now set to the number of umbrella windows. theoretically i could change this,
             # but would then need to calculate new coordinates along the path so i get enough for the number of bins. in principle easily possible,
             # since i already have a function, that does this, but will postpone until this works.
-            center = self.path[i]
+            center = bin_path[i]
             # calculate of every coordinate to the potential well
-            for c in self.coordinates:
-                self.distance.append(
-                    math.sqrt(
-                        (center.x - c.x) ** 2
-                        + (center.y - c.y) ** 2
-                        + (center.z - c.z) ** 2
-                    ) * unit.nanometer
+            if nearest_neighbour_method:
+                tree = Tree(bin_path)
+                indicator = []
+                for c in self.coordinates:
+                    indicator.append(tree.get_nearest_neighbour_index(c) == i)
+                indicator = np.array(indicator)
+            else:
+                for c in self.coordinates:
+                    self.distance.append(
+                        math.sqrt(
+                            (center.x - c.x) ** 2
+                            + (center.y - c.y) ** 2
+                            + (center.z - c.z) ** 2
+                        )
+                        * unit.nanometer
+                    )
+                # check if distance is smaller than boundaries
+                indicator = np.array(
+                    [d < 0.5 * self.path_interval for d in self.distance]
                 )
-            # check if distance is smaller than boundaries
-            indicator = np.array([d < 0.5 * self.path_interval for d in self.distance])
             # do the infinity thing
-            B[i, ~indicator] = np.inf
+            self.B[i, ~indicator] = np.inf
             # empty distance vector for next round
             self.distance.clear()
 
