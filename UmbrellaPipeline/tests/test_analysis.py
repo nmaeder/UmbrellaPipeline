@@ -28,7 +28,7 @@ def create_extra_bin_points(path, stepsize):
     helper function, see usage below.
     """
     tree = Tree(path)
-    er = TreeEscapeRoom(tree=Tree, start=TreeNode)
+    er = TreeEscapeRoom(tree=tree, start=TreeNode())
     newp = []
     for i in path:
         newp.append(
@@ -40,6 +40,7 @@ def create_extra_bin_points(path, stepsize):
             )
         )
     er.shortest_path = newp
+    er.stepsize = 0.25 * unit.angstrom
     return er.get_path_for_sampling(stepsize=stepsize)
 
 
@@ -121,7 +122,7 @@ def test_marcus():
     trajectory_directory = "/data/shared/projects/enhanced_sampling/test"
 
     bin_path = path
-    number_of_bins = 24
+    number_of_bins = 75
 
     # calculates positions of binpoints that do not equal restraint points.
 
@@ -142,7 +143,7 @@ def test_marcus():
 
     # i've implemented both versions now, one that bins according to nearest neighbour, and one that makes the spherical bins around the binpoints. use true if you want the nearest neighbour binning.
     # this is not tested yet, but i'm pretty sure it does what it is supposed to. falls es nicht geht auf false setzen, das geht auf jeden fall!!
-    pmf.calculate_pmf(bin_path=bin_path, nearest_neighbour_method=False)
+    pmf.calculate_pmf(bin_path=bin_path, nearest_neighbour_method=True)
     # pmf.create_pdf("pdffilepath")
 
     # for testing purposes ive made the matrices A and B class attributes of PMFCalculator so you can easily access them via pmf.A in this case. only usefull after deploying calculate_pmf of course :)
