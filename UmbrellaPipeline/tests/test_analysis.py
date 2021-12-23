@@ -3,8 +3,7 @@ from openmm import Vec3
 import numpy as np
 
 from UmbrellaPipeline.analysis import PMFCalculator
-from UmbrellaPipeline.path_generation import Tree, TreeEscapeRoom
-from UmbrellaPipeline.path_generation.node import TreeNode
+from UmbrellaPipeline.path_generation import Tree, TreeNode, TreeEscapeRoom
 from UmbrellaPipeline.utils import SimulationProperties, SimulationSystem
 
 """
