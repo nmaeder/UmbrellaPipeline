@@ -297,13 +297,11 @@ class TreeEscapeRoom(EscapeRoom3D):
         self,
         tree: Tree,
         start: TreeNode,
-        pathsize: unit.Quantity = 1.2 * unit.angstrom,
         stepsize: unit.Quantity = 0.25 * unit.angstrom,
     ) -> None:
         super().__init__(start=start)
         self.shortest_path: List[TreeNode] = []
         self.tree = tree
-        self.pathsize = pathsize
         self.stepsize = stepsize
 
     def is_goal_reached(
