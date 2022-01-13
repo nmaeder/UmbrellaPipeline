@@ -169,6 +169,7 @@ class UmbrellaPipeline:
         )
         simulation.prepare_simulations()
         simulation.run_sampling()
+        serialize_info_for_analysis()
 
     def run_simulations_local(
         self,
@@ -189,3 +190,4 @@ class UmbrellaPipeline:
         )
         simulation.prepare_simulations()
         simulation.run_sampling()
+        serialize_info_for_analysis()

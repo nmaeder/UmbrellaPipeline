@@ -215,6 +215,10 @@ class Tree:
         dist = dist * self.unit - vdw_radius.in_units_of(self.unit)
         return dist
 
+    def get_nearest_neighbour_index(self, coords: u.Quantity):
+        dist, i = self.tree.query(x=[coords.x, coords.y, coords.z], k=1)
+        return i
+
     def calculate_euclidean_distance(
         self, node: TreeNode, destination: TreeNode
     ) -> u.Quantity:

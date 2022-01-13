@@ -38,6 +38,8 @@ class SimulationSystem:
         self.params = (toppar_directory, toppar_stream_file)
         self.ligand_name = ligand_name
         self.ligand_indices_from_name = ligand_name
+        self.toppar_dir = toppar_directory
+        self.toppar_str = toppar_stream_file
 
     # Getters
     @property
@@ -59,6 +61,14 @@ class SimulationSystem:
     @property
     def params(self) -> app.CharmmParameterSet:
         return self._params
+
+    @property
+    def toppar_dir(self) -> str:
+        return self._toppar_dir
+
+    @property
+    def toppar_str(self) -> str:
+        return self._toppar_str
 
     @property
     def ligand_name(self) -> str:
@@ -103,6 +113,20 @@ class SimulationSystem:
             dir, file = value
             self._params = parse_params(toppar_directory=dir, toppar_str_file=file)
         except:
+            raise FileNotFoundError
+
+    @toppar_dir.setter
+    def toppar_dir(self, value: str) -> None:
+        if os.path.isdir(value):
+            self._toppar_dir = value
+        else:
+            raise FileNotFoundError
+
+    @toppar_str.setter
+    def toppar_str(self, value: str) -> None:
+        if os.path.isfile(value):
+            self._toppar_str = value
+        else:
             raise FileNotFoundError
 
     @ligand_name.setter
