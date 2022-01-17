@@ -1,13 +1,12 @@
-from typing import List
-import math
+from typing import List, Tuple
 import numpy as np
-import openmm.unit as unit
+import openmmtools
+from openmm import Vec3, unit
 import mdtraj
-import torch
 from FastMBAR import FastMBAR
 import matplotlib.pyplot as plt
 
-from UmbrellaPipeline.path_generation import Tree
+from UmbrellaPipeline.path_generation import TreeNode, Tree, TreeEscapeRoom
 from UmbrellaPipeline.utils import (
     SimulationProperties,
     SimulationSystem,
@@ -16,185 +15,293 @@ from UmbrellaPipeline.utils import (
 
 
 class PMFCalculator:
+    """
+    Holds all the analysis information
+    """
+
     def __init__(
         self,
         simulation_properties: SimulationProperties,
         simulation_system: SimulationSystem,
-        path: List[unit.Quantity],
         trajectory_directory: str,
-        path_interval: unit.Quantity,
-        n_bins: int,
+        original_path_interval: unit.Quantity,
+        path_coordinates: List[unit.Quantity] = [],
+        n_bins: int = None,
     ) -> None:
+        """
+        Args:
+            simulation_properties (SimulationProperties): [description]
+            simulation_system (SimulationSystem): [description]
+            trajectory_directory (str): [description]
+            original_path_interval (unit.Quantity): [description]
+            path_coordinates (List[unit.Quantity], optional): [description]. Defaults to [].
+            n_bins (int, optional): [description]. Defaults to None.
+        """
         self.simulation_properties = simulation_properties
         self.system_info = simulation_system
-        self.number_of_bins = len(path)
-        self.path = path
-        self.n_windows = len(path)
+        self.trajectory_directory = trajectory_directory.rstrip("/")
+
+        self.n_windows = len(path_coordinates)
+        self.n_bins = n_bins if n_bins else self.n_windows
+        self.path_coordinates = path_coordinates
+        self.path_interval = original_path_interval
         self.n_frames_tot = self.n_windows * self.simulation_properties.number_of_frames
-        self.trajectory_directory = trajectory_directory
-        self.coordinates: List[unit.Quantity]
-        self.center_pmf = np.linspace(
-            start=0,
-            stop=self.n_windows * path_interval.value_in_unit(unit.nanometer),
-            num=len(path),
-            endpoint=False,
-        )
-        self.pmf: List[float] = []
-        self.distance: List[unit.Quantity] = []
-        self.path_interval = path_interval
-        self.n_bins = n_bins
+
         self.KBT = (
             unit.BOLTZMANN_CONSTANT_kB
             * self.simulation_properties.temperature
             * unit.AVOGADRO_CONSTANT_NA
         ).value_in_unit(unit.kilocalorie_per_mole)
-        self.A = np.zeros((self.n_windows, self.n_frames_tot))
-        self.B = np.zeros(
-            (
-                n_bins,
-                self.n_frames_tot,
-            )
-        )
+
+        self.A: np.ndarray
+        self.B: np.ndarray
+        self.sampled_coordinates: np.ndarray
+
+        self.pmf: np.ndarray
+        self.pmf_error: np.ndarray
 
     def parse_trajectories(self) -> None:
-        # lazy loading so it doesnt use the memory upon object construction. (SE nerdness, i know.)
-        coordinates = np.zeros(
-            shape=(self.n_windows, self.simulation_properties.number_of_frames),
-            dtype=object,
-        )
+        """
+        Reads in the trajectory files, extracts the center of mass positions for the ligand in every frame and writes them into one file to save time and memory.
+        """
+        coordinates = []
         for window in range(self.n_windows):
-            # reading in trajectory. whole trajectory is read in,
-            # since i only save the com coordinates for further use
-            # and delete the trajectory object as soon as its not used anymore.
             trajectory = mdtraj.load_dcd(
                 filename=f"{self.trajectory_directory}/traj_{window}.dcd",
                 top=self.system_info.pdb_file,
             )
-            # saving com coordinates of the ligand ot self.coordinates
-            for frame in range(self.simulation_properties.number_of_frames):
-                coordinates[window][frame] = get_center_of_mass_coordinates(
-                    positions=trajectory.openmm_positions(frame),
-                    indices=self.system_info.ligand_indices,
-                    masses=self.system_info.psf_object.system,
-                )
-            del trajectory
-        # make one list out of the data frame.
-        self.coordinates = np.concatenate(coordinates)
+            coordinates.append(
+                [
+                    get_center_of_mass_coordinates(
+                        positions=trajectory.openmm_positions(frame),
+                        indices=self.system_info.ligand_indices,
+                        masses=self.system_info.psf_object.system,
+                    )
+                    for frame in range(self.simulation_properties.number_of_frames)
+                ]
+            )
+        self.sampled_coordinates = np.concatenate(coordinates).tolist()
+        with open(
+            self.trajectory_directory + "/sampled_coordinates.dat", mode="w"
+        ) as f:
+            f.write("#sampled center of mass coordinates of the ligand in nm\n")
+            for i in coordinates:
+                f.write(f"{i.x}, {i.y}, {i.z}\n")
 
-    def calculate_pmf(
-        self, bin_path=List[unit.Quantity], nearest_neighbour_method: bool = True
-    ):
-        # whatever that is for, they do it so i do it
+    def update_class_attributes(self) -> None:
+        self.n_windows = len(self.path_coordinates)
+        if self.n_bins == 0:
+            self.n_bins = self.n_windows
+        self.n_frames_tot = self.n_windows * self.simulation_properties.number_of_frames
+
+    def load_original_path(self, fname: str = None) -> List[unit.Quantity]:
+        """
+        Loads the coordinates to which the ligand was restrained to.
+
+        Args:
+            fname (str, optional): only give if you changed the coordinates.dat file name that was created by this package. Defaults to None.
+
+        Returns:
+            List[unit.Quantity]: List containing the restraint positions of the umbrella windows
+        """
+        file = fname if fname else self.trajectory_directory + "/coordinates.dat"
+        dat = np.loadtxt(file, delimiter=",", skiprows=1)
+        self.path_coordinates = [
+            unit.Quantity(
+                value=Vec3(
+                    x=i[1],
+                    y=i[2],
+                    z=i[3],
+                ),
+                unit=unit.nanometer,
+            )
+            for i in dat
+        ]
+        self.update_class_attributes()
+        return self.path_coordinates
+
+    def load_sampled_coordinates(self, fname: str = None) -> List[unit.Quantity]:
+        """
+        Reads the coordinates from the file created by this package. Can only be used if parse_trajectories() was ecexuted at one point before.
+
+        Args:
+            fname (str, optional): nly give if you changed the sampled_coordinates.dat file name that was created by this package. Defaults to None.
+
+        Returns:
+            List[unit.Quantity]: List containing the sampled center of mass coordinates of the ligand.
+        """
+        file = (
+            fname if fname else self.trajectory_directory + "/sampled_coordinates.dat"
+        )
+        dat = np.loadtxt(file, delimiter=",")
+        self.sampled_coordinates = [
+            unit.Quantity(
+                value=Vec3(
+                    x=i[0],
+                    y=i[1],
+                    z=i[2],
+                ),
+                unit=unit.nanometer,
+            )
+            for i in dat
+        ]
+        return self.sampled_coordinates
+
+    def create_extra_bin_points(self, stepsize):
+        """
+        helper function, see usage below.
+        """
+        tree = Tree(self.path_coordinates)
+        er = TreeEscapeRoom(tree=tree, start=TreeNode())
+        newp = []
+        for window in self.path_coordinates:
+            newp.append(
+                TreeNode(
+                    x=window.x,
+                    y=window.y,
+                    z=window.z,
+                    unit=window.unit,
+                )
+            )
+        er.shortest_path = newp
+        er.stepsize = 0.25 * unit.angstrom
+        return er.get_path_for_sampling(stepsize=stepsize)
+
+    def calculate_pmf(self) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Does the actual PMF calculations using the FastMBAR package.
+
+        Args:
+            bin_path (List[unit.Quantity]): The bin points along the sampled path. if number of bins equals number of simulation windows,
+            this is just the restrain coordinates.
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: the calculated forces per bin and the stdeviation estimate.
+        """
+
+        # create extra bin point coordinates if number of bins is bigger than number of windows.
+        if self.n_windows == self.n_bins:
+            bin_path = self.path_coordinates
+        else:
+            stepsize = self.n_windows * self.path_interval / self.n_bins
+            bin_path = self.create_extra_bin_points(stepsize=stepsize)
+
         num_conf = []
 
-        # actual science :D
-        A = np.zeros((self.n_windows, self.n_frames_tot))
-        for window in range(self.n_windows):
+        # initialize reduced potential energy matrix
+        self.A = np.zeros(shape=(self.n_windows, self.n_frames_tot))
 
-            dx, dy, dz = [], [], []
-            # calculate the distances from the potential, path holds the coordinates of the potentials.
-            for i in range(len(self.coordinates)):
-                dx.append(self.coordinates[i].x - self.path[window].x)
-                dy.append(self.coordinates[i].y - self.path[window].y)
-                dz.append(self.coordinates[i].z - self.path[window].z)
+        # calculate deviations for every frame.
+        for window_number, window in enumerate(self.path_coordinates):
+            dx = np.array([frame.x - window.x for frame in self.sampled_coordinates])
+            dy = np.array([frame.y - window.y for frame in self.sampled_coordinates])
+            dz = np.array([frame.z - window.z for frame in self.sampled_coordinates])
 
-            # calcualate constraint energies and add them to reduced potential energy matrix A
-            dx = np.array(dx)
-            dy = np.array(dy)
-            dz = np.array(dz)
-            self.A[window, :] = (
+            # calculate reduced potential energy
+            self.A[window_number, :] = (
                 0.5
                 * self.simulation_properties.force_constant
                 * (dx ** 2 + dy ** 2 + dz ** 2)
             ) / self.KBT
-            # again some funky stuff
+
+            # save number of samples per window. in our case same in every window.
             num_conf.append(self.simulation_properties.number_of_frames)
         num_conf = np.array(num_conf).astype(np.float64)
 
-        # solving mbar equations using fastMBAR
+        # check if cuda is available.
+        cuda_available = "CUDA" in [
+            pf.getName() for pf in openmmtools.utils.get_available_platforms()
+        ]
+
+        # solve mbar equations.
         wham = FastMBAR(
-            energy=A, num_conf=num_conf, cuda=torch.cuda.is_available(), verbose=True
+            energy=self.A,
+            num_conf=num_conf,
+            cuda=cuda_available,
+            verbose=True,
+            bootstrap=True,
         )
 
-        # initializing perturbed reduced potential energy matrix B.
-        B = np.zeros(
-            (
-                len(bin_path),
-                self.n_frames_tot,
+        # initialize perturbed reduced potential energy matrix
+        self.B = np.zeros(shape=(self.n_bins, self.n_frames_tot))
+
+        for bin in range(self.n_bins):
+            tree = Tree(bin_path)
+            # for every sampling window, check if the frames from that window are actually closest to that window.
+            indicator = np.array(
+                [
+                    tree.get_nearest_neighbour_index(frame) == bin
+                    for frame in self.sampled_coordinates
+                ]
             )
+            self.B[bin, ~indicator] = np.inf
+
+        # calculate the free energies of the perturbed states
+        self.pmf, self.pmf_error = wham.calculate_free_energies_of_perturbed_states(
+            self.B
         )
+        return self.pmf, self.pmf_error
 
-        # loop over windows and check for every sample if center of mass is within the boundaries. boundaries are set to have the stepsize of the path,
-        # but in all 3 dimensions. i could also always put a sample in to the nearest bin, so i dont have to define the bins, i think this would make
-        # life a lot easier, pls comment on that.
-        for i in range(len(bin_path)):
-            # for simplicity, number of bins is now set to the number of umbrella windows. theoretically i could change this,
-            # but would then need to calculate new coordinates along the path so i get enough for the number of bins. in principle easily possible,
-            # since i already have a function, that does this, but will postpone until this works.
-            center = bin_path[i]
-            # calculate of every coordinate to the potential well
-            if nearest_neighbour_method:
-                tree = Tree(bin_path)
-                indicator = []
-                for c in self.coordinates:
-                    indicator.append(tree.get_nearest_neighbour_index(c) == i)
-                indicator = np.array(indicator)
-            else:
-                for c in self.coordinates:
-                    self.distance.append(
-                        math.sqrt(
-                            (center.x - c.x) ** 2
-                            + (center.y - c.y) ** 2
-                            + (center.z - c.z) ** 2
-                        )
-                        * unit.nanometer
-                    )
-                # check if distance is smaller than boundaries
-                indicator = np.array(
-                    [d < 0.5 * self.path_interval for d in self.distance]
-                )
-            # do the infinity thing
-            self.B[i, ~indicator] = np.inf
-            # empty distance vector for next round
-            self.distance.clear()
+    def plot(self, filename: str = None, format: str = "svg", dpi: float = 300):
+        """
+        plots the pmf with error bars.
 
-        # with that we have one problem, which is why i suggest to bin in a fashion so we put every coordinate into the bin next. problem depicted below.
-        #
-        # optimal case:
-        #  _________________________________________________________
-        #  |      |      |      |      |      |      |      |      |
-        #  |     x|    x |      |  x   |      | x    |      |      |
-        #  |      |  x   |      |      |   x  |      |      |      |
-        #  -----------------------------------------------x---------      - every x is in one of the bins.
-        #  |   x  |      |   x  |      |x     |    x |      |      |
-        #  |      |    x |      |      |      |      | x    |  x   |
-        #  |      | x    |      |      |      |      |      |      |
-        #  """""""""""""""""""""""""""""""""""""""""""""""""""""""""
-        #
-        # samples we miss:
-        #
-        #           X                          X
-        #  _________________________________________________________
-        #  |      |      |      |      |      |      |      |      |
-        #  |     x|      |      |  x   |      | x    |      |      |
-        #  |      |  x   |      |      |   x  |      |      |      |
-        #  -----------------------------------------------x---------      - since we define our bins by spheres (distance calculations), there can be samples missing, here denoted as X.
-        #  |   x  |      |   x  |      |x     |    x |      |      |        when using the binning method by just assigning each sample to the next nearest bin, we would not miss out on these.
-        #  |      |    x |      |      |      |      | x    |  x   |        I think this should be withoug drawback from the calculation point of view and should be rather easy to implement (with kd tree as in the escape room).
-        #  |      | x    |      |      |      |      |      |      |
-        #  """""""""""""""""""""""""""""""""""""""""""""""""""""""""
-        #                       X
-
-        self.pmf, _ = wham.calculate_free_energies_of_perturbed_states(B)
-
-    def create_pdf(self, filename: str):
-        fig = plt.figure(0)
-        fig.clf()
-        plt.plot(self.center_pmf, self.pmf, "-o")
+        Args:
+            filename (str, optional): if given, a png file is exported to the filepath.
+        """
+        pmf_center = np.linspace(
+            start=0,
+            stop=(self.n_windows * self.path_interval).value_in_unit(unit.nanometer),
+            num=self.n_bins,
+            endpoint=False,
+        )
+        fig = plt.figure()
+        plt.errorbar(pmf_center, self.pmf, yerr=self.pmf_error, fmt="-o")
         plt.xlim(
-            self.center_pmf[0],
-            self.center_pmf[-1],
+            pmf_center[0],
+            pmf_center[-1],
         )
         plt.xlabel("Ligand distance from binding pocked [nm]")
         plt.ylabel("Relative free energy [kcal per mole]")
-        plt.savefig(filename)
+        if filename:
+            if not filename.endswith(f".{format}"):
+                filename += f".{format}"
+            fig.savefig(
+                filename,
+                dpi=dpi,
+                format=format,
+            )
+
+    def plot_pytest(self, filename: str = None, format: str = "svg", dpi: float = 300):
+        import matplotlib
+
+        """
+        plots the pmf with error bars. only use together with pytest cases in vscode. will probabely be removed later.
+
+        Args:
+            filename (str, optional): if given, a png file is exported to the filepath.
+        """
+        matplotlib.use("Agg")
+        pmf_center = np.linspace(
+            start=0,
+            stop=(self.n_windows * self.path_interval).value_in_unit(unit.nanometer),
+            num=self.n_bins,
+            endpoint=False,
+        )
+        fig = plt.figure()
+        plt.errorbar(pmf_center, self.pmf, yerr=self.pmf_error, fmt="-o")
+        plt.xlim(
+            pmf_center[0],
+            pmf_center[-1],
+        )
+        plt.xlabel("Ligand distance from binding pocked [nm]")
+        plt.ylabel("Relative free energy [kcal per mole]")
+        if filename:
+            if not filename.endswith(f".{format}"):
+                filename += f".{format}"
+            fig.savefig(
+                filename,
+                dpi=dpi,
+                format=format,
+            )
+        plt.close(fig)
