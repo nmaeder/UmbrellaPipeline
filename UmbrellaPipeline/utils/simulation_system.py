@@ -1,5 +1,5 @@
 from copy import Error
-import openmm.app as app
+from openmm import app
 import os
 from typing import Tuple, List
 

@@ -1,9 +1,7 @@
 import argparse
 import openmm as mm
-import openmm.app as app
-import openmm.unit as unit
 import openmmtools
-from openmm import Vec3
+from openmm import Vec3, unit, app
 import time, logging
 
 from UmbrellaPipeline.utils import (

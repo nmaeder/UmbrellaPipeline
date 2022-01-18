@@ -1,5 +1,4 @@
-import openmm.unit as unit
-from openmm import Vec3
+from openmm import Vec3, unit
 import pytest
 
 from UmbrellaPipeline.path_generation import Tree, TreeNode

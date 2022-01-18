@@ -1,8 +1,7 @@
 import math
 from typing import List
-import openmm.app as app
 import openmm.unit as u
-from openmm import Vec3
+from openmm import Vec3, app
 from scipy.spatial import KDTree
 
 from UmbrellaPipeline.utils import (

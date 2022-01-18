@@ -3,6 +3,8 @@
 # Add imports here
 from .sampling_helper import (
     add_harmonic_restraint,
+    initialize_backbone_restraints,
+    activate_backbone_restraints,
     ghost_ligand,
     ramp_up_vdw,
     ramp_up_coulomb,

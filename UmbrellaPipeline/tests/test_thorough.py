@@ -1,8 +1,6 @@
 import os, pytest, sys, time, math
-import openmm.app as app
-import openmm.unit as unit
 import openmmtools
-from openmm import Vec3
+from openmm import Vec3, unit, app
 import numpy as np
 
 from UmbrellaPipeline import UmbrellaPipeline

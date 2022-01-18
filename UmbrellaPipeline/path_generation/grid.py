@@ -1,9 +1,7 @@
 import math
 from itertools import product
 from typing import List
-from openmm import Vec3
-import openmm.app as app
-import openmm.unit as unit
+from openmm import Vec3, unit, app
 import gemmi
 import numpy as np
 

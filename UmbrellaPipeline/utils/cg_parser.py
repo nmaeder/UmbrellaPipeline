@@ -1,7 +1,6 @@
 import os
 from typing import List
-import openmm.app as app
-import openmm.unit as unit
+from openmm import unit, app
 
 
 def parse_params(
@@ -70,3 +69,4 @@ def gen_pbc_box(
 
     psf.setBox(boxlx, boxly, boxlz)
     return min_crds
+

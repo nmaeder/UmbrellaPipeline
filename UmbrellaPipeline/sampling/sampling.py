@@ -1,12 +1,13 @@
-import os, time, logging, stat
-import openmm.unit as unit
+import os, time, logging
 import openmm as mm
-import openmm.app as app
 import openmmtools
+from openmm import app, unit
 from typing import List
 
 from UmbrellaPipeline.sampling import (
     add_harmonic_restraint,
+    initialize_backbone_restraints,
+    activate_backbone_restraints,
     update_restraint,
     serialize_system,
 )
@@ -32,6 +33,7 @@ class UmbrellaSimulation:
         path: List[unit.Quantity],
         openmm_system: mm.openmm.System,
         traj_write_path: str = None,
+        restrain_protein_backbone: bool = False,
     ) -> None:
         """
         Args:
@@ -48,6 +50,7 @@ class UmbrellaSimulation:
         self.openmm_system = openmm_system
         self.simulation: app.Simulation
         self.integrator: mm.openmm.Integrator
+        self.bb_restrains = restrain_protein_backbone
 
         self.platform = openmmtools.utils.get_fastest_platform()
         if self.platform.getName() == ("CUDA" or "OpenCL"):
@@ -89,6 +92,12 @@ class UmbrellaSimulation:
             ],
         )
 
+        if self.bb_restrains:
+            initialize_backbone_restraints(
+                self.openmm_system,
+                self.system_info.psf_object.atom_list,
+            )
+
         self.integrator = openmmtools.integrators.LangevinIntegrator(
             temperature=self.simulation_properties.temperature,
             collision_rate=self.simulation_properties.friction_coefficient,
@@ -115,6 +124,14 @@ class UmbrellaSimulation:
         self.simulation.context.setVelocitiesToTemperature(
             self.simulation_properties.temperature
         )
+
+        if self.bb_restrains:
+            self.simulation.step(self.simulation_properties.n_equilibration_steps)
+            activate_backbone_restraints(
+                simulation=self.simulation,
+                atom_list=self.system_info.psf_object.atom_list,
+            )
+
         for window in range(self.lamdas):
             orgCoords.write(
                 f"{window}, {self.simulation.context.getParameter('x0')}, {self.simulation.context.getParameter('y0')}, {self.simulation.context.getParameter('z0')}\n"
@@ -140,7 +157,7 @@ class UmbrellaSimulation:
                     f"Step {i+1} of {self.simulation_properties.number_of_frames} simulated. "
                     f"Elapsed Time: {display_time(elapsed_time)}. "
                     f"Elapsed total time: {display_time(total_time)}. "
-                    f"Estimated time until finish: {display_time((self.simulation_properties.number_of_frames - i -1) * total_time) }."
+                    f"Estimated time until finish: {display_time((self.simulation_properties.number_of_frames - (i+1)) * total_time) }."
                 )
             fileHandle.close()
             try:

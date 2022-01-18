@@ -2,8 +2,7 @@ import copy, time, logging
 from typing import List
 import gemmi
 import numpy as np
-import openmm.unit as unit
-from openmm import Vec3
+from openmm import Vec3, unit
 
 from UmbrellaPipeline.path_generation import (
     GridNode,

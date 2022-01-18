@@ -1,7 +1,6 @@
 from typing import List
 import openmm as mm
-import openmm.unit as unit
-from openmm import Vec3
+from openmm import Vec3, unit
 
 
 def get_centroid_coordinates(

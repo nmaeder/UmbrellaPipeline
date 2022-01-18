@@ -1,8 +1,13 @@
 import openmm as mm
-import openmm.unit as unit
-import openmm.app as app
+from openmm import (
+    unit,
+    app,
+)
 from typing import List
 import numpy as np
+
+from UmbrellaPipeline.utils import get_backbone_indices
+
 
 HARMONIC_FORMULA = (
     "0.5 * k * (dx^2 + dy^2 + dz^2); dx=abs(x1-x0); dy=abs(y1-y0); dz=abs(z1-z0)"
@@ -41,6 +46,62 @@ def add_harmonic_restraint(
     return system
 
 
+def initialize_backbone_restraints(
+    system: mm.openmm.System,
+    atom_list: app.internal.charmm.topologyobjects.AtomList,
+) -> mm.openmm.System:
+    """Adds a CustomExternalForce object to your systems force list. it will not restrain at this point, since the force constant is set to 0.
+    Use activate_backbone_restraints() to set the restraints active.
+
+    Args:
+        system (mm.openmm.System): openmm system object
+        atom_list (app.internal.charmm.topologyobjects.AtomList): psf.atom_list of your whole system
+
+    Returns:
+        mm.openmm.System: [description]
+    """
+    indices = get_backbone_indices(atom_list=atom_list)
+    force = mm.CustomExternalForce("1/2*k*periodicdistance(x, y, z, x0, y0, z0)^2")
+    force.addGlobalParameter("k", 0 * unit.kilocalorie_per_mole / unit.angstrom ** 2)
+    force.addPerParticleParameter("x0")
+    force.addPerParticleParameter("y0")
+    force.addPerParticleParameter("z0")
+    force.setName("bb_restraint_force")
+    for index in indices:
+        force.addParticle(index, [0, 0, 0])
+    system.addForce(force)
+    return system
+
+
+def activate_backbone_restraints(
+    simulation: app.Simulation,
+    atom_list: app.internal.charmm.topologyobjects.AtomList,
+    force_constant: unit.Quantity = 10 * unit.kilocalorie_per_mole / unit.angstrom ** 2,
+) -> app.Simulation:
+    """
+    This will activate the backbone restraints initialized with initialize_backbone_restraints.
+    The restraint positions are set to the positions that the context hold at the moment, so call
+    this function at a point in time, where your protein is in the position you want it to be restrained.
+
+    Args:
+        simulation (app.Simulation): [description]
+        atom_list (app.internal.charmm.topologyobjects.AtomList): [description]
+        force_constant (unit.Quantity, optional): [description]. Defaults to 10*unit.kilocalorie_per_mole/unit.angstrom**2.
+
+    Returns:
+        app.Simulation: [description]
+    """
+    positions = simulation.context.getState(getPositions=True).getPositions()
+    indices = get_backbone_indices(atom_list=atom_list)
+    for force in simulation.context.getSystem().getForces():
+        if force.getName() == "bb_restraint_force":
+            force.setGlobalParameterDefaultValue(0, force_constant)
+            for it, idx in enumerate(indices):
+                force.setParticleParameters(it, it, positions[idx])
+            force.updateParametersInContext(simulation.context)
+    return simulation
+
+
 def scale(
     initial_value: unit.Quantity, final_value: unit.Quantity, lamda: float
 ) -> unit.Quantity:
@@ -51,7 +112,6 @@ def scale(
         initial_value (unit.Quantity): initial value.
         final_value (unit.Quantity): final value
         lamda (float): value between 0 and 1 to scale between the two values.
-
     Returns:
         unit.Quantity: scaled value between initial and final value
     """
@@ -175,7 +235,7 @@ def update_restraint(
     original_parameters: List[unit.Quantity],
     path: List[unit.Quantity],
     window: int,
-    nr_steps: int = 1000,
+    nr_steps: int = 10,
 ) -> None:
     """Updates the constraint coordinates of the simulation
 
@@ -188,8 +248,8 @@ def update_restraint(
         [path[window].x, path[window].y, path[window].z],
     ):
         simulation.context.setParameter(a, b)
-    simulation.minimizeEnergy()
-    simulation.step(250000)
+    simulation.minimizeEnergy(200)
+    simulation.step(1000)
     ghost_busters_ligand(
         simulation=simulation,
         ligand_indices=ligand_indices,
