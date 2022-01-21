@@ -118,8 +118,9 @@ class Tree:
 
         return cls(unit=unit, coordinates=coords)
 
+    @staticmethod
     def node_from_files(
-        self, psf: str, pdb: str, name: str, include_hydrogens: bool = True
+        psf: str, pdb: str, name: str, include_hydrogens: bool = True
     ) -> TreeNode:
         """
         calculates the centroid coordinates of the ligand and returns the grid node closest to the centriod Cordinates.
@@ -147,6 +148,48 @@ class Tree:
             atom_list=psf.atom_list, name=name, include_hydrogens=include_hydrogens
         )
         coordinates = get_centroid_coordinates(positions=pdb.positions, indices=indices)
+        return TreeNode.from_coords(
+            [
+                coordinates[0],
+                coordinates[1],
+                coordinates[2],
+            ]
+        )
+
+    @staticmethod
+    def node_from_coords(
+        positions: u.Quantity,
+        psf: str,
+        pdb: str,
+        name: str,
+        include_hydrogens: bool = True,
+    ) -> TreeNode:
+        """
+        calculates the centroid coordinates of the ligand and returns the grid node closest to the centriod Cordinates.
+
+        Args:
+            psf (str): give either path to pdb file as string or an openmm.app.PDBFile object.
+            pdb (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
+            name (str): name of the residue that is the starting point.
+
+        Returns:
+            Node: grid node closest to ligand centroid.
+
+        TODO: add support for center of mass -> more complicated since it needs an initialized system.
+        """
+        try:
+            pdb = app.PDBFile(pdb)
+        except TypeError:
+            pdb = pdb
+        try:
+            psf = app.CharmmPsfFile(psf)
+        except TypeError:
+            psf = psf
+
+        indices = get_residue_indices(
+            atom_list=psf.atom_list, name=name, include_hydrogens=include_hydrogens
+        )
+        coordinates = get_centroid_coordinates(positions=positions, indices=indices)
         return TreeNode.from_coords(
             [
                 coordinates[0],

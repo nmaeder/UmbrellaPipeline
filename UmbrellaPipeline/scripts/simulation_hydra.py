@@ -8,7 +8,10 @@ from UmbrellaPipeline.utils import (
     display_time,
     get_residue_indices,
 )
-from UmbrellaPipeline.sampling import update_restraint
+from UmbrellaPipeline.sampling import (
+    update_restraint,
+    activate_backbone_restraints,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -38,6 +41,7 @@ def main():
     parser.add_argument("-dt", type=float, required=True)
     parser.add_argument("-nf", type=int, required=True)
     parser.add_argument("-ln", type=str, required=True)
+    parser.add_argument("-bb", type=int, required=True)
 
     args, unkn = parser.parse_known_args()
     pdb = app.PDBFile(args.pdb)
@@ -67,6 +71,8 @@ def main():
     simulation.context.setPositions(pdb.positions)
     simulation.minimizeEnergy()
     simulation.context.setVelocitiesToTemperature(args.t * unit.kelvin)
+
+
     if args.nw > 0:
         indices = get_residue_indices(atom_list=psf.atom_list, name=args.ln)
         original_parameters = []
@@ -91,6 +97,13 @@ def main():
     simulation.minimizeEnergy()
     simulation.context.setVelocitiesToTemperature(args.t * unit.kelvin)
     simulation.step(args.ne)
+
+    if args.bb:
+        activate_backbone_restraints(
+            simulation=simulation,
+            atom_list=psf.atom_list,
+        )
+
     fileHandle = open(f"{args.to}/traj_{args.nw}.dcd", "bw")
     dcdFile = app.DCDFile(fileHandle, simulation.topology, dt=args.dt)
 

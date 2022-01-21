@@ -112,32 +112,38 @@ class UmbrellaSimulation:
             platformProperties=self.platformProperties,
         )
 
-    def run_sampling(self):
+    def write_path_to_file(self) -> str:
         """
-        Runs the actual umbrella sampling on your local machine.
-        """
-        orgCoords = open(file=f"{self.traj_write_path}/coordinates.dat", mode="w")
-        orgCoords.write("lamda, x0, y0, z0\n")
+        Writes the restrain coordinates to a file, so analysis is still possible without the umbrellapipeline object
 
+        Returns:
+            str: path for the coordinates file
+        """
+        path = f"{self.traj_write_path}/coordinates.dat"
+        orgCoords = open(file=path, mode="w")
+        orgCoords.write(f"lamda, x0, y0, z0, all in units of {self.path[0].unit}\n")
+        for window in range(self.lamdas):
+            orgCoords.write(
+                f"{window},{self.path[window].x},{self.path[window].y},{self.path[window].z}\n"
+            )
+        return path
+
+    def run_equilibration(self) -> app.Simulation:
         self.simulation.context.setPositions(self.system_info.pdb_object.positions)
         self.simulation.minimizeEnergy()
         self.simulation.context.setVelocitiesToTemperature(
             self.simulation_properties.temperature
         )
-
+        self.simulation.step(self.simulation_properties.n_equilibration_steps)
         if self.bb_restrains:
-            self.simulation.step(self.simulation_properties.n_equilibration_steps)
             activate_backbone_restraints(
                 simulation=self.simulation,
                 atom_list=self.system_info.psf_object.atom_list,
             )
+        return self.simulation
 
+    def run_production(self):
         for window in range(self.lamdas):
-            orgCoords.write(
-                f"{window}, {self.simulation.context.getParameter('x0')}, {self.simulation.context.getParameter('y0')}, {self.simulation.context.getParameter('z0')}\n"
-            )
-
-            self.simulation.step(self.simulation_properties.n_equilibration_steps)
             fileHandle = open(f"{self.traj_write_path}/traj_{window}.dcd", "bw")
             dcdFile = app.dcdfile.DCDFile(
                 file=fileHandle,
@@ -168,9 +174,9 @@ class UmbrellaSimulation:
                     path=self.path,
                     window=window + 1,
                 )
+                self.simulation.step(self.simulation_properties.n_equilibration_steps)
             except IndexError:
                 pass
-        orgCoords.close()
 
 
 class SamplingHydra(UmbrellaSimulation):
@@ -261,7 +267,7 @@ class SamplingHydra(UmbrellaSimulation):
         c += f" -t {self.simulation_properties.temperature.value_in_unit(unit=unit.kelvin)}"
         c += f" -dt {self.simulation_properties.time_step.value_in_unit(unit=unit.femtosecond)}"
         c += f" -fric {self.simulation_properties.friction_coefficient.value_in_unit(unit=unit.picosecond**-1)}"
-
+        c += f" -bb {int(self.bb_restrains)}"
         c += (
             f" -psf {self.system_info.psf_file} -pdb {self.system_info.pdb_file} -sys {serializedSystem}"
             f" {pos} -to {self.traj_write_path} -nf {self.simulation_properties.number_of_frames} -ln {self.system_info.ligand_name}"
@@ -289,6 +295,13 @@ class SamplingHydra(UmbrellaSimulation):
             ],
         )
 
+        if self.bb_restrains:
+            initialize_backbone_restraints(
+                system=self.openmm_system,
+                atom_list=self.system_info.psf_object.atom_list,
+            )
+
+
         serialize_system(system=self.openmm_system, path=self.serialized_system_file)
 
         for window in range(self.lamdas):
@@ -296,22 +309,6 @@ class SamplingHydra(UmbrellaSimulation):
                 window=window, serializedSystem=self.serialized_system_file
             )
             self.commands.append(f"qsub {newfile}")
-
-    def write_path_to_file(self) -> str:
-        """
-        Writes the restrain coordinates to a file, so analysis is still possible without the umbrellapipeline object
-
-        Returns:
-            str: path for the coordinates file
-        """
-        path = f"{self.traj_write_path}/coordinates.dat"
-        orgCoords = open(file=path, mode="w")
-        orgCoords.write(f"lamda, x0, y0, z0, all in units of {self.path[0].unit}\n")
-        for window in range(self.lamdas):
-            orgCoords.write(
-                f"{window},{self.path[window].x},{self.path[window].y},{self.path[window].z}\n"
-            )
-        return path
 
     def run_sampling(self) -> List[str]:
         """

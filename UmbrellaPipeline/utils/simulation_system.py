@@ -1,4 +1,3 @@
-from copy import Error
 from openmm import app
 import os
 from typing import Tuple, List
@@ -123,6 +122,6 @@ class SimulationSystem:
     def ligand_indices_from_name(self, value: str) -> None:
         ind = get_residue_indices(atom_list=self.psf_object.atom_list, name=value)
         if ind == []:
-            raise Error("No residue with given name Found")
+            raise LookupError("No residue with given name Found")
         else:
             self._ligand_indices = ind

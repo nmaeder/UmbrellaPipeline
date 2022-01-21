@@ -33,6 +33,7 @@ class UmbrellaPipeline:
         toppar_directory: str,
         ligand_residue_name: str,
         simulation_properties: SimulationProperties = SimulationProperties(),
+        recalculate_path_after_equilibration: bool = False,
     ) -> None:
         """
         Args:
@@ -53,12 +54,15 @@ class UmbrellaPipeline:
         )
         self.path: List[unit.Quantity]
         self.openmm_system: mm.openmm.System
+        self.escape_room: GridEscapeRoom or TreeEscapeRoom
+        self.recalculate = recalculate_path_after_equilibration
 
     def generate_path(
         self,
         distance_to_protein: unit.Quantity = 1.5 * unit.nanometer,
         path_interval=2 * unit.angstrom,
         use_grid: bool = False,
+        positions: unit.Quantity = None
     ) -> List[unit.Quantity]:
         """
         Creates the path out of the protein. use_grid is not recommended.
@@ -75,15 +79,22 @@ class UmbrellaPipeline:
             tree = Tree.from_files(
                 psf=self.system_info.psf_object, pdb=self.system_info.pdb_object
             )
-            start = tree.node_from_files(
-                psf=self.system_info.psf_object,
-                pdb=self.system_info.pdb_object,
-                name=self.system_info.ligand_name,
-            )
-            escape_room = TreeEscapeRoom(tree=tree, start=start)
-            p = escape_room.escape_room(distance=distance_to_protein)
-
-            self.path = escape_room.get_path_for_sampling(stepsize=path_interval)
+            if positions:
+                start = tree.node_from_coords(
+                    positions=positions,
+                    psf=self.system_info.psf_object,
+                    pdb=self.system_info.pdb_object,
+                    name=self.system_info.ligand_name,
+                )
+            else:
+                start = tree.node_from_files(
+                    psf=self.system_info.psf_object,
+                    pdb=self.system_info.pdb_object,
+                    name=self.system_info.ligand_name,
+                )
+            self.escape_room = TreeEscapeRoom(tree=tree, start=start)
+            self.escape_room.escape_room(distance=distance_to_protein)
+            self.path = self.escape_room.get_path_for_sampling(stepsize=path_interval)
 
         else:
             grid = Grid.from_files(
@@ -96,9 +107,9 @@ class UmbrellaPipeline:
                 pdb=self.system_info.pdb_object,
                 name=self.system_info.ligand_name,
             )
-            escape_room = GridEscapeRoom(grid=grid, start=start)
-            escape_room.escape_room(distance=distance_to_protein)
-            self.path = escape_room.get_path_for_sampling(path_interval)
+            self.escape_room = GridEscapeRoom(grid=grid, start=start)
+            self.escape_room.escape_room(distance=distance_to_protein)
+            self.path = self.escape_room.get_path_for_sampling(path_interval)
 
         return self.path
 
@@ -166,18 +177,20 @@ class UmbrellaPipeline:
             conda_environment=conda_environment,
             hydra_working_dir=hydra_working_dir,
         )
+    
+
         simulation.prepare_simulations()
         simulation.run_sampling()
 
     def run_simulations_local(
         self,
-        trajectory_path,
+        trajectory_path: str,
     ) -> None:
         """
         Prepares and runs simulations on your local machine.
 
         Args:
-            trajectory_path ([type]): output directory for the trajectories.
+            trajectory_path (str): output directory for the trajectories.
         """
         simulation = UmbrellaSimulation(
             properties=self.simulation_parameters,
@@ -187,4 +200,7 @@ class UmbrellaPipeline:
             traj_write_path=trajectory_path,
         )
         simulation.prepare_simulations()
-        simulation.run_sampling()
+        simulation.run_equilibration()
+        if self.recalculate:
+            self.path = self.generate_path(positions=simulation.simulation.context.getState(getPositions=True).getPositions())
+        simulation.run_production()
