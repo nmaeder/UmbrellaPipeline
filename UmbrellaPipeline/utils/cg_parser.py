@@ -16,9 +16,7 @@ def parse_params(
     Returns:
         app.charmmparameterset.CharmmParameterSet: [description]
     """
-    if not toppar_str_file.startswith("/"):
-        now = os.getcwd()
-        toppar_str_file = now + "/" + toppar_str_file
+    toppar_str_file = os.path.abspath(toppar_str_file)
     current_dir = os.getcwd()
     os.chdir(toppar_directory)
     parFiles = ()

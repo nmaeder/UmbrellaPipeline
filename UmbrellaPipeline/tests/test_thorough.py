@@ -239,7 +239,7 @@ def test_ghosting():
     system = pipeline.system_info.psf_object.createSystem(pipeline.system_info.params)
     integrator = openmmtools.integrators.LangevinIntegrator()
     simulation = app.Simulation(
-        topology=pipeline.system_info.pdb_object.topology,
+        topology=pipeline.system_info.psf_object.topology,
         system=system,
         integrator=integrator,
         platform=platform,
