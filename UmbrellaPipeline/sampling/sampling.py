@@ -301,7 +301,6 @@ class SamplingHydra(UmbrellaSimulation):
                 atom_list=self.system_info.psf_object.atom_list,
             )
 
-
         serialize_system(system=self.openmm_system, path=self.serialized_system_file)
 
         for window in range(self.lamdas):

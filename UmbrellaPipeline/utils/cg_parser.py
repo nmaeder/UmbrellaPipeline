@@ -69,4 +69,3 @@ def gen_pbc_box(
 
     psf.setBox(boxlx, boxly, boxlz)
     return min_crds
-

@@ -46,6 +46,61 @@ def add_harmonic_restraint(
     return system
 
 
+def add_barostat(
+    system: mm.openmm.System,
+    pressure: unit.Quantity = 1 * unit.bar,
+    temperature: unit.Quantity = 310 * unit.kelvin,
+    membrane_barostat: bool = False,
+    frequency: int = 25,
+) -> mm.openmm.System:
+    if membrane_barostat:
+        add_membrane_barostat(
+            system=system,
+            pressure=pressure,
+            temperature=temperature,
+            frequency=frequency,
+        )
+    else:
+        add_isotropic_barostat(
+            system=system,
+            pressure=pressure,
+            temperature=temperature,
+            frequency=frequency,
+        )
+    return system
+
+
+def add_membrane_barostat(
+    system: mm.openmm.System,
+    pressure: unit.Quantity,
+    temperature: unit.Quantity,
+    frequency: int,
+) -> mm.openmm.System:
+    barostat = mm.MonteCarloMembraneBarostat(
+        defaultPressure=pressure,
+        defaultSurfaceTension=0 * unit.bar * unit.nanometer,
+        defaultTemperature=temperature,
+        xymode=mm.MonteCarloMembraneBarostat.XYIsotropic,
+        zmode=mm.MonteCarloMembraneBarostat.ZFree,
+        frequency=frequency,
+    )
+    system.addForce(barostat)
+    return system
+
+
+def add_isotropic_barostat(
+    system: mm.openmm.System,
+    pressure: unit.Quantity,
+    temperature: unit.Quantity,
+    frequency: int,
+) -> mm.openmm.System:
+    barostat = mm.MonteCarloBarostat(
+        defaultPressure=pressure,
+        defaultTemperature=temperature,
+        frequency=frequency,
+    )
+
+
 def initialize_backbone_restraints(
     system: mm.openmm.System,
     atom_list: app.internal.charmm.topologyobjects.AtomList,
@@ -269,3 +324,15 @@ def serialize_system(system: mm.openmm.System, path: str) -> str:
     with open(file=path, mode="w") as f:
         f.write(mm.openmm.XmlSerializer.serialize(system))
     return path
+
+
+def serialize_state(state: mm.State, path: str) -> str:
+    with open(file=path, mode="w") as f:
+        f.write(mm.openmm.XmlSerializer.serialize(state))
+    return path
+
+
+def deserialize_state(path: str) -> mm.State:
+    with open(file=path, mode="r") as f:
+        state = mm.openmm.XmlSerializer.deserialize(f.read())
+    return state

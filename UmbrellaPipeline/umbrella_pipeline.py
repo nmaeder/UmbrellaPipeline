@@ -62,7 +62,7 @@ class UmbrellaPipeline:
         distance_to_protein: unit.Quantity = 1.5 * unit.nanometer,
         path_interval=2 * unit.angstrom,
         use_grid: bool = False,
-        positions: unit.Quantity = None
+        positions: unit.Quantity = None,
     ) -> List[unit.Quantity]:
         """
         Creates the path out of the protein. use_grid is not recommended.
@@ -177,7 +177,6 @@ class UmbrellaPipeline:
             conda_environment=conda_environment,
             hydra_working_dir=hydra_working_dir,
         )
-    
 
         simulation.prepare_simulations()
         simulation.run_sampling()
@@ -202,5 +201,9 @@ class UmbrellaPipeline:
         simulation.prepare_simulations()
         simulation.run_equilibration()
         if self.recalculate:
-            self.path = self.generate_path(positions=simulation.simulation.context.getState(getPositions=True).getPositions())
+            self.path = self.generate_path(
+                positions=simulation.simulation.context.getState(
+                    getPositions=True
+                ).getPositions()
+            )
         simulation.run_production()
