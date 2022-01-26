@@ -2,6 +2,7 @@ import os, pytest, sys, time, math
 import openmmtools
 from openmm import Vec3, unit, app
 import numpy as np
+import warnings
 
 from UmbrellaPipeline import UmbrellaPipeline
 from UmbrellaPipeline.path_generation import (
@@ -29,30 +30,33 @@ from UmbrellaPipeline.utils import (
     execute_bash_parallel,
 )
 
+warnings.filterwarnings(action="ignore")
+
 pipeline = UmbrellaPipeline(
     ligand_residue_name="unl",
     toppar_stream_file="UmbrellaPipeline/data/toppar/toppar.str",
     toppar_directory="UmbrellaPipeline/data/toppar",
     psf_file="UmbrellaPipeline/data/step5_input.psf",
-    pdb_file="UmbrellaPipeline/data/step5_input.pdb",
+    crd_file="UmbrellaPipeline/data/step5_input.crd",
 )
 
 
 def test_genbox():
     assert pipeline.system_info.psf_object.boxVectors == None
     minC = gen_pbc_box(
-        psf=pipeline.system_info.psf_object, pdb=pipeline.system_info.pdb_object
+        psf=pipeline.system_info.psf_object, crd=pipeline.system_info.crd_object
     )
     assert minC == [
-        unit.Quantity(value=-0.5613, unit=unit.nanometer),
-        unit.Quantity(value=-0.46090000000000003, unit=unit.nanometer),
-        unit.Quantity(value=-0.0634, unit=unit.nanometer),
+        unit.Quantity(value=-0.56125095743, unit=unit.nanometer),
+        unit.Quantity(value=-0.46094509581000004, unit=unit.nanometer),
+        unit.Quantity(value=-0.06344883114, unit=unit.nanometer),
     ]
+    print(pipeline.system_info.psf_object.boxVectors)
     assert pipeline.system_info.psf_object.boxVectors == unit.Quantity(
         value=(
-            Vec3(x=11.071, y=0.0, z=0.0),
-            Vec3(x=0.0, y=10.882600000000002, z=0.0),
-            Vec3(x=0.0, y=0.0, z=10.2086),
+            Vec3(x=11.07094907954, y=0.0, z=0.0),
+            Vec3(x=0.0, y=10.882602253800002, z=0.0),
+            Vec3(x=0.0, y=0.0, z=10.20869495182),
         ),
         unit=unit.nanometer,
     )
@@ -65,7 +69,7 @@ def test_pipeline():
 def test_add_harmonic_restraint():
 
     gen_pbc_box(
-        psf=pipeline.system_info.psf_object, pdb=pipeline.system_info.pdb_object
+        psf=pipeline.system_info.psf_object, crd=pipeline.system_info.crd_object
     )
     system = pipeline.system_info.psf_object.createSystem(
         params=pipeline.system_info.params
@@ -89,11 +93,11 @@ def test_script_writing():
         "serialized_sys.xml",
     ]
     tree = Tree.from_files(
-        pdb=pipeline.system_info.pdb_object, psf=pipeline.system_info.psf_object
+        crd=pipeline.system_info.crd_object, psf=pipeline.system_info.psf_object
     )
     st = tree.node_from_files(
         psf=pipeline.system_info.psf_object,
-        pdb=pipeline.system_info.pdb_object,
+        crd=pipeline.system_info.crd_object,
         name="unl",
     ).get_coordinates()
     path = [st, st]
@@ -151,23 +155,28 @@ def test_centroid_coords():
         name="unl",
         include_hydrogens=False,
     )
+
+    print(get_centroid_coordinates(pipeline.system_info.crd_object.positions, ind1))
+
+    print(get_centroid_coordinates(pipeline.system_info.crd_object.positions, ind2))
+
     assert get_centroid_coordinates(
-        pipeline.system_info.pdb_object.positions, ind1
+        pipeline.system_info.crd_object.positions, ind1
     ) == unit.Quantity(
-        value=Vec3(x=4.800866666666666, y=5.162369444444445, z=5.116966666666667),
+        value=Vec3(x=4.800868342909999, y=5.1623615832338885, z=5.116963445551665),
         unit=unit.nanometer,
     )
     assert get_centroid_coordinates(
-        pipeline.system_info.pdb_object.positions, ind2
+        pipeline.system_info.crd_object.positions, ind2
     ) == unit.Quantity(
-        value=Vec3(x=4.791909523809522, y=5.152095238095239, z=5.13817619047619),
+        value=Vec3(x=4.791905722784763, y=5.152082995253809, z=5.1381769457266655),
         unit=unit.nanometer,
     )
 
 
 def test_com_coords():
     gen_pbc_box(
-        pdb=pipeline.system_info.pdb_object, psf=pipeline.system_info.psf_object
+        crd=pipeline.system_info.crd_object, psf=pipeline.system_info.psf_object
     )
     system = pipeline.system_info.psf_object.createSystem(
         params=pipeline.system_info.params,
@@ -176,25 +185,12 @@ def test_com_coords():
         constraints=app.HBonds,
         rigidWater=True,
     )
-    ind = get_residue_indices(
-        atom_list=pipeline.system_info.psf_object.atom_list, name="unl"
-    )
     assert get_center_of_mass_coordinates(
-        positions=pipeline.system_info.pdb_object.positions,
-        indices=ind,
+        positions=pipeline.system_info.crd_object.positions,
+        indices=pipeline.system_info.ligand_indices,
         masses=system,
-        include_hydrogens=True,
     ) == unit.Quantity(
-        value=Vec3(x=4.7843512147078195, y=2.570779540502063, z=1.7248368464666914),
-        unit=unit.nanometer,
-    )
-    assert get_center_of_mass_coordinates(
-        positions=pipeline.system_info.pdb_object.positions,
-        indices=ind,
-        masses=system,
-        include_hydrogens=False,
-    ) == unit.Quantity(
-        value=Vec3(x=4.782878540555002, y=2.569887631028307, z=1.7263107176323071),
+        value=Vec3(x=4.784349419490644, y=5.141548282974987, z=5.1745056529197),
         unit=unit.nanometer,
     )
 
@@ -237,13 +233,13 @@ def test_ghosting():
     system = pipeline.system_info.psf_object.createSystem(pipeline.system_info.params)
     integrator = openmmtools.integrators.LangevinIntegrator()
     simulation = app.Simulation(
-        topology=pipeline.system_info.pdb_object.topology,
+        topology=pipeline.system_info.psf_object.topology,
         system=system,
         integrator=integrator,
         platform=platform,
         platformProperties=props,
     )
-    simulation.context.setPositions(pipeline.system_info.pdb_object.getPositions())
+    simulation.context.setPositions(pipeline.system_info.crd_object.getPositions())
     orig_params = []
 
     f = simulation.context.getSystem().getForces()
@@ -341,13 +337,13 @@ def test_grid_successors():
 
 def test_grid_pathfinding():
     grid = Grid.from_files(
-        pdb=pipeline.system_info.pdb_object,
+        crd=pipeline.system_info.crd_object,
         psf=pipeline.system_info.psf_object,
         gridsize=3 * unit.angstrom,
     )
     node = grid.node_from_files(
         psf=pipeline.system_info.psf_object,
-        pdb=pipeline.system_info.pdb_object,
+        crd=pipeline.system_info.crd_object,
         name="UNL",
     )
     assert not grid.position_is_blocked(node)
@@ -441,18 +437,18 @@ def test_tree_successor():
 
 def test_tree_path_finding():
     tree = Tree.from_files(
-        pdb=pipeline.system_info.pdb_object, psf=pipeline.system_info.psf_object
+        crd=pipeline.system_info.crd_object, psf=pipeline.system_info.psf_object
     )
     node = tree.node_from_files(
         psf=pipeline.system_info.psf_object,
-        pdb=pipeline.system_info.pdb_object,
+        crd=pipeline.system_info.crd_object,
         name="UNL",
     )
     assert not tree.position_is_blocked(node=node)
     box = []
     for i in range(3):
-        box.append(min([row[i] for row in pipeline.system_info.pdb_object.positions]))
-        box.append(max([row[i] for row in pipeline.system_info.pdb_object.positions]))
+        box.append(min([row[i] for row in pipeline.system_info.crd_object.positions]))
+        box.append(max([row[i] for row in pipeline.system_info.crd_object.positions]))
     escape_room = TreeEscapeRoom(tree=tree, start=node, stepsize=0.25 * unit.angstrom)
     path = escape_room.escape_room(box=box)
     assert path != []

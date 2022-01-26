@@ -89,45 +89,45 @@ class Tree:
     @classmethod
     def from_files(
         cls,
-        pdb: str or app.PDBFile,
+        crd: str or app.CharmmCrdFile,
         psf: str or app.CharmmPsfFile,
     ):
         """
-        Constructor for grid. takes in psf and pdb files generated from charmmgui and generates a grid where all points with a protein atom are true. every other gridpoint is False.
+        Constructor for grid. takes in psf and crd files generated from charmmgui and generates a grid where all points with a protein atom are true. every other gridpoint is False.
 
         Args:
-            pdbfile (str): give either path to pdb file as string or an openmm.app.PDBFile object.
+            crdfile (str): give either path to crd file as string or an openmm.app.CharmmCrdFile object.
             psffile (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
         Returns:
             Grid: KDTree with the protein positions used for the adapted A* algorithm
         """
         try:
-            pdb = app.PDBFile(pdb)
+            crd = app.CharmmCrdFile(crd)
         except TypeError:
-            pdb = pdb
+            pass
         try:
             psf = app.CharmmPsfFile(psf)
         except TypeError:
-            psf = psf
+            pass
 
         indices = get_residue_indices(psf.atom_list)
         coords = []
-        unit = pdb.positions.unit
+        unit = crd.positions.unit
         for i in indices:
-            coords.append(list(pdb.positions[i].value_in_unit(unit)))
+            coords.append(list(crd.positions[i].value_in_unit(unit)))
 
         return cls(unit=unit, coordinates=coords)
 
     @staticmethod
     def node_from_files(
-        psf: str, pdb: str, name: str, include_hydrogens: bool = True
+        psf: str, crd: str, name: str, include_hydrogens: bool = True
     ) -> TreeNode:
         """
         calculates the centroid coordinates of the ligand and returns the grid node closest to the centriod Cordinates.
 
         Args:
-            psf (str): give either path to pdb file as string or an openmm.app.PDBFile object.
-            pdb (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
+            psf (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
+            crd (str): give either path to crd file as string or an openmm.app.CharmmCrdFile object.
             name (str): name of the residue that is the starting point.
 
         Returns:
@@ -136,18 +136,18 @@ class Tree:
         TODO: add support for center of mass -> more complicated since it needs an initialized system.
         """
         try:
-            pdb = app.PDBFile(pdb)
+            crd = app.CharmmCrdFile(crd)
         except TypeError:
-            pdb = pdb
+            pass
         try:
             psf = app.CharmmPsfFile(psf)
         except TypeError:
-            psf = psf
+            pass
 
         indices = get_residue_indices(
             atom_list=psf.atom_list, name=name, include_hydrogens=include_hydrogens
         )
-        coordinates = get_centroid_coordinates(positions=pdb.positions, indices=indices)
+        coordinates = get_centroid_coordinates(positions=crd.positions, indices=indices)
         return TreeNode.from_coords(
             [
                 coordinates[0],
@@ -160,7 +160,7 @@ class Tree:
     def node_from_coords(
         positions: u.Quantity,
         psf: str,
-        pdb: str,
+        crd: str,
         name: str,
         include_hydrogens: bool = True,
     ) -> TreeNode:
@@ -168,8 +168,8 @@ class Tree:
         calculates the centroid coordinates of the ligand and returns the grid node closest to the centriod Cordinates.
 
         Args:
-            psf (str): give either path to pdb file as string or an openmm.app.PDBFile object.
-            pdb (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
+            psf (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
+            crd (str): give either path to crd file as string or an openmm.app.CharmmCrdFile object.
             name (str): name of the residue that is the starting point.
 
         Returns:
@@ -178,13 +178,13 @@ class Tree:
         TODO: add support for center of mass -> more complicated since it needs an initialized system.
         """
         try:
-            pdb = app.PDBFile(pdb)
+            crd = app.CharmmCrdFile(crd)
         except TypeError:
-            pdb = pdb
+            pass
         try:
             psf = app.CharmmPsfFile(psf)
         except TypeError:
-            psf = psf
+            pass
 
         indices = get_residue_indices(
             atom_list=psf.atom_list, name=name, include_hydrogens=include_hydrogens
@@ -203,7 +203,7 @@ class Tree:
         node: TreeNode = None,
         coordinates: List[float] = None,
         unit: u.Unit = u.nanometer,
-        vdw_radius: u.Quantity = 1.2 * u.angstrom,
+        vdw_radius: u.Quantity = 0.12 * u.nanometer,
     ) -> bool:
         """
         Checks if a Node is the vdw_radius of a protein Atom in the tree
@@ -212,7 +212,7 @@ class Tree:
             node (TreeNode, optional): TreeNode type object. Defaults to None.
             coordinates (u.Wuantity, optional): grid cell coordinates. Defaults to None.
             unit (u.Unit, optional): unit of coordinates. Defaults to u.nanometer.
-            vdw_radius (u.Quantity): vdw_radius given to each protein atom. Defaults to 1.2 * u.angstrom
+            vdw_radius (u.Quantity): vdw_radius given to each protein atom. Defaults to .12 * u.nanometer
 
         Returns:
             bool: True if Node is within grid
@@ -231,7 +231,7 @@ class Tree:
         node: TreeNode = None,
         coordinates: List[float] = None,
         unit: u.Unit = u.nanometer,
-        vdw_radius: u.Quantity = 1.2 * u.angstrom,
+        vdw_radius: u.Quantity = 0.12 * u.nanometer,
     ) -> u.Quantity:
         """get_distance_to_protein
         returns distance to the nearest protein atom
@@ -241,7 +241,7 @@ class Tree:
         node : Node
             node for which the distance should be calculated
         vdw_radius : u.Quantity, optional
-            vdw_radius to be used for protein atoms, defaults to 1.2*u.angstrom
+            vdw_radius to be used for protein atoms, defaults to .12*u.nanometer
 
         Returns
         -------

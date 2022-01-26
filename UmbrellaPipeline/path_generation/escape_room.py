@@ -1,4 +1,4 @@
-import copy, time, logging
+import copy, time, logging, math
 from typing import List
 import gemmi
 import numpy as np
@@ -218,55 +218,65 @@ class GridEscapeRoom(EscapeRoom3D):
         )
         return []
 
+    def get_euclidean_distance(self, node1, node2):
+        return (
+            math.sqrt(
+                (node1.x - node2.x) ** 2
+                + (node1.y - node2.y) ** 2
+                + (node1.z - node2.z) ** 2
+            )
+            * node1.unit
+        )
+
     def get_path_for_sampling(
-        self, stepsize: unit.Quantity = 1 * unit.angstrom
+        self, stepsize: unit.Quantity = 0.1 * unit.nanometer
     ) -> List[unit.Quantity]:
         """
         Generates path of evenly spaced nodes for the sampling. Tree uses grid where diagonal jumps are bigger than nondiagonal jumps, hence this function is needed.
         It can also be used if you want to generated differently spaced paths
 
         Args:
-            stepsize (unit.Quantity, optional): Stepsite of the path you want. Defaults to 1*unit.angstrom.
+            stepsize (unit.Quantity, optional): Stepsite of the path you want. Defaults to 0.1*unit.nanometer.
 
         Returns:
             List[unit.Quantity]: list of Coordinates.
         """
         ret: list[unit.Quantity] = []
-        stride = 1
         path = copy.deepcopy(self.shortest_path)
         iterator = iter(path)
-        current = next(iterator)
-        new = next(iterator)
-        while min(self.grid.a, self.grid.b, self.grid.c) <= stepsize:
-            stepsize /= 2
-            stride *= 2
+        current = self.grid.cartesian_coordinates_of_node(next(iterator))
+        new = self.grid.cartesian_coordinates_of_node(next(iterator))
         end_reached = False
-        diff = self.grid.get_cartesian_distance(node1=new, node2=current)
-        diffo = self.grid.get_cartesian_distance(node1=new, node2=current)
-        to_go = stepsize / diff
-        newstep = stepsize
-
-        ret.append(self.grid.cartesian_coordinates_of_node(current))
-
+        diff = self.get_euclidean_distance(node1=new, node2=current)
+        ret.append(
+            Vec3(
+                x=current.x,
+                y=current.y,
+                z=current.z,
+            )
+        )
         while not end_reached:
             try:
-                diff -= newstep
-                ret.append(
-                    self.grid.cartesian_coordinates_w_increment(current, new, to_go)
-                )
-                if newstep < stepsize:
-                    newstep = stepsize
-                to_go += stepsize / diffo
-                if diff < stepsize:
-                    newstep = stepsize - diff
-                    current = new
-                    new = next(iterator)
-                    diff = self.grid.get_cartesian_distance(node1=new, node2=current)
-                    diffo = self.grid.get_cartesian_distance(node1=new, node2=current)
-                    to_go = newstep / diffo
+                if stepsize < diff:
+                    factor = stepsize / diff
+                    current.x += (new.x - current.x) * factor
+                    current.y += (new.y - current.y) * factor
+                    current.z += (new.z - current.z) * factor
+                    ret.append(Vec3(x=current.x, y=current.y, z=current.z))
+                    diff = self.get_euclidean_distance(current, new)
+                else:
+                    while stepsize > diff:
+                        new = self.grid.cartesian_coordinates_of_node(next(iterator))
+                        diff = self.get_euclidean_distance(current, new)
+                    factor = stepsize / diff
+                    current.x += (new.x - current.x) * factor
+                    current.y += (new.y - current.y) * factor
+                    current.z += (new.z - current.z) * factor
+                    ret.append(Vec3(x=current.x, y=current.y, z=current.z))
+                    diff = self.get_euclidean_distance(current, new)
             except StopIteration:
                 end_reached = True
-        return ret[::stride]
+        return unit.Quantity(value=ret, unit=self.grid.a.unit)
 
     def path_to_ccp4(self, filename: str):
         """
@@ -296,8 +306,8 @@ class TreeEscapeRoom(EscapeRoom3D):
         self,
         tree: Tree,
         start: TreeNode,
-        pathsize: unit.Quantity = 1.2 * unit.angstrom,
-        stepsize: unit.Quantity = 0.25 * unit.angstrom,
+        pathsize: unit.Quantity = 0.12 * unit.nanometer,
+        stepsize: unit.Quantity = 0.025 * unit.nanometer,
     ) -> None:
         super().__init__(start=start)
         self.shortest_path: List[TreeNode] = []
@@ -493,14 +503,14 @@ class TreeEscapeRoom(EscapeRoom3D):
         return []
 
     def get_path_for_sampling(
-        self, stepsize: unit.Quantity = 1 * unit.angstrom
+        self, stepsize: unit.Quantity = 0.1 * unit.nanometer
     ) -> List[unit.Quantity]:
         """
         Generates path of evenly spaced nodes for the sampling. Tree uses grid where diagonal jumps are bigger than nondiagonal jumps, hence this function is needed.
         It can also be used if you want to generated differently spaced paths
 
         Args:
-            stepsize (unit.Quantity, optional): Stepsite of the path you want. Defaults to 1*unit.angstrom.
+            stepsize (unit.Quantity, optional): Stepsite of the path you want. Defaults to .1*unit.nanometer.
 
         Returns:
             List[TreeNode]: list of path nodes.

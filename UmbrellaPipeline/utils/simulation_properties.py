@@ -122,7 +122,7 @@ class SimulationProperties:
     @friction_coefficient.setter
     def friction_coefficient(self, value: u.Quantity) -> None:
         try:
-            self._friction_coefficient = value.in_units_of(u.picosecond ** -2)
+            self._friction_coefficient = value.in_units_of(u.picosecond ** -1)
         except (TypeError, AttributeError):
             raise TypeError("Friction Coefficient has to be in units of inverse time!")
 

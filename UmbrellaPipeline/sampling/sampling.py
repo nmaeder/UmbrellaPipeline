@@ -38,7 +38,7 @@ class UmbrellaSimulation:
         """
         Args:
             properties (SimulationProperties): simulation properties object, holding temp, pressure, etc
-            info (SimulationSystem): simulation system object holding psf, pdb objects etc.
+            info (SimulationSystem): simulation system object holding psf, crd objects etc.
             path (List[unit.Quantity]): path for the ligand to walk trough.
             openmm_system (mm.openmm.System): openmm System object. Defaults to None.
             traj_write_path (str, optional): output directory where the trajectories are written to. Defaults to None.
@@ -129,7 +129,7 @@ class UmbrellaSimulation:
         return path
 
     def run_equilibration(self) -> app.Simulation:
-        self.simulation.context.setPositions(self.system_info.pdb_object.positions)
+        self.simulation.context.setPositions(self.system_info.crd_object.positions)
         self.simulation.minimizeEnergy()
         self.simulation.context.setVelocitiesToTemperature(
             self.simulation_properties.temperature
@@ -260,16 +260,16 @@ class SamplingHydra(UmbrellaSimulation):
         c += f"conda activate {self.conda_environment}\n"
         c += f"python {os.path.abspath(os.path.dirname(__file__)+'/../scripts/simulation_hydra.py')} "
         pos = (
-            f"-x {self.path[window][0].value_in_unit(self.system_info.pdb_object.positions.unit)} "
-            f"-y {self.path[window][1].value_in_unit(self.system_info.pdb_object.positions.unit)} "
-            f"-z {self.path[window][2].value_in_unit(self.system_info.pdb_object.positions.unit)}"
+            f"-x {self.path[window][0].value_in_unit(self.system_info.crd_object.positions.unit)} "
+            f"-y {self.path[window][1].value_in_unit(self.system_info.crd_object.positions.unit)} "
+            f"-z {self.path[window][2].value_in_unit(self.system_info.crd_object.positions.unit)}"
         )
         c += f" -t {self.simulation_properties.temperature.value_in_unit(unit=unit.kelvin)}"
         c += f" -dt {self.simulation_properties.time_step.value_in_unit(unit=unit.femtosecond)}"
         c += f" -fric {self.simulation_properties.friction_coefficient.value_in_unit(unit=unit.picosecond**-1)}"
         c += f" -bb {int(self.bb_restrains)}"
         c += (
-            f" -psf {self.system_info.psf_file} -pdb {self.system_info.pdb_file} -sys {serializedSystem}"
+            f" -psf {self.system_info.psf_file} -crd {self.system_info.crd_file} -sys {serializedSystem}"
             f" {pos} -to {self.traj_write_path} -nf {self.simulation_properties.number_of_frames} -ln {self.system_info.ligand_name}"
             f" -ne {self.simulation_properties.n_equilibration_steps} -nw {window} -io {self.simulation_properties.write_out_frequency}"
         )

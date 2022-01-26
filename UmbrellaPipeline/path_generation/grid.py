@@ -90,34 +90,34 @@ class Grid:
     @classmethod
     def from_files(
         cls,
-        pdb: str or app.PDBFile,
+        crd: str or app.CharmmCrdFile,
         psf: str or app.CharmmPsfFile,
-        gridsize: unit.Quantity or List[unit.Quantity] = 0.1 * unit.angstrom,
-        vdw_radius: unit.Quantity = 1.2 * unit.angstrom,
+        gridsize: unit.Quantity or List[unit.Quantity] = 0.01 * unit.nanometer,
+        vdw_radius: unit.Quantity = 0.12 * unit.nanometer,
         add_vdw: bool = True,
     ):
         """
-        Constructor for grid. takes in psf and pdb files generated from charmmgui and generates a grid where all points with a protein atom are true. every other gridpoint is False.
+        Constructor for grid. takes in psf and crd files generated from charmmgui and generates a grid where all points with a protein atom are true. every other gridpoint is False.
         Args:
-            pdbfile (str): give either path to pdb file as string or an openmm.app.PDBFile object.
+            crdfile (str): give either path to crd file as string or an openmm.app.CharmmCrdFile object.
             psffile (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
-            gridsize (unit.QuantityorList[unit.Quantity], optional): [description]. Defaults to .1*unit.angstrom.
-            vdw_radius (unit.Quantity, optional): VDW radius of the protein atoms in the grid. Defaults to 1.2*unit.angstrom.
+            gridsize (unit.QuantityorList[unit.Quantity], optional): [description]. Defaults to .01*unit.nanometer.
+            vdw_radius (unit.Quantity, optional): VDW radius of the protein atoms in the grid. Defaults to .12*unit.nanometer.
             add_vdw (bool, optional): Whether or not the protein atoms should have a VDW radius in the grid. Defaults to True.
         Returns:
             Grid: Boolean grid where protein positions are True.
         """
         try:
-            pdb = app.PDBFile(pdb)
+            crd = app.CharmmCrdFile(crd)
         except TypeError:
-            pdb = pdb
+            pass
         try:
             psf = app.CharmmPsfFile(psf)
         except TypeError:
-            psf = psf
+            pass
 
         inx = get_residue_indices(psf.atom_list)
-        min_c = gen_pbc_box(psf, pdb)
+        min_c = gen_pbc_box(psf, crd)
 
         n = [
             round(psf.boxLengths[0] / gridsize),
@@ -141,9 +141,9 @@ class Grid:
         grid = np.zeros(shape=(n[0], n[1], n[2]), dtype=bool)
         for index in inx:
             x, y, z = (
-                math.floor((pdb.positions[index][0] - min_c[0]) / l[0]),
-                math.floor((pdb.positions[index][1] - min_c[1]) / l[1]),
-                math.floor((pdb.positions[index][2] - min_c[2]) / l[2]),
+                math.floor((crd.positions[index][0] - min_c[0]) / l[0]),
+                math.floor((crd.positions[index][1] - min_c[1]) / l[1]),
+                math.floor((crd.positions[index][2] - min_c[2]) / l[2]),
             )
             grid[x][y][z] = True
             if add_vdw:
@@ -165,28 +165,28 @@ class Grid:
 
         return cls(grid=grid, boxlengths=[l[0], l[1], l[2]], offset=min_c)
 
-    def node_from_files(self, psf: str, pdb: str, name: str) -> GridNode:
+    def node_from_files(self, psf: str, crd: str, name: str) -> GridNode:
         """
         calculates the centroid coordinates of the ligand and returns the grid node closest to the centriod Cordinates.
         Args:
-            psf (str): give either path to pdb file as string or an openmm.app.PDBFile object.
-            pdb (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
+            psf (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
+            crd (str): give either path to crd file as string or an openmm.app.CharmmCrdFile object.
             name (str): name of the residue that is the starting point.
         Returns:
             Node: grid node closest to ligand centroid.
         TODO: add support for center of mass -> more complicated since it needs an initialized system.
         """
         try:
-            pdb = app.PDBFile(pdb)
+            crd = app.CharmmCrdFile(crd)
         except TypeError:
-            pdb = pdb
+            pass
         try:
             psf = app.CharmmPsfFile(psf)
         except TypeError:
-            psf = psf
+            pass
 
         indices = get_residue_indices(atom_list=psf.atom_list, name=name)
-        coordinates = get_centroid_coordinates(positions=pdb.positions, indices=indices)
+        coordinates = get_centroid_coordinates(positions=crd.positions, indices=indices)
         ret = GridNode(
             x=math.floor((coordinates[0] - self.offset[0]) / self.a),
             y=math.floor((coordinates[1] - self.offset[1]) / self.a),
@@ -359,49 +359,6 @@ class Grid:
                 x=node.x * self.a.value_in_unit(u) + self.offset[0].value_in_unit(u),
                 y=node.y * self.b.value_in_unit(u) + self.offset[1].value_in_unit(u),
                 z=node.z * self.c.value_in_unit(u) + self.offset[2].value_in_unit(u),
-            ),
-            unit=u,
-        )
-
-    def cartesian_coordinates_w_increment(
-        self, node1: GridNode, node2: GridNode, to_go: float
-    ):
-        """
-        returns the coordinates between node 1 and 2 where factor gives the total increment in all 3 dimenstions.
-        factor has to be smaller than the distance between the two nodes!
-
-        Parameters
-        ----------
-        node1 : GridNode
-            node1
-        node2 : GridNode
-            node1
-        factor : float
-            distance to be traveled
-
-        Returns
-        -------
-        [type]
-            [description]
-
-        Raises
-        ------
-        ValueError
-            [description]
-        """
-        u = self.a.unit
-        if to_go * u > self.get_cartesian_distance(node1=node1, node2=node2):
-            raise ValueError("to_go is bigger than distance between two nodes")
-        if not self.position_is_valid(node1) or not self.position_is_valid(node2):
-            raise ValueError("Either Node is outside of the grid")
-        return unit.Quantity(
-            value=Vec3(
-                x=((node2.x - node1.x) * to_go + node1.x) * self.a.value_in_unit(u)
-                + self.offset[0].value_in_unit(u),
-                y=((node2.y - node1.y) * to_go + node1.y) * self.b.value_in_unit(u)
-                + self.offset[1].value_in_unit(u),
-                z=((node2.z - node1.z) * to_go + node1.z) * self.c.value_in_unit(u)
-                + self.offset[2].value_in_unit(u),
             ),
             unit=u,
         )

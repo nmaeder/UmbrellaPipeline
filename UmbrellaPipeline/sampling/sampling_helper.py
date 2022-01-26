@@ -42,6 +42,7 @@ def add_harmonic_restraint(
         force.addGlobalParameter(HARMONIC_PARAMS[i], val)
     force.addGroup(atom_group)
     force.addBond([0])
+    force.setUsesPeriodicBoundaryConditions(True)
     system.addForce(force)
     return system
 
@@ -99,11 +100,15 @@ def add_isotropic_barostat(
         defaultTemperature=temperature,
         frequency=frequency,
     )
+    system.addForce(barostat)
+    return system
 
 
-def initialize_backbone_restraints(
+def add_backbone_restraints(
+    positions: app.Simulation,
     system: mm.openmm.System,
     atom_list: app.internal.charmm.topologyobjects.AtomList,
+    force_constant: unit.Quantity = 10 * unit.kilocalorie_per_mole / unit.angstrom ** 2,
 ) -> mm.openmm.System:
     """Adds a CustomExternalForce object to your systems force list. it will not restrain at this point, since the force constant is set to 0.
     Use activate_backbone_restraints() to set the restraints active.
@@ -117,44 +122,15 @@ def initialize_backbone_restraints(
     """
     indices = get_backbone_indices(atom_list=atom_list)
     force = mm.CustomExternalForce("1/2*k*periodicdistance(x, y, z, x0, y0, z0)^2")
-    force.addGlobalParameter("k", 0 * unit.kilocalorie_per_mole / unit.angstrom ** 2)
+    force.addGlobalParameter("k", force_constant)
     force.addPerParticleParameter("x0")
     force.addPerParticleParameter("y0")
     force.addPerParticleParameter("z0")
     force.setName("bb_restraint_force")
     for index in indices:
-        force.addParticle(index, [0, 0, 0])
+        force.addParticle(index, positions[index])
     system.addForce(force)
     return system
-
-
-def activate_backbone_restraints(
-    simulation: app.Simulation,
-    atom_list: app.internal.charmm.topologyobjects.AtomList,
-    force_constant: unit.Quantity = 10 * unit.kilocalorie_per_mole / unit.angstrom ** 2,
-) -> app.Simulation:
-    """
-    This will activate the backbone restraints initialized with initialize_backbone_restraints.
-    The restraint positions are set to the positions that the context hold at the moment, so call
-    this function at a point in time, where your protein is in the position you want it to be restrained.
-
-    Args:
-        simulation (app.Simulation): [description]
-        atom_list (app.internal.charmm.topologyobjects.AtomList): [description]
-        force_constant (unit.Quantity, optional): [description]. Defaults to 10*unit.kilocalorie_per_mole/unit.angstrom**2.
-
-    Returns:
-        app.Simulation: [description]
-    """
-    positions = simulation.context.getState(getPositions=True).getPositions()
-    indices = get_backbone_indices(atom_list=atom_list)
-    for force in simulation.context.getSystem().getForces():
-        if force.getName() == "bb_restraint_force":
-            force.setGlobalParameterDefaultValue(0, force_constant)
-            for it, idx in enumerate(indices):
-                force.setParticleParameters(it, it, positions[idx])
-            force.updateParametersInContext(simulation.context)
-    return simulation
 
 
 def scale(

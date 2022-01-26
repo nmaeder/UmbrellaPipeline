@@ -5,7 +5,11 @@ from openmm import app, unit
 from UmbrellaPipeline.sampling import (
     SamplingHydra,
     UmbrellaSimulation,
+    add_barostat,
+    add_harmonic_restraint,
+    add_backbone_restraints,
 )
+from UmbrellaPipeline.sampling.sampling_helper import add_harmonic_restraint
 from UmbrellaPipeline.utils import (
     SimulationProperties,
     SimulationSystem,
@@ -22,13 +26,13 @@ from UmbrellaPipeline.path_generation import (
 class UmbrellaPipeline:
     """
     wrapper for the whole package. Runs the pipeline (almost) automatically.
-    it creates a simulation_system object upon construction, which stores paths and pdb/psf objects.
+    it creates a simulation_system object upon construction, which stores paths and crd/psf objects.
     """
 
     def __init__(
         self,
         psf_file: str,
-        pdb_file: str,
+        crd_file: str,
         toppar_stream_file: str,
         toppar_directory: str,
         ligand_residue_name: str,
@@ -38,7 +42,7 @@ class UmbrellaPipeline:
         """
         Args:
             psf_file (str): psf file provided by charmm_gui
-            pdb_file (str): pdb file provided by charmm_gui
+            crd_file (str): crd file provided by charmm_gui
             toppar_stream_file (str): toppar str file provided by charmm-gui. Don't move it around beforehand.
             toppar_directory (str): toppar directory provided by charmm-gui
             ligand_residue_name (str): name of the ligand that you want to pull out.
@@ -47,7 +51,7 @@ class UmbrellaPipeline:
         self.simulation_parameters = simulation_properties
         self.system_info = SimulationSystem(
             psf_file=psf_file,
-            pdb_file=pdb_file,
+            crd_file=crd_file,
             toppar_directory=toppar_directory,
             toppar_stream_file=toppar_stream_file,
             ligand_name=ligand_residue_name,
@@ -60,7 +64,7 @@ class UmbrellaPipeline:
     def generate_path(
         self,
         distance_to_protein: unit.Quantity = 1.5 * unit.nanometer,
-        path_interval=2 * unit.angstrom,
+        path_interval=0.1 * unit.nanometer,
         use_grid: bool = False,
         positions: unit.Quantity = None,
     ) -> List[unit.Quantity]:
@@ -69,7 +73,7 @@ class UmbrellaPipeline:
 
         Args:
             distance_to_protein (unit.Quantity, optional): Distance to protein, at which to stop. Defaults to 1.5*unit.nanometer.
-            path_interval ([type], optional): Stepsize of your umbrella sampling pathz. Defaults to 2*unit.angstrom.
+            path_interval ([type], optional): Stepsize of your umbrella sampling path. Defaults to 0.2*unit.nanometer.
             use_grid (bool, optional): If you want to deploy the grid version of the escape room algorithm, set to True. Not encouraged. Defaults to False.
 
         Returns:
@@ -77,19 +81,19 @@ class UmbrellaPipeline:
         """
         if not use_grid:
             tree = Tree.from_files(
-                psf=self.system_info.psf_object, pdb=self.system_info.pdb_object
+                psf=self.system_info.psf_object, crd=self.system_info.crd_object
             )
             if positions:
                 start = tree.node_from_coords(
                     positions=positions,
                     psf=self.system_info.psf_object,
-                    pdb=self.system_info.pdb_object,
+                    crd=self.system_info.crd_object,
                     name=self.system_info.ligand_name,
                 )
             else:
                 start = tree.node_from_files(
                     psf=self.system_info.psf_object,
-                    pdb=self.system_info.pdb_object,
+                    crd=self.system_info.crd_object,
                     name=self.system_info.ligand_name,
                 )
             self.escape_room = TreeEscapeRoom(tree=tree, start=start)
@@ -98,13 +102,13 @@ class UmbrellaPipeline:
 
         else:
             grid = Grid.from_files(
-                pdb=self.system_info.pdb_object,
+                crd=self.system_info.crd_object,
                 psf=self.system_info.psf_object,
-                gridsize=0.2 * unit.angstrom,
+                gridsize=0.02 * unit.nanometer,
             )
             start = grid.node_from_files(
                 psf=self.system_info.psf_object,
-                pdb=self.system_info.pdb_object,
+                crd=self.system_info.crd_object,
                 name=self.system_info.ligand_name,
             )
             self.escape_room = GridEscapeRoom(grid=grid, start=start)
@@ -112,6 +116,67 @@ class UmbrellaPipeline:
             self.path = self.escape_room.get_path_for_sampling(path_interval)
 
         return self.path
+
+    def create_equilibration_system(
+        self,
+        nonbonded_method: app.forcefield = app.PME,
+        nonbonded_cutoff: unit.Quantity = 1.2 * unit.nanometer,
+        switch_distance: unit.Quantity = 1 * unit.nanometer,
+        rigid_water: bool = True,
+        constraints: app.forcefield = app.HBonds,
+    ):
+        if not self.system_info.psf_object.boxLengths:
+            gen_pbc_box(
+                psf=self.system_info.psf_object, crd=self.system_info.crd_object
+            )
+        self.openmm_system = self.system_info.psf_object.createSystem(
+            params=self.system_info.params,
+            nonbondedMethod=nonbonded_method,
+            nonbondedCutoff=nonbonded_cutoff,
+            switchDistance=switch_distance,
+            constraints=constraints,
+            rigidWater=rigid_water,
+        )
+        self.openmm_system = add_barostat(
+            system=self.openmm_system,
+            pressure=self.simulation_parameters.pressure,
+            temperature=self.simulation_parameters.temperature,
+            membrane_barostat=True,
+        )
+        return self.openmm_system
+
+    def create_production_system(
+        self,
+        nonbonded_method: app.forcefield = app.PME,
+        nonbonded_cutoff: unit.Quantity = 1.2 * unit.nanometer,
+        switch_distance: unit.Quantity = 1 * unit.nanometer,
+        rigid_water: bool = True,
+        constraints: app.forcefield = app.HBonds,
+        bb_restraints: bool = False,
+    ):
+        if not self.system_info.psf_object.boxLengths:
+            gen_pbc_box(
+                psf=self.system_info.psf_object, crd=self.system_info.crd_object
+            )
+        self.openmm_system = self.system_info.psf_object.createSystem(
+            params=self.system_info.params,
+            nonbondedMethod=nonbonded_method,
+            nonbondedCutoff=nonbonded_cutoff,
+            switchDistance=switch_distance,
+            constraints=constraints,
+            rigidWater=rigid_water,
+        )
+        self.openmm_system = add_harmonic_restraint(
+            system=self.openmm_system,
+            atom_group=self.system_info.ligand_indices,
+            values=self.path[0],
+        )
+        if bb_restraints:
+            self.openmm_system = add_backbone_restraints(
+                system=self.openmm_system,
+                atom_list=self.system_info.psf_object.atom_list,
+                
+            )
 
     def prepare_simulations(
         self,
@@ -128,7 +193,7 @@ class UmbrellaPipeline:
             rigid_water (bool, optional): wheter to use rigid water. Defaults to True.
             constraints (app.forcefield, optional): constraints to use. Defaults to app.HBonds.
         """
-        gen_pbc_box(psf=self.system_info.psf_object, pdb=self.system_info.pdb_object)
+        gen_pbc_box(psf=self.system_info.psf_object, crd=self.system_info.crd_object)
         params = self.system_info.params
 
         self.openmm_system = self.system_info.psf_object.createSystem(

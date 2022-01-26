@@ -27,7 +27,7 @@ def main():
     )
 
     parser.add_argument("-psf", type=str, required=True)
-    parser.add_argument("-pdb", type=str, required=True)
+    parser.add_argument("-crd", type=str, required=True)
     parser.add_argument("-sys", type=str, required=True)
     parser.add_argument("-to", type=str, required=True)
     parser.add_argument("-ne", type=int, required=True)
@@ -44,7 +44,7 @@ def main():
     parser.add_argument("-bb", type=int, required=True)
 
     args, unkn = parser.parse_known_args()
-    pdb = app.PDBFile(args.pdb)
+    crd = app.CharmmCrdFile(args.crd)
     psf = app.CharmmPsfFile(args.psf)
     platform = openmmtools.utils.get_fastest_platform()
     if platform.getName() == "CUDA" or "OpenCL":
@@ -68,7 +68,7 @@ def main():
         platformProperties=properties,
     )
 
-    simulation.context.setPositions(pdb.positions)
+    simulation.context.setPositions(crd.positions)
     simulation.minimizeEnergy()
     simulation.context.setVelocitiesToTemperature(args.t * unit.kelvin)
 
