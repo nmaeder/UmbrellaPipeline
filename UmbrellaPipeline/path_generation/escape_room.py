@@ -505,47 +505,33 @@ class TreeEscapeRoom(EscapeRoom3D):
         Returns:
             List[TreeNode]: list of path nodes.
         """
-        stride = 1
         ret = []
         path = copy.deepcopy(self.shortest_path)
         iterator = iter(path)
         current = next(iterator)
         new = next(iterator)
-        ret.append(
-            unit.Quantity(
-                value=Vec3(x=current.x, y=current.y, z=current.z), unit=current.unit
-            )
-        )
+        ret.append(Vec3(x=current.x, y=current.y, z=current.z))
         end_reached = False
-        while stepsize > self.stepsize:
-            stepsize /= 2
-            stride *= 2
+        diff = self.tree.calculate_euclidean_distance(current, new)
         while not end_reached:
-            newstep = stepsize
             try:
-                if newstep < stepsize:
-                    newstep = stepsize
-                diff = self.tree.calculate_diagonal_distance(current, new)
-                if diff < stepsize:
-                    current = new
-                    new = next(iterator)
-                    newstep -= diff
-                    diff = self.tree.calculate_diagonal_distance(current, new)
-                factor = newstep / diff
-                current.x += (new.x - current.x) * factor
-                current.y += (new.y - current.y) * factor
-                current.z += (new.z - current.z) * factor
-                ret.append(
-                    unit.Quantity(
-                        value=Vec3(
-                            x=current.x,
-                            y=current.y,
-                            z=current.z,
-                        ),
-                        unit=current.unit,
-                    )
-                )
+                if stepsize < diff:
+                    factor = stepsize / diff
+                    current.x += (new.x - current.x) * factor
+                    current.y += (new.y - current.y) * factor
+                    current.z += (new.z - current.z) * factor
+                    ret.append(Vec3(x=current.x, y=current.y, z=current.z))
+                    diff = self.tree.calculate_euclidean_distance(current, new)
+                else:
+                    while stepsize > diff:
+                        new = next(iterator)
+                        diff = self.tree.calculate_euclidean_distance(current, new)
+                    factor = stepsize / diff
+                    current.x += (new.x - current.x) * factor
+                    current.y += (new.y - current.y) * factor
+                    current.z += (new.z - current.z) * factor
+                    ret.append(Vec3(x=current.x, y=current.y, z=current.z))
+                    diff = self.tree.calculate_euclidean_distance(current, new)
             except StopIteration:
                 end_reached = True
-        del path
-        return ret[::stride]
+        return unit.Quantity(value=ret, unit=self.shortest_path[0].unit)
