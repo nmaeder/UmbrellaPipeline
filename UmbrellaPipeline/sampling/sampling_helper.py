@@ -6,7 +6,7 @@ from openmm import (
 from typing import List
 import numpy as np
 
-from UmbrellaPipeline.utils import get_backbone_indices
+from UmbrellaPipeline.utils import get_backbone_indices, SimulationProperties
 
 
 HARMONIC_FORMULA = (
@@ -16,7 +16,7 @@ HARMONIC_FORMULA = (
 HARMONIC_PARAMS = ["k", "x0", "y0", "z0"]
 
 
-def add_harmonic_restraint(
+def add_ligand_restraint(
     system: mm.openmm.System,
     atom_group: List[int],
     values: List[unit.Quantity],
@@ -49,23 +49,22 @@ def add_harmonic_restraint(
 
 def add_barostat(
     system: mm.openmm.System,
-    pressure: unit.Quantity = 1 * unit.bar,
-    temperature: unit.Quantity = 310 * unit.kelvin,
+    properties: SimulationProperties,
     membrane_barostat: bool = False,
     frequency: int = 25,
 ) -> mm.openmm.System:
     if membrane_barostat:
         add_membrane_barostat(
             system=system,
-            pressure=pressure,
-            temperature=temperature,
+            pressure=properties.pressure,
+            temperature=properties.temperature,
             frequency=frequency,
         )
     else:
         add_isotropic_barostat(
             system=system,
-            pressure=pressure,
-            temperature=temperature,
+            pressure=properties.pressure,
+            temperature=properties.temperature,
             frequency=frequency,
         )
     return system
@@ -146,7 +145,7 @@ def scale(
     Returns:
         unit.Quantity: scaled value between initial and final value
     """
-    assert lamda <= 1.0 and lamda >= 0.0
+    assert 0 <= lamda <= 1.0
     return (1 - lamda) * initial_value + lamda * final_value
 
 
@@ -264,9 +263,8 @@ def update_restraint(
     simulation: app.Simulation,
     ligand_indices: List[int],
     original_parameters: List[unit.Quantity],
-    path: List[unit.Quantity],
-    window: int,
-    nr_steps: int = 10,
+    position: unit.Quantity,
+    nr_steps: int = 1000,
 ) -> None:
     """Updates the constraint coordinates of the simulation
 
@@ -276,11 +274,11 @@ def update_restraint(
     ghost_ligand(simulation=simulation, ligand_indices=ligand_indices)
     for a, b in zip(
         ["x0", "y0", "z0"],
-        [path[window].x, path[window].y, path[window].z],
+        [position.x, position.y, position.z],
     ):
         simulation.context.setParameter(a, b)
-    simulation.minimizeEnergy(200)
-    simulation.step(1000)
+    simulation.minimizeEnergy()
+    simulation.step(250000)
     ghost_busters_ligand(
         simulation=simulation,
         ligand_indices=ligand_indices,
@@ -303,12 +301,66 @@ def serialize_system(system: mm.openmm.System, path: str) -> str:
 
 
 def serialize_state(state: mm.State, path: str) -> str:
+    """
+    Serializes a state to an rst file. take sin velocities, positions and pbc box info.
+
+    Args:
+        state (mm.State): State object. use Simulation.context.getState(getPositions=True, getVelocities=True)
+        path (str): path to the serialization file
+
+    Returns:
+        str: path of the serialization file
+    """
+    try:
+        assert state.getPositions() is not None
+        assert state.getVelocities() is not None
+    except AssertionError:
+        TypeError("State has to contain velocities and positions.")
     with open(file=path, mode="w") as f:
         f.write(mm.openmm.XmlSerializer.serialize(state))
     return path
 
 
 def deserialize_state(path: str) -> mm.State:
-    with open(file=path, mode="r") as f:
-        state = mm.openmm.XmlSerializer.deserialize(f.read())
+    """
+    Deserializes state for simulations from a file
+
+    Args:
+        path (str): path of the file that contains the serialized state.
+
+    Returns:
+        mm.State: openmm state with pbc box info, positions and velocities.
+    """
+    try:
+        with open(file=path, mode="r") as f:
+            state = mm.openmm.XmlSerializer.deserialize(f.read())
+    except:
+        FileNotFoundError
     return state
+
+
+def write_path_to_file(path: unit.Quantity, directory: str) -> str:
+    """
+    Writes the restrain coordinates to a file, so analysis is still possible without the umbrellapipeline object
+
+    Returns:
+        str: path for the coordinates file
+    """
+
+    opath = "{}/coordinates.dat".format(directory.rstrip("/"))
+    orgCoords = open(file=opath, mode="w")
+    orgCoords.write(f"#lamda, x0, y0, z0, all in units of {path[0].unit}\n")
+    for window, position in enumerate(path):
+        orgCoords.write(f"{window}, {position.x}, {position.y}, {position.z}\n")
+    return path
+
+
+def extract_nonbonded_parameters(
+    system: mm.openmm.System, indices: List[int]
+) -> List[unit.Quantity]:
+    ret = []
+    for force in system.getForces():
+        if type(force).__name__ == "NonbondedForce":
+            for index in indices:
+                ret.append(force.getParticleParameters(index))
+    return ret

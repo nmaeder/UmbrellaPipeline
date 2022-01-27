@@ -34,7 +34,7 @@ def parse_params(
 
 def gen_pbc_box(
     psf: str or app.CharmmPsfFile,
-    crd: str or app.CharmmCrdFile,
+    pos: unit.Quantity,
 ) -> List[unit.Quantity]:
     """
     Adapted from charmm_gui readparams. Generates pbc box and adds it to the psf. returns offset of the box from 0,0,0.
@@ -46,11 +46,10 @@ def gen_pbc_box(
     Returns:
         List[unit.Quantity]: offset of box from 0,0,0
     """
-    if isinstance(crd, str):
-        crd = app.CharmmCrdFile(crd)
+
     if isinstance(psf, str):
         psf = app.CharmmPsfFile(psf)
-    coords = crd.positions.in_units_of(unit.nanometer)
+    coords = pos
 
     min_crds = [coords[0][0], coords[0][1], coords[0][2]]
     max_crds = [coords[0][0], coords[0][1], coords[0][2]]

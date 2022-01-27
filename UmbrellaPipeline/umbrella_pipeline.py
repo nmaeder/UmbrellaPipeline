@@ -1,19 +1,15 @@
 from typing import List
+from more_itertools import only
 import openmm as mm
 from openmm import app, unit
 
 from UmbrellaPipeline.sampling import (
-    SamplingHydra,
-    UmbrellaSimulation,
-    add_barostat,
-    add_harmonic_restraint,
-    add_backbone_restraints,
+    UmbrellaSampling,
+    SamplingSunGridEngine,
 )
-from UmbrellaPipeline.sampling.sampling_helper import add_harmonic_restraint
 from UmbrellaPipeline.utils import (
     SimulationProperties,
     SimulationSystem,
-    gen_pbc_box,
 )
 from UmbrellaPipeline.path_generation import (
     Tree,
@@ -37,7 +33,7 @@ class UmbrellaPipeline:
         toppar_directory: str,
         ligand_residue_name: str,
         simulation_properties: SimulationProperties = SimulationProperties(),
-        recalculate_path_after_equilibration: bool = False,
+        only_run_production: bool = False,
     ) -> None:
         """
         Args:
@@ -59,7 +55,7 @@ class UmbrellaPipeline:
         self.path: List[unit.Quantity]
         self.openmm_system: mm.openmm.System
         self.escape_room: GridEscapeRoom or TreeEscapeRoom
-        self.recalculate = recalculate_path_after_equilibration
+        self.equilibrate = not only_run_production
 
     def generate_path(
         self,
@@ -67,6 +63,7 @@ class UmbrellaPipeline:
         path_interval=0.1 * unit.nanometer,
         use_grid: bool = False,
         positions: unit.Quantity = None,
+        system=None,
     ) -> List[unit.Quantity]:
         """
         Creates the path out of the protein. use_grid is not recommended.
@@ -79,25 +76,21 @@ class UmbrellaPipeline:
         Returns:
             List[unit.Quantity]: path for the umbrella sampling.
         """
+        pos = positions if positions else self.system_info.crd_object.positions
         if not use_grid:
-            tree = Tree.from_files(
-                psf=self.system_info.psf_object, crd=self.system_info.crd_object
+            print("start")
+            tree = Tree(coordinates=pos)
+            start = Tree.node_from_coords(
+                positions=pos,
+                psf=self.system_info.psf_object,
+                name=self.system_info.ligand_name,
+                masses=system,
             )
-            if positions:
-                start = tree.node_from_coords(
-                    positions=positions,
-                    psf=self.system_info.psf_object,
-                    crd=self.system_info.crd_object,
-                    name=self.system_info.ligand_name,
-                )
-            else:
-                start = tree.node_from_files(
-                    psf=self.system_info.psf_object,
-                    crd=self.system_info.crd_object,
-                    name=self.system_info.ligand_name,
-                )
+            print(start)
             self.escape_room = TreeEscapeRoom(tree=tree, start=start)
+            print("start escape room")
             self.escape_room.escape_room(distance=distance_to_protein)
+            print("start partitioning")
             self.path = self.escape_room.get_path_for_sampling(stepsize=path_interval)
 
         else:
@@ -117,100 +110,7 @@ class UmbrellaPipeline:
 
         return self.path
 
-    def create_equilibration_system(
-        self,
-        nonbonded_method: app.forcefield = app.PME,
-        nonbonded_cutoff: unit.Quantity = 1.2 * unit.nanometer,
-        switch_distance: unit.Quantity = 1 * unit.nanometer,
-        rigid_water: bool = True,
-        constraints: app.forcefield = app.HBonds,
-    ):
-        if not self.system_info.psf_object.boxLengths:
-            gen_pbc_box(
-                psf=self.system_info.psf_object, crd=self.system_info.crd_object
-            )
-        self.openmm_system = self.system_info.psf_object.createSystem(
-            params=self.system_info.params,
-            nonbondedMethod=nonbonded_method,
-            nonbondedCutoff=nonbonded_cutoff,
-            switchDistance=switch_distance,
-            constraints=constraints,
-            rigidWater=rigid_water,
-        )
-        self.openmm_system = add_barostat(
-            system=self.openmm_system,
-            pressure=self.simulation_parameters.pressure,
-            temperature=self.simulation_parameters.temperature,
-            membrane_barostat=True,
-        )
-        return self.openmm_system
-
-    def create_production_system(
-        self,
-        nonbonded_method: app.forcefield = app.PME,
-        nonbonded_cutoff: unit.Quantity = 1.2 * unit.nanometer,
-        switch_distance: unit.Quantity = 1 * unit.nanometer,
-        rigid_water: bool = True,
-        constraints: app.forcefield = app.HBonds,
-        bb_restraints: bool = False,
-    ):
-        if not self.system_info.psf_object.boxLengths:
-            gen_pbc_box(
-                psf=self.system_info.psf_object, crd=self.system_info.crd_object
-            )
-        self.openmm_system = self.system_info.psf_object.createSystem(
-            params=self.system_info.params,
-            nonbondedMethod=nonbonded_method,
-            nonbondedCutoff=nonbonded_cutoff,
-            switchDistance=switch_distance,
-            constraints=constraints,
-            rigidWater=rigid_water,
-        )
-        self.openmm_system = add_harmonic_restraint(
-            system=self.openmm_system,
-            atom_group=self.system_info.ligand_indices,
-            values=self.path[0],
-        )
-        if bb_restraints:
-            self.openmm_system = add_backbone_restraints(
-                system=self.openmm_system,
-                atom_list=self.system_info.psf_object.atom_list,
-                
-            )
-
-    def prepare_simulations(
-        self,
-        nonbonded_method: app.forcefield = app.PME,
-        nonbonded_cutoff: unit.Quantity = 1.2 * unit.nanometer,
-        rigid_water: bool = True,
-        constraints: app.forcefield = app.HBonds,
-    ) -> None:
-        """
-        This function creates the openmm_system. is called inside run_simulations/run_simulations_cluster, so no need to run it on its own.
-        Args:
-            nonbonded_method (app.forcefield, optional): Nonbonded method to use. PME is highly encouraged. Defaults to app.PME.
-            nonbonded_cutoff (unit.Quantity, optional): nonbonded cutoff value. Defaults to 1.2*unit.nanometer.
-            rigid_water (bool, optional): wheter to use rigid water. Defaults to True.
-            constraints (app.forcefield, optional): constraints to use. Defaults to app.HBonds.
-        """
-        gen_pbc_box(psf=self.system_info.psf_object, crd=self.system_info.crd_object)
-        params = self.system_info.params
-
-        self.openmm_system = self.system_info.psf_object.createSystem(
-            params=params,
-            nonbondedMethod=nonbonded_method,
-            nonbondedCutoff=nonbonded_cutoff,
-            constraints=constraints,
-            rigidWater=rigid_water,
-        )
-        if self.simulation_parameters.pressure:
-            barostat = mm.openmm.MonteCarloBarostat(
-                self.simulation_parameters.pressure,
-                self.simulation_parameters.temperature,
-            )
-            self.openmm_system.addForce(barostat)
-
-    def run_simulations_cluster(
+    def run_simulations_sun_grid_engine(
         self,
         conda_environment: str,
         trajectory_path: str,
@@ -218,6 +118,7 @@ class UmbrellaPipeline:
         mail: str = None,
         gpu: int = 1,
         log_prefix: str = "umbrella_simulation",
+        membrane_barostat: bool = False,
     ) -> None:
         """
         Prepares and runs simulations on a cluster.
@@ -230,7 +131,7 @@ class UmbrellaPipeline:
             gpu (int, optional): set to one if you want to use CUDA. Defaults to 1.
             log_prefix (str, optional): name of the log files. Defaults to "umbrella_simulation".
         """
-        simulation = SamplingHydra(
+        simulation = SamplingSunGridEngine(
             properties=self.simulation_parameters,
             path=self.path,
             openmm_system=self.openmm_system,
@@ -243,8 +144,11 @@ class UmbrellaPipeline:
             hydra_working_dir=hydra_working_dir,
         )
 
-        simulation.prepare_simulations()
-        simulation.run_sampling()
+        state, _ = simulation.run_equilibration(use_membrane_barostat=membrane_barostat)
+        self.path = self.generate_path(
+            positions=state.getPositions(), system=simulation.openmm_system
+        )
+        simulation.run_production(path=self.path)
 
     def run_simulations_local(
         self,
@@ -256,19 +160,15 @@ class UmbrellaPipeline:
         Args:
             trajectory_path (str): output directory for the trajectories.
         """
-        simulation = UmbrellaSimulation(
+        simulation = UmbrellaSampling(
             properties=self.simulation_parameters,
             path=self.path,
             openmm_system=self.openmm_system,
             info=self.system_info,
             traj_write_path=trajectory_path,
         )
-        simulation.prepare_simulations()
-        simulation.run_equilibration()
-        if self.recalculate:
-            self.path = self.generate_path(
-                positions=simulation.simulation.context.getState(
-                    getPositions=True
-                ).getPositions()
-            )
-        simulation.run_production()
+        state = simulation.run_equilibration()
+        self.path = self.generate_path(
+            positions=state.getPositions(), system=simulation.openmm_system
+        )
+        simulation.run_production(path=self.path, state=state)

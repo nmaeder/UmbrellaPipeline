@@ -1,6 +1,7 @@
 import math
 from typing import List
 import openmm.unit as u
+import openmm as mm
 from openmm import Vec3, app
 from scipy.spatial import KDTree
 
@@ -9,6 +10,7 @@ from UmbrellaPipeline.utils import (
     get_centroid_coordinates,
 )
 from UmbrellaPipeline.path_generation import TreeNode
+from UmbrellaPipeline.utils.coordinates import get_center_of_mass_coordinates
 
 
 class Tree:
@@ -103,6 +105,8 @@ class Tree:
         """
         try:
             crd = app.CharmmCrdFile(crd)
+            crd.positions = crd.positions.in_units_of(u.nanometer)
+            crd.positions.unit = u.nanometer
         except TypeError:
             pass
         try:
@@ -120,7 +124,11 @@ class Tree:
 
     @staticmethod
     def node_from_files(
-        psf: str, crd: str, name: str, include_hydrogens: bool = True
+        psf: str,
+        crd: str,
+        name: str,
+        include_hydrogens: bool = True,
+        masses: mm.openmm.System = None,
     ) -> TreeNode:
         """
         calculates the centroid coordinates of the ligand and returns the grid node closest to the centriod Cordinates.
@@ -137,6 +145,8 @@ class Tree:
         """
         try:
             crd = app.CharmmCrdFile(crd)
+            crd.positions = crd.positions.in_units_of(u.nanometer)
+            crd.positions.unit = u.nanometer
         except TypeError:
             pass
         try:
@@ -147,7 +157,14 @@ class Tree:
         indices = get_residue_indices(
             atom_list=psf.atom_list, name=name, include_hydrogens=include_hydrogens
         )
-        coordinates = get_centroid_coordinates(positions=crd.positions, indices=indices)
+        if masses:
+            coordinates = get_center_of_mass_coordinates(
+                positions=crd.positions, indices=indices, masses=masses
+            )
+        else:
+            coordinates = get_centroid_coordinates(
+                positions=crd.positions, indices=indices
+            )
         return TreeNode.from_coords(
             [
                 coordinates[0],
@@ -159,16 +176,16 @@ class Tree:
     @staticmethod
     def node_from_coords(
         positions: u.Quantity,
-        psf: str,
-        crd: str,
+        psf: str or app.CharmmPsfFile,
         name: str,
+        masses: mm.openmm.System = None,
         include_hydrogens: bool = True,
     ) -> TreeNode:
         """
         calculates the centroid coordinates of the ligand and returns the grid node closest to the centriod Cordinates.
 
         Args:
-            psf (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
+            positions (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
             crd (str): give either path to crd file as string or an openmm.app.CharmmCrdFile object.
             name (str): name of the residue that is the starting point.
 
@@ -178,18 +195,19 @@ class Tree:
         TODO: add support for center of mass -> more complicated since it needs an initialized system.
         """
         try:
-            crd = app.CharmmCrdFile(crd)
-        except TypeError:
-            pass
-        try:
             psf = app.CharmmPsfFile(psf)
-        except TypeError:
+        except:
             pass
 
         indices = get_residue_indices(
             atom_list=psf.atom_list, name=name, include_hydrogens=include_hydrogens
         )
-        coordinates = get_centroid_coordinates(positions=positions, indices=indices)
+        if masses:
+            coordinates = get_center_of_mass_coordinates(
+                positions=positions, indices=indices, masses=masses
+            )
+        else:
+            coordinates = get_centroid_coordinates(positions=positions, indices=indices)
         return TreeNode.from_coords(
             [
                 coordinates[0],
@@ -257,8 +275,9 @@ class Tree:
         dist = dist * self.unit - vdw_radius.in_units_of(self.unit)
         return dist
 
+    @staticmethod
     def calculate_euclidean_distance(
-        self, node: TreeNode, destination: TreeNode
+        node: TreeNode, destination: TreeNode
     ) -> u.Quantity:
         """
         calculates euclidean distance heuristics between node and destination.
@@ -278,8 +297,9 @@ class Tree:
             unit=node.unit,
         )
 
+    @staticmethod
     def calculate_diagonal_distance(
-        self, node: TreeNode, destination: TreeNode
+        node: TreeNode, destination: TreeNode
     ) -> u.Quantity:
         """
         calculates diagonal distance heuristics between node and destination.

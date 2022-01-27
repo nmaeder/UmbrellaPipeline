@@ -95,6 +95,7 @@ class Grid:
         gridsize: unit.Quantity or List[unit.Quantity] = 0.01 * unit.nanometer,
         vdw_radius: unit.Quantity = 0.12 * unit.nanometer,
         add_vdw: bool = True,
+        positions: unit.Quantity = None,
     ):
         """
         Constructor for grid. takes in psf and crd files generated from charmmgui and generates a grid where all points with a protein atom are true. every other gridpoint is False.
@@ -109,6 +110,8 @@ class Grid:
         """
         try:
             crd = app.CharmmCrdFile(crd)
+            crd.positions = crd.positioins.in_units_of(unit.nanometer)
+            crd.positions.unit = unit.nanometer
         except TypeError:
             pass
         try:
@@ -116,8 +119,10 @@ class Grid:
         except TypeError:
             pass
 
+        pos = positions if positions else crd.positions
+
         inx = get_residue_indices(psf.atom_list)
-        min_c = gen_pbc_box(psf, crd)
+        min_c = gen_pbc_box(psf, pos)
 
         n = [
             round(psf.boxLengths[0] / gridsize),

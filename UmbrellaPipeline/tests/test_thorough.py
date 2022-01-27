@@ -14,11 +14,11 @@ from UmbrellaPipeline.path_generation import (
     TreeEscapeRoom,
 )
 from UmbrellaPipeline.sampling import (
-    add_harmonic_restraint,
+    add_ligand_restraint,
     ghost_ligand,
     ramp_up_coulomb,
     ramp_up_vdw,
-    SamplingHydra,
+    SamplingSunGridEngine,
 )
 from UmbrellaPipeline.utils import (
     gen_pbc_box,
@@ -44,7 +44,8 @@ pipeline = UmbrellaPipeline(
 def test_genbox():
     assert pipeline.system_info.psf_object.boxVectors == None
     minC = gen_pbc_box(
-        psf=pipeline.system_info.psf_object, crd=pipeline.system_info.crd_object
+        psf=pipeline.system_info.psf_object,
+        pos=pipeline.system_info.crd_object.positions,
     )
     assert minC == [
         unit.Quantity(value=-0.56125095743, unit=unit.nanometer),
@@ -69,7 +70,8 @@ def test_pipeline():
 def test_add_harmonic_restraint():
 
     gen_pbc_box(
-        psf=pipeline.system_info.psf_object, crd=pipeline.system_info.crd_object
+        psf=pipeline.system_info.psf_object,
+        pos=pipeline.system_info.crd_object.positions,
     )
     system = pipeline.system_info.psf_object.createSystem(
         params=pipeline.system_info.params
@@ -83,14 +85,13 @@ def test_add_harmonic_restraint():
         2 * unit.angstrom,
         3 * unit.angstrom,
     ]
-    add_harmonic_restraint(system=system, atom_group=ind, values=values)
+    add_ligand_restraint(system=system, atom_group=ind, values=values)
 
 
 def test_script_writing():
     output = [
-        "run_umbrella_0.sh",
-        "run_umbrella_1.sh",
-        "serialized_sys.xml",
+        "run_umbrella_window_0.sh",
+        "run_umbrella_window_1.sh",
     ]
     tree = Tree.from_files(
         crd=pipeline.system_info.crd_object, psf=pipeline.system_info.psf_object
@@ -102,18 +103,17 @@ def test_script_writing():
     ).get_coordinates()
     path = [st, st]
 
-    sim = SamplingHydra(
-        openmm_system=pipeline.system_info.psf_object.createSystem(
-            pipeline.system_info.params
-        ),
+    sim = SamplingSunGridEngine(
         properties=pipeline.simulation_parameters,
         info=pipeline.system_info,
-        path=path,
         traj_write_path=os.path.dirname(__file__),
         conda_environment="openmm",
         hydra_working_dir=os.path.dirname(__file__),
     )
-    sim.prepare_simulations()
+
+    sim.openmm_system = sim.system_info.psf_object.createSystem(sim.system_info.params)
+
+    sim.write_sge_scripts(path=path)
 
     for i in output:
         p = os.path.abspath(os.path.dirname(__file__) + "/" + i)
@@ -176,7 +176,8 @@ def test_centroid_coords():
 
 def test_com_coords():
     gen_pbc_box(
-        crd=pipeline.system_info.crd_object, psf=pipeline.system_info.psf_object
+        pos=pipeline.system_info.crd_object.positions,
+        psf=pipeline.system_info.psf_object,
     )
     system = pipeline.system_info.psf_object.createSystem(
         params=pipeline.system_info.params,
@@ -239,7 +240,7 @@ def test_ghosting():
         platform=platform,
         platformProperties=props,
     )
-    simulation.context.setPositions(pipeline.system_info.crd_object.getPositions())
+    simulation.context.setPositions(pipeline.system_info.crd_object.positions)
     orig_params = []
 
     f = simulation.context.getSystem().getForces()

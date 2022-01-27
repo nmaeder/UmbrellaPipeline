@@ -2,26 +2,30 @@ import os, time, logging
 import openmm as mm
 import openmmtools
 from openmm import app, unit
-from typing import List
+from typing import List, Tuple
 
 from UmbrellaPipeline.sampling import (
-    add_harmonic_restraint,
-    initialize_backbone_restraints,
-    activate_backbone_restraints,
+    add_ligand_restraint,
     update_restraint,
     serialize_system,
+    serialize_state,
+    add_barostat,
+    add_backbone_restraints,
+    extract_nonbonded_parameters,
+    write_path_to_file,
 )
 from UmbrellaPipeline.utils import (
     execute_bash_parallel,
     display_time,
     SimulationProperties,
     SimulationSystem,
+    gen_pbc_box,
 )
 
 logger = logging.getLogger(__name__)
 
 
-class UmbrellaSimulation:
+class UmbrellaSampling:
     """
     holds all necessary information for your simulation on your local computer.
     """
@@ -30,8 +34,6 @@ class UmbrellaSimulation:
         self,
         properties: SimulationProperties,
         info: SimulationSystem,
-        path: List[unit.Quantity],
-        openmm_system: mm.openmm.System,
         traj_write_path: str = None,
         restrain_protein_backbone: bool = False,
     ) -> None:
@@ -45,9 +47,7 @@ class UmbrellaSimulation:
         """
         self.simulation_properties = properties
         self.system_info = info
-        self.lamdas = len(path)
-        self.path = path
-        self.openmm_system = openmm_system
+        self.openmm_system: mm.openmm.System
         self.simulation: app.Simulation
         self.integrator: mm.openmm.Integrator
         self.bb_restrains = restrain_protein_backbone
@@ -61,47 +61,43 @@ class UmbrellaSimulation:
         self.traj_write_path = traj_write_path
         if not traj_write_path:
             self.traj_write_path = os.getcwd()
-        if self.traj_write_path.endswith("/"):
-            self.traj_write_path.rstrip("/")
-
+        self.traj_write_path = os.path.abspath(self.traj_write_path.rstrip("/"))
         self.ligand_non_bonded_parameters = []
 
-        for force in self.openmm_system.getForces():
-            if type(force).__name__ == "NonbondedForce":
-                for index in self.system_info.ligand_indices:
-                    self.ligand_non_bonded_parameters.append(
-                        force.getParticleParameters(index)
-                    )
+    def run_equilibration(
+        self,
+        use_membrane_barostat: bool = False,
+        nonbonded_method: app.forcefield = app.PME,
+        nonbonded_cutoff: unit.Quantity = 1.2 * unit.nanometer,
+        switch_distance: unit.Quantity = 1 * unit.nanometer,
+        rigid_water: bool = True,
+        constraints: app.forcefield = app.HBonds,
+    ) -> mm.State:
 
-    def prepare_simulations(self) -> None:
-        """
-        Adds a harmonic restraint to the residue with the name given in self.name to the first position in self.path.
-        Also changes self.integrator so it can be used on self.system.
-
-        Returns:
-            mm.openmm.Integrator: Integrator for the system. it changes self.integrator.
-        """
-        add_harmonic_restraint(
-            system=self.openmm_system,
-            atom_group=self.system_info.ligand_indices,
-            values=[
-                self.simulation_properties.force_constant,
-                self.path[0].x,
-                self.path[0].y,
-                self.path[0].z,
-            ],
+        if not self.system_info.psf_object.boxLengths:
+            gen_pbc_box(
+                psf=self.system_info.psf_object,
+                pos=self.system_info.crd_object.positions,
+            )
+        self.openmm_system = self.system_info.psf_object.createSystem(
+            params=self.system_info.params,
+            nonbondedMethod=nonbonded_method,
+            nonbondedCutoff=nonbonded_cutoff,
+            switchDistance=switch_distance,
+            constraints=constraints,
+            rigidWater=rigid_water,
         )
 
-        if self.bb_restrains:
-            initialize_backbone_restraints(
-                self.openmm_system,
-                self.system_info.psf_object.atom_list,
-            )
+        self.openmm_system = add_barostat(
+            system=self.openmm_system,
+            properties=self.simulation_properties,
+            membrane_barostat=use_membrane_barostat,
+        )
 
-        self.integrator = openmmtools.integrators.LangevinIntegrator(
+        self.integrator = mm.LangevinIntegrator(
             temperature=self.simulation_properties.temperature,
-            collision_rate=self.simulation_properties.friction_coefficient,
-            timestep=self.simulation_properties.time_step,
+            frictionCoeff=self.simulation_properties.friction_coefficient,
+            stepSize=self.simulation_properties.time_step,
         )
 
         self.simulation = app.Simulation(
@@ -112,88 +108,149 @@ class UmbrellaSimulation:
             platformProperties=self.platformProperties,
         )
 
-    def write_path_to_file(self) -> str:
-        """
-        Writes the restrain coordinates to a file, so analysis is still possible without the umbrellapipeline object
-
-        Returns:
-            str: path for the coordinates file
-        """
-        path = f"{self.traj_write_path}/coordinates.dat"
-        orgCoords = open(file=path, mode="w")
-        orgCoords.write(f"lamda, x0, y0, z0, all in units of {self.path[0].unit}\n")
-        for window in range(self.lamdas):
-            orgCoords.write(
-                f"{window},{self.path[window].x},{self.path[window].y},{self.path[window].z}\n"
-            )
-        return path
-
-    def run_equilibration(self) -> app.Simulation:
         self.simulation.context.setPositions(self.system_info.crd_object.positions)
         self.simulation.minimizeEnergy()
         self.simulation.context.setVelocitiesToTemperature(
             self.simulation_properties.temperature
         )
+        self.simulation.reporters.append(
+            app.DCDReporter(
+                file=f"{self.traj_write_path}/equilibration_trajcetory.dcd",
+                reportInterval=self.simulation_properties.write_out_frequency,
+            )
+        )
+        self.simulation.reporters.append(
+            app.StateDataReporter(
+                file=f"{self.traj_write_path}/equilibration_state.out",
+                reportInterval=self.simulation_properties.write_out_frequency,
+                step=True,
+                time=True,
+                potentialEnergy=True,
+                totalEnergy=True,
+                temperature=True,
+                volume=True,
+            )
+        )
         self.simulation.step(self.simulation_properties.n_equilibration_steps)
+        state = self.simulation.context.getState(getPositions=True, getVelocities=True)
+        return state
+
+    def run_production(
+        self,
+        path: unit.Quantity,
+        state: mm.State,
+        nonbonded_method: app.forcefield = app.PME,
+        nonbonded_cutoff: unit.Quantity = 1.2 * unit.nanometer,
+        switch_distance: unit.Quantity = 1 * unit.nanometer,
+        rigid_water: bool = True,
+        constraints: app.forcefield = app.HBonds,
+    ):
+
+        if not self.system_info.psf_object.boxLengths:
+            gen_pbc_box(
+                psf=self.system_info.psf_object,
+                pos=self.system_info.crd_object.positions,
+            )
+        self.openmm_system = self.system_info.psf_object.createSystem(
+            params=self.system_info.params,
+            nonbondedMethod=nonbonded_method,
+            nonbondedCutoff=nonbonded_cutoff,
+            switchDistance=switch_distance,
+            constraints=constraints,
+            rigidWater=rigid_water,
+        )
+        self.openmm_system = add_ligand_restraint(
+            system=self.openmm_system,
+            atom_group=self.system_info.ligand_indices,
+            values=path[0],
+        )
         if self.bb_restrains:
-            activate_backbone_restraints(
-                simulation=self.simulation,
+            self.openmm_system = add_backbone_restraints(
+                system=self.openmm_system,
                 atom_list=self.system_info.psf_object.atom_list,
             )
-        return self.simulation
+        self.simulation = self.integrator = mm.LangevinIntegrator(
+            temperature=self.simulation_properties.temperature,
+            frictionCoeff=self.simulation_properties.friction_coefficient,
+            stepSize=self.simulation_properties.time_step,
+        )
 
-    def run_production(self):
-        for window in range(self.lamdas):
-            fileHandle = open(f"{self.traj_write_path}/traj_{window}.dcd", "bw")
-            dcdFile = app.dcdfile.DCDFile(
-                file=fileHandle,
-                topology=self.simulation.topology,
-                dt=self.simulation_properties.time_step,
+        self.simulation = app.Simulation(
+            topology=self.system_info.psf_object.topology,
+            system=self.openmm_system,
+            integrator=self.integrator,
+            platform=self.platform,
+            platformProperties=self.platformProperties,
+        )
+
+        self.simulation.context.setState(state=state)
+        self.simulation.minimizeEnergy()
+        self.simulation.step(self.simulation_properties.n_equilibration_steps)
+
+        self.ligand_non_bonded_parameters = extract_nonbonded_parameters(
+            self.openmm_system, self.system_info.ligand_indices
+        )
+        total_time = 0
+        for window, position in enumerate(path):
+            start_time = time.time()
+            self.simulation.reporters.append(
+                app.DCDReporter(
+                    file=f"{self.traj_write_path}/production_trajcetory_window_{window}.dcd",
+                    reportInterval=self.simulation_properties.write_out_frequency,
+                )
             )
-            total_time = 0
-            for i in range(self.simulation_properties.number_of_frames):
-                start_time = time.time()
-                self.simulation.step(self.simulation_properties.write_out_frequency)
-                dcdFile.writeModel(
-                    self.simulation.context.getState(getPositions=True).getPositions()
+            self.simulation.reporters.append(
+                app.StateDataReporter(
+                    file=f"{self.traj_write_path}/production_state_window_{window}.out",
+                    reportInterval=self.simulation_properties.write_out_frequency,
+                    step=True,
+                    time=True,
+                    potentialEnergy=True,
+                    totalEnergy=True,
+                    temperature=True,
+                    volume=True,
                 )
-                elapsed_time = time.time() - start_time
-                total_time += elapsed_time
-                logger.info(
-                    f"Step {i+1} of {self.simulation_properties.number_of_frames} simulated. "
-                    f"Elapsed Time: {display_time(elapsed_time)}. "
-                    f"Elapsed total time: {display_time(total_time)}. "
-                    f"Estimated time until finish: {display_time((self.simulation_properties.number_of_frames - (i+1)) * total_time) }."
-                )
-            fileHandle.close()
+            )
+
+            self.simulation.step(self.simulation_properties.n_production_steps)
+
+            elapsed_time = time.time() - start_time
+            total_time += elapsed_time
+            logger.info(
+                f"Window {window+1} of {len(path)} simulated. "
+                f"Elapsed Time: {display_time(elapsed_time)}. "
+                f"Elapsed total time: {display_time(total_time)}. "
+                f"Estimated time until finish: {display_time((len(path) - window + 1) * elapsed_time) }."
+            )
+
+            self.simulation.reporters.clear()
             try:
                 update_restraint(
                     simulation=self.simulation,
                     ligand_indices=self.system_info.ligand_indices,
                     original_parameters=self.ligand_non_bonded_parameters,
-                    path=self.path,
-                    window=window + 1,
+                    position=position,
                 )
                 self.simulation.step(self.simulation_properties.n_equilibration_steps)
             except IndexError:
                 pass
+        write_path_to_file(path, self.traj_write_path)
 
 
-class SamplingHydra(UmbrellaSimulation):
+class SamplingSunGridEngine(UmbrellaSampling):
     """
-    This class holds all information for running your umbrella simulation on the hydra cluster. it works entirely differnt than the UmbrellaSimulation class.
+    This class holds all information for running your umbrella simulation on the hydra cluster. it works entirely differnt than the UmbrellaSampling class.
     It first writes bash scirpts which it then submits to the submission system.
     """
 
     def __init__(
         self,
         properties: SimulationProperties,
-        path: List[unit.Quantity],
-        openmm_system: mm.openmm.System,
         info: SimulationSystem,
         traj_write_path: str,
         conda_environment: str,
         mail: str = None,
+        restrain_backbone: bool = False,
         log_prefix: str = "umbrella_simulation",
         gpu: str = 1,
         hydra_working_dir: str = None,
@@ -214,15 +271,13 @@ class SamplingHydra(UmbrellaSimulation):
         super().__init__(
             properties=properties,
             info=info,
-            path=path,
-            openmm_system=openmm_system,
             traj_write_path=traj_write_path,
+            restrain_protein_backbone=restrain_backbone,
         )
         self.hydra_working_dir: str = (
             hydra_working_dir if hydra_working_dir else os.getcwd()
         )
-        if self.hydra_working_dir.endswith("/"):
-            self.hydra_working_dir.rstrip("/")
+        self.hydra_working_dir.rstrip("/")
         self.mail: str = mail
         self.log: str = log_prefix.rstrip(".log")
         self.gpu: int = gpu
@@ -230,86 +285,99 @@ class SamplingHydra(UmbrellaSimulation):
         self.serialized_system_file: str = (
             self.hydra_working_dir + "/serialized_sys.xml"
         )
+        self.serialized_state_file: str = (
+            self.hydra_working_dir + "/serialized_state.rst"
+        )
         self.commands: List[str] = []
         self.simulation_output: List[str] = []
 
-    def write_hydra_scripts(self, window: int, serializedSystem: str) -> str:
+    def write_sge_scripts(self, path: unit.Quantity) -> str:
         """
-        Writes shell script which is then submitted to the cluster que.
+        Writes shell script which is then submitted to a sun grid engine cluster queue.
 
         Args:
-            window (int): lambda of your simulation
-            serializedSystem (str): path to the serialized system file.
+            umbrella path: lambda of your simulation
 
         Returns:
             str: the path where the file is written to.
         """
-        path = f"{self.hydra_working_dir}/run_umbrella_{window}.sh"
-        c = "#$ -S /bin/bash\n#$ -m e\n"
-        c += "#$ -j y\n"
-        c += "#$ -cwd\n"
-        c += "#$ -p -1000\n"
-        if self.gpu:
-            c += f"#$ -l gpu={self.gpu}\n"
-        if self.log:
-            c += f"#$ -o {self.log}_{window}.log\n\n"
-        if self.mail:
-            c += f"#$ -M {self.mail}\n"
-            c += "#$ -pe smp 1\n"
-        c += "hostname\n"
-        c += f"conda activate {self.conda_environment}\n"
-        c += f"python {os.path.abspath(os.path.dirname(__file__)+'/../scripts/simulation_hydra.py')} "
-        pos = (
-            f"-x {self.path[window][0].value_in_unit(self.system_info.crd_object.positions.unit)} "
-            f"-y {self.path[window][1].value_in_unit(self.system_info.crd_object.positions.unit)} "
-            f"-z {self.path[window][2].value_in_unit(self.system_info.crd_object.positions.unit)}"
-        )
-        c += f" -t {self.simulation_properties.temperature.value_in_unit(unit=unit.kelvin)}"
-        c += f" -dt {self.simulation_properties.time_step.value_in_unit(unit=unit.femtosecond)}"
-        c += f" -fric {self.simulation_properties.friction_coefficient.value_in_unit(unit=unit.picosecond**-1)}"
-        c += f" -bb {int(self.bb_restrains)}"
-        c += (
-            f" -psf {self.system_info.psf_file} -crd {self.system_info.crd_file} -sys {serializedSystem}"
-            f" {pos} -to {self.traj_write_path} -nf {self.simulation_properties.number_of_frames} -ln {self.system_info.ligand_name}"
-            f" -ne {self.simulation_properties.n_equilibration_steps} -nw {window} -io {self.simulation_properties.write_out_frequency}"
-        )
-        logger.info(f"{path} written.")
+        for window, position in enumerate(path):
+            script_path = f"{self.hydra_working_dir}/run_umbrella_window_{window}.sh"
+            c = "#$ -S /bin/bash\n#$ -m e\n"
+            c += "#$ -j y\n"
+            c += "#$ -cwd\n"
+            c += "#$ -p -1000\n"
+            if self.gpu:
+                c += f"#$ -l gpu={self.gpu}\n"
+            if self.log:
+                c += f"#$ -o {self.log}_{window}.log\n\n"
+            if self.mail:
+                c += f"#$ -M {self.mail}\n"
+                c += "#$ -pe smp 1\n"
+            c += "hostname\n"
+            c += f"conda activate {self.conda_environment}\n"
+            c += f"python {os.path.abspath(os.path.dirname(__file__)+'/../scripts/simulation_hydra.py')} "
 
-        with open(path, "w") as f:
-            f.write(c)
-
-        return path
-
-    def prepare_simulations(self) -> None:
-        """
-        Prepares simulation, by creating all necessary objects and writing the bash scripts which are then submitted to the cluster.
-        """
-        add_harmonic_restraint(
-            system=self.openmm_system,
-            atom_group=self.system_info.ligand_indices,
-            values=[
-                self.simulation_properties.force_constant,
-                self.path[0].x,
-                self.path[0].y,
-                self.path[0].z,
-            ],
-        )
-
-        if self.bb_restrains:
-            initialize_backbone_restraints(
-                system=self.openmm_system,
-                atom_list=self.system_info.psf_object.atom_list,
+            pos = f"-x {position.x} " f"-y {position.y} " f"-z {position.z}"
+            c += f" -t {self.simulation_properties.temperature.value_in_unit(unit=unit.kelvin)}"
+            c += f" -dt {self.simulation_properties.time_step.value_in_unit(unit=unit.femtosecond)}"
+            c += f" -fric {self.simulation_properties.friction_coefficient.value_in_unit(unit=unit.picosecond**-1)}"
+            c += (
+                f" -psf {self.system_info.psf_file} -crd {self.system_info.crd_file} -sys {self.serialized_system_file} -state {self.serialized_state_file}"
+                f" {pos} -to {self.traj_write_path} -np {self.simulation_properties.n_production_steps} -ln {self.system_info.ligand_name}"
+                f" -ne {self.simulation_properties.n_equilibration_steps} -nw {window} -io {self.simulation_properties.write_out_frequency}"
             )
+            logger.info(f"{script_path} written.")
 
-        serialize_system(system=self.openmm_system, path=self.serialized_system_file)
+            with open(script_path, "w") as f:
+                f.write(c)
 
-        for window in range(self.lamdas):
-            newfile = self.write_hydra_scripts(
-                window=window, serializedSystem=self.serialized_system_file
-            )
-            self.commands.append(f"qsub {newfile}")
+            self.commands.append(f"qsub {script_path}")
 
-    def run_sampling(self) -> List[str]:
+        return self.commands
+
+    def run_equilibration(
+        self,
+        use_membrane_barostat: bool = False,
+        nonbonded_method: app.forcefield = app.PME,
+        nonbonded_cutoff: unit.Quantity = 1.2 * unit.nanometer,
+        switch_distance: unit.Quantity = 1 * unit.nanometer,
+        rigid_water: bool = True,
+        constraints: app.forcefield = app.HBonds,
+    ) -> Tuple[mm.State, str]:
+        """[summary]
+
+        Args:
+            use_membrane_barostat (bool, optional): [description]. Defaults to False.
+            nonbonded_method (app.forcefield, optional): [description]. Defaults to app.PME.
+            nonbonded_cutoff (unit.Quantity, optional): [description]. Defaults to 1.2*unit.nanometer.
+            switch_distance (unit.Quantity, optional): [description]. Defaults to 1*unit.nanometer.
+            rigid_water (bool, optional): [description]. Defaults to True.
+            constraints (app.forcefield, optional): [description]. Defaults to app.HBonds.
+
+        Returns:
+            Tuple[mm.State, str]: [description]
+        """
+        state = super().run_equilibration(
+            use_membrane_barostat=use_membrane_barostat,
+            nonbonded_method=nonbonded_method,
+            nonbonded_cutoff=nonbonded_cutoff,
+            switch_distance=switch_distance,
+            rigid_water=rigid_water,
+            constraints=constraints,
+        )
+        path = serialize_state(state=state, path=self.serialized_state_file)
+        return state, path
+
+    def run_production(
+        self,
+        path: unit.Quantity,
+        nonbonded_method: app.forcefield = app.PME,
+        nonbonded_cutoff: unit.Quantity = 1.2 * unit.nanometer,
+        switch_distance: unit.Quantity = 1 * unit.nanometer,
+        rigid_water: bool = True,
+        constraints: app.forcefield = app.HBonds,
+    ) -> List[str]:
         """
         Submits the generated bash scripts to the hydra cluster
 
@@ -321,7 +389,35 @@ class SamplingHydra(UmbrellaSimulation):
         """
         try:
             self.write_path_to_file()
+            if not self.system_info.psf_object.boxLengths:
+                gen_pbc_box(
+                    psf=self.system_info.psf_object,
+                    pos=self.system_info.crd_object.positions,
+                )
+            self.openmm_system = self.system_info.psf_object.createSystem(
+                params=self.system_info.params,
+                nonbondedMethod=nonbonded_method,
+                nonbondedCutoff=nonbonded_cutoff,
+                switchDistance=switch_distance,
+                constraints=constraints,
+                rigidWater=rigid_water,
+            )
+            self.openmm_system = add_ligand_restraint(
+                system=self.openmm_system,
+                atom_group=self.system_info.ligand_indices,
+                values=path[0],
+            )
+            if self.bb_restrains:
+                self.openmm_system = add_backbone_restraints(
+                    system=self.openmm_system,
+                    atom_list=self.system_info.psf_object.atom_list,
+                )
+            self.serialized_system_file = serialize_system(
+                self.openmm_system, self.serialized_system_file
+            )
+            self.write_sge_scripts(path=path)
             self.simulation_output = execute_bash_parallel(command=self.commands)
+
         except FileNotFoundError:
             raise FileNotFoundError(
                 "Oops, something went wrong. Make sure you are logged in on the Hydra cluster and all the paths you specified are in acceptance with the best practice manual."
