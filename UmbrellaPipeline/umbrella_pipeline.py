@@ -56,6 +56,7 @@ class UmbrellaPipeline:
         self.openmm_system: mm.openmm.System
         self.escape_room: GridEscapeRoom or TreeEscapeRoom
         self.equilibrate = not only_run_production
+        self.state: mm.State
 
     def generate_path(
         self,
@@ -76,22 +77,27 @@ class UmbrellaPipeline:
         Returns:
             List[unit.Quantity]: path for the umbrella sampling.
         """
-        pos = positions if positions else self.system_info.crd_object.positions
+        if positions != None:
+            pos = positions
+        else:
+            pos = self.system_info.crd_object.positions
+
         if not use_grid:
-            print("start")
-            tree = Tree(coordinates=pos)
+            tree = Tree.from_files(psf=self.system_info.psf_object, positions=pos)
+            print("test1")
             start = Tree.node_from_coords(
                 positions=pos,
                 psf=self.system_info.psf_object,
                 name=self.system_info.ligand_name,
                 masses=system,
             )
-            print(start)
+            print("test2")
             self.escape_room = TreeEscapeRoom(tree=tree, start=start)
-            print("start escape room")
+            print("test3")
             self.escape_room.escape_room(distance=distance_to_protein)
-            print("start partitioning")
+            print("test4")
             self.path = self.escape_room.get_path_for_sampling(stepsize=path_interval)
+            print("test5")
 
         else:
             grid = Grid.from_files(
@@ -134,7 +140,6 @@ class UmbrellaPipeline:
         simulation = SamplingSunGridEngine(
             properties=self.simulation_parameters,
             path=self.path,
-            openmm_system=self.openmm_system,
             info=self.system_info,
             traj_write_path=trajectory_path,
             mail=mail,
@@ -162,13 +167,11 @@ class UmbrellaPipeline:
         """
         simulation = UmbrellaSampling(
             properties=self.simulation_parameters,
-            path=self.path,
-            openmm_system=self.openmm_system,
             info=self.system_info,
             traj_write_path=trajectory_path,
         )
-        state = simulation.run_equilibration()
-        self.path = self.generate_path(
-            positions=state.getPositions(), system=simulation.openmm_system
-        )
-        simulation.run_production(path=self.path, state=state)
+        self.state = simulation.run_equilibration(use_membrane_barostat=True)
+        pos = simulation.simulation.context.getState(getPositions=True).getPositions()
+        self.path = self.generate_path(positions=pos, system=simulation.openmm_system)
+        print("path_generated")
+        simulation.run_production(path=self.path, state=self.state)

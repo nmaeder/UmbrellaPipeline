@@ -91,7 +91,7 @@ class Tree:
     @classmethod
     def from_files(
         cls,
-        crd: str or app.CharmmCrdFile,
+        positions: str or app.CharmmCrdFile,
         psf: str or app.CharmmPsfFile,
     ):
         """
@@ -104,22 +104,15 @@ class Tree:
             Grid: KDTree with the protein positions used for the adapted A* algorithm
         """
         try:
-            crd = app.CharmmCrdFile(crd)
-            crd.positions = crd.positions.in_units_of(u.nanometer)
-            crd.positions.unit = u.nanometer
-        except TypeError:
-            pass
-        try:
             psf = app.CharmmPsfFile(psf)
         except TypeError:
             pass
 
         indices = get_residue_indices(psf.atom_list)
         coords = []
-        unit = crd.positions.unit
+        unit = positions.unit
         for i in indices:
-            coords.append(list(crd.positions[i].value_in_unit(unit)))
-
+            coords.append(list(positions[i].value_in_unit(unit)))
         return cls(unit=unit, coordinates=coords)
 
     @staticmethod

@@ -77,12 +77,12 @@ def add_membrane_barostat(
     frequency: int,
 ) -> mm.openmm.System:
     barostat = mm.MonteCarloMembraneBarostat(
-        defaultPressure=pressure,
-        defaultSurfaceTension=0 * unit.bar * unit.nanometer,
-        defaultTemperature=temperature,
-        xymode=mm.MonteCarloMembraneBarostat.XYIsotropic,
-        zmode=mm.MonteCarloMembraneBarostat.ZFree,
-        frequency=frequency,
+        pressure,
+        0 * unit.bar * unit.nanometer,
+        temperature,
+        mm.MonteCarloMembraneBarostat.XYIsotropic,
+        mm.MonteCarloMembraneBarostat.ZFree,
+        frequency,
     )
     system.addForce(barostat)
     return system
@@ -95,9 +95,9 @@ def add_isotropic_barostat(
     frequency: int,
 ) -> mm.openmm.System:
     barostat = mm.MonteCarloBarostat(
-        defaultPressure=pressure,
-        defaultTemperature=temperature,
-        frequency=frequency,
+        pressure,
+        temperature,
+        frequency,
     )
     system.addForce(barostat)
     return system

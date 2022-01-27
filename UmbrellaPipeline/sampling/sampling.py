@@ -95,9 +95,9 @@ class UmbrellaSampling:
         )
 
         self.integrator = mm.LangevinIntegrator(
-            temperature=self.simulation_properties.temperature,
-            frictionCoeff=self.simulation_properties.friction_coefficient,
-            stepSize=self.simulation_properties.time_step,
+            self.simulation_properties.temperature,
+            self.simulation_properties.friction_coefficient,
+            self.simulation_properties.time_step,
         )
 
         self.simulation = app.Simulation(
@@ -109,7 +109,7 @@ class UmbrellaSampling:
         )
 
         self.simulation.context.setPositions(self.system_info.crd_object.positions)
-        self.simulation.minimizeEnergy()
+        #self.simulation.minimizeEnergy()
         self.simulation.context.setVelocitiesToTemperature(
             self.simulation_properties.temperature
         )
@@ -169,10 +169,10 @@ class UmbrellaSampling:
                 system=self.openmm_system,
                 atom_list=self.system_info.psf_object.atom_list,
             )
-        self.simulation = self.integrator = mm.LangevinIntegrator(
-            temperature=self.simulation_properties.temperature,
-            frictionCoeff=self.simulation_properties.friction_coefficient,
-            stepSize=self.simulation_properties.time_step,
+        self.integrator = mm.LangevinIntegrator(
+            self.simulation_properties.temperature,
+            self.simulation_properties.friction_coefficient,
+            self.simulation_properties.time_step,
         )
 
         self.simulation = app.Simulation(
