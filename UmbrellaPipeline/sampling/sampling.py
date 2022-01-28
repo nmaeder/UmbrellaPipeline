@@ -109,7 +109,7 @@ class UmbrellaSampling:
         )
 
         self.simulation.context.setPositions(self.system_info.crd_object.positions)
-        #self.simulation.minimizeEnergy()
+        self.simulation.minimizeEnergy()
         self.simulation.context.setVelocitiesToTemperature(
             self.simulation_properties.temperature
         )
@@ -162,7 +162,12 @@ class UmbrellaSampling:
         self.openmm_system = add_ligand_restraint(
             system=self.openmm_system,
             atom_group=self.system_info.ligand_indices,
-            values=path[0],
+            values=[
+                self.simulation_properties.force_constant,
+                path[0].x,
+                path[0].y,
+                path[0].z,
+            ],
         )
         if self.bb_restrains:
             self.openmm_system = add_backbone_restraints(
@@ -316,7 +321,7 @@ class SamplingSunGridEngine(UmbrellaSampling):
                 c += "#$ -pe smp 1\n"
             c += "hostname\n"
             c += f"conda activate {self.conda_environment}\n"
-            c += f"python {os.path.abspath(os.path.dirname(__file__)+'/../scripts/simulation_hydra.py')} "
+            c += f"python {os.path.abspath(os.path.dirname(__file__)+'/../scripts/worker_script_sun_grid_engine.py')} "
 
             pos = f"-x {position.x} " f"-y {position.y} " f"-z {position.z}"
             c += f" -t {self.simulation_properties.temperature.value_in_unit(unit=unit.kelvin)}"
@@ -388,7 +393,7 @@ class SamplingSunGridEngine(UmbrellaSampling):
             List[str]: returns output of the simulations if no logger is used.
         """
         try:
-            self.write_path_to_file()
+            write_path_to_file(path, self.traj_write_path)
             if not self.system_info.psf_object.boxLengths:
                 gen_pbc_box(
                     psf=self.system_info.psf_object,
@@ -405,7 +410,12 @@ class SamplingSunGridEngine(UmbrellaSampling):
             self.openmm_system = add_ligand_restraint(
                 system=self.openmm_system,
                 atom_group=self.system_info.ligand_indices,
-                values=path[0],
+                values=[
+                    self.simulation_properties.force_constant,
+                    path[0].x,
+                    path[0].y,
+                    path[0].z,
+                ],
             )
             if self.bb_restrains:
                 self.openmm_system = add_backbone_restraints(
@@ -415,7 +425,7 @@ class SamplingSunGridEngine(UmbrellaSampling):
             self.serialized_system_file = serialize_system(
                 self.openmm_system, self.serialized_system_file
             )
-            self.write_sge_scripts(path=path)
+            self.commands = self.write_sge_scripts(path=path)
             self.simulation_output = execute_bash_parallel(command=self.commands)
 
         except FileNotFoundError:

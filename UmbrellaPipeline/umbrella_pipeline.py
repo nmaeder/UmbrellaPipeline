@@ -1,7 +1,7 @@
 from typing import List
-from more_itertools import only
+import logging
 import openmm as mm
-from openmm import app, unit
+from openmm import unit
 
 from UmbrellaPipeline.sampling import (
     UmbrellaSampling,
@@ -17,6 +17,8 @@ from UmbrellaPipeline.path_generation import (
     GridEscapeRoom,
     TreeEscapeRoom,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class UmbrellaPipeline:
@@ -84,20 +86,17 @@ class UmbrellaPipeline:
 
         if not use_grid:
             tree = Tree.from_files(psf=self.system_info.psf_object, positions=pos)
-            print("test1")
-            start = Tree.node_from_coords(
+            start = tree.node_from_coords(
                 positions=pos,
                 psf=self.system_info.psf_object,
                 name=self.system_info.ligand_name,
                 masses=system,
             )
-            print("test2")
-            self.escape_room = TreeEscapeRoom(tree=tree, start=start)
-            print("test3")
+            self.escape_room = TreeEscapeRoom(
+                tree=tree, start=start, stepsize=0.05 * unit.nanometer
+            )
             self.escape_room.escape_room(distance=distance_to_protein)
-            print("test4")
             self.path = self.escape_room.get_path_for_sampling(stepsize=path_interval)
-            print("test5")
 
         else:
             grid = Grid.from_files(
@@ -125,6 +124,7 @@ class UmbrellaPipeline:
         gpu: int = 1,
         log_prefix: str = "umbrella_simulation",
         membrane_barostat: bool = False,
+        window_spacing: unit.Quantity = 1 * unit.angstrom,
     ) -> None:
         """
         Prepares and runs simulations on a cluster.
@@ -139,7 +139,6 @@ class UmbrellaPipeline:
         """
         simulation = SamplingSunGridEngine(
             properties=self.simulation_parameters,
-            path=self.path,
             info=self.system_info,
             traj_write_path=trajectory_path,
             mail=mail,
@@ -149,15 +148,21 @@ class UmbrellaPipeline:
             hydra_working_dir=hydra_working_dir,
         )
 
-        state, _ = simulation.run_equilibration(use_membrane_barostat=membrane_barostat)
-        self.path = self.generate_path(
-            positions=state.getPositions(), system=simulation.openmm_system
+        state, simulation.serialized_state_file = simulation.run_equilibration(
+            use_membrane_barostat=membrane_barostat
         )
+        logger.info("Equilibration finished.")
+        self.path = self.generate_path(
+            positions=state.getPositions(),
+            system=simulation.simulation.context.getSystem(),
+            path_interval=window_spacing,
+        )
+        logger.info("path for production created.")
         simulation.run_production(path=self.path)
+        logger.info("production simulation started!")
 
     def run_simulations_local(
-        self,
-        trajectory_path: str,
+        self, trajectory_path: str, window_spacing: unit.Quantity = 1 * unit.angstrom
     ) -> None:
         """
         Prepares and runs simulations on your local machine.
@@ -171,7 +176,12 @@ class UmbrellaPipeline:
             traj_write_path=trajectory_path,
         )
         self.state = simulation.run_equilibration(use_membrane_barostat=True)
-        pos = simulation.simulation.context.getState(getPositions=True).getPositions()
-        self.path = self.generate_path(positions=pos, system=simulation.openmm_system)
-        print("path_generated")
+        logger.info("Equilibration finished.")
+        self.path = self.generate_path(
+            positions=self.state.getPositions(),
+            system=simulation.simulation.context.getSystem(),
+            path_interval=window_spacing,
+        )
+        logger.info("path for production created.")
         simulation.run_production(path=self.path, state=self.state)
+        logger.info("production simulation started!")

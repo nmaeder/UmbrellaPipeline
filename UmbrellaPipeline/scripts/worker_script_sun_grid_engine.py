@@ -38,7 +38,7 @@ def main():
     parser.add_argument("-crd", type=str, required=True)
 
     parser.add_argument("-sys", dest="serialized_system", type=str, required=True)
-    parser.add_argument("-state", dest="serialized_state", type=str, requiured=True)
+    parser.add_argument("-state", dest="serialized_state", type=str, required=True)
 
     parser.add_argument("-to", dest="output_path", type=str, required=True)
     parser.add_argument(

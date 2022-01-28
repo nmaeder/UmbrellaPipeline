@@ -1,3 +1,4 @@
+from calendar import c
 import math
 from typing import List
 import openmm.unit as u
@@ -8,9 +9,9 @@ from scipy.spatial import KDTree
 from UmbrellaPipeline.utils import (
     get_residue_indices,
     get_centroid_coordinates,
+    get_center_of_mass_coordinates,
 )
 from UmbrellaPipeline.path_generation import TreeNode
-from UmbrellaPipeline.utils.coordinates import get_center_of_mass_coordinates
 
 
 class Tree:
@@ -41,10 +42,15 @@ class Tree:
                 self.tree = KDTree(coordinates)
         else:
             try:
-                self.unit = coordinates[0].unit
-                pos = []
-                for i in coordinates:
-                    pos.append(list(i.value_in_unit(self.unit)))
+                self.unit = coordinates.unit
+                pos = [
+                    [
+                        c.x,
+                        c.y,
+                        c.z,
+                    ]
+                    for c in coordinates
+                ]
                 self.tree = KDTree(pos)
             except AttributeError:
                 raise ValueError("no unit provided.")
@@ -91,7 +97,7 @@ class Tree:
     @classmethod
     def from_files(
         cls,
-        positions: str or app.CharmmCrdFile,
+        positions: u.Quantity or app.CharmmCrdFile,
         psf: str or app.CharmmPsfFile,
     ):
         """
@@ -109,11 +115,15 @@ class Tree:
             pass
 
         indices = get_residue_indices(psf.atom_list)
-        coords = []
-        unit = positions.unit
-        for i in indices:
-            coords.append(list(positions[i].value_in_unit(unit)))
-        return cls(unit=unit, coordinates=coords)
+        coords = [
+            Vec3(
+                x=positions[i].x,
+                y=positions[i].y,
+                z=positions[i].z,
+            )
+            for i in indices
+        ]
+        return cls(coordinates=u.Quantity(value=coords, unit=positions.unit))
 
     @staticmethod
     def node_from_files(
@@ -138,8 +148,6 @@ class Tree:
         """
         try:
             crd = app.CharmmCrdFile(crd)
-            crd.positions = crd.positions.in_units_of(u.nanometer)
-            crd.positions.unit = u.nanometer
         except TypeError:
             pass
         try:
@@ -152,18 +160,19 @@ class Tree:
         )
         if masses:
             coordinates = get_center_of_mass_coordinates(
-                positions=crd.positions, indices=indices, masses=masses
+                positions=crd.positions.in_units_of(u.nanometer), indices=indices, masses=masses
             )
         else:
             coordinates = get_centroid_coordinates(
-                positions=crd.positions, indices=indices
+                positions=crd.positions.in_units_of(u.nanometer), indices=indices
             )
         return TreeNode.from_coords(
-            [
-                coordinates[0],
-                coordinates[1],
-                coordinates[2],
-            ]
+            coords=[
+                coordinates.x,
+                coordinates.y,
+                coordinates.z,
+            ],
+            unit=u.nanometer
         )
 
     @staticmethod
@@ -202,11 +211,12 @@ class Tree:
         else:
             coordinates = get_centroid_coordinates(positions=positions, indices=indices)
         return TreeNode.from_coords(
-            [
-                coordinates[0],
-                coordinates[1],
-                coordinates[2],
-            ]
+            coords=[
+                coordinates.x,
+                coordinates.y,
+                coordinates.z,
+            ],
+            unit=coordinates.unit,
         )
 
     def position_is_blocked(
