@@ -117,9 +117,9 @@ class Tree:
         indices = get_residue_indices(psf.atom_list)
         coords = [
             Vec3(
-                x=positions[i].x,
-                y=positions[i].y,
-                z=positions[i].z,
+                x=round(positions[i].x, 4),
+                y=round(positions[i].y, 4),
+                z=round(positions[i].z, 4),
             )
             for i in indices
         ]
@@ -160,7 +160,9 @@ class Tree:
         )
         if masses:
             coordinates = get_center_of_mass_coordinates(
-                positions=crd.positions.in_units_of(u.nanometer), indices=indices, masses=masses
+                positions=crd.positions.in_units_of(u.nanometer),
+                indices=indices,
+                masses=masses,
             )
         else:
             coordinates = get_centroid_coordinates(
@@ -168,11 +170,11 @@ class Tree:
             )
         return TreeNode.from_coords(
             coords=[
-                coordinates.x,
-                coordinates.y,
-                coordinates.z,
+                round(coordinates.x, 4),
+                round(coordinates.y, 4),
+                round(coordinates.z, 4),
             ],
-            unit=u.nanometer
+            unit=u.nanometer,
         )
 
     @staticmethod
@@ -212,9 +214,9 @@ class Tree:
             coordinates = get_centroid_coordinates(positions=positions, indices=indices)
         return TreeNode.from_coords(
             coords=[
-                coordinates.x,
-                coordinates.y,
-                coordinates.z,
+                round(coordinates.x, 4),
+                round(coordinates.y, 4),
+                round(coordinates.z, 4),
             ],
             unit=coordinates.unit,
         )

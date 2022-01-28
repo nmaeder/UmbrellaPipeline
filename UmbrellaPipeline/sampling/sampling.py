@@ -337,7 +337,7 @@ class SamplingSunGridEngine(UmbrellaSampling):
             with open(script_path, "w") as f:
                 f.write(c)
 
-            self.commands.append(f"qsub {script_path}")
+            self.commands.append(f"qsub {self.hydra_working_dir}/{script_path}")
 
         return self.commands
 
@@ -426,7 +426,7 @@ class SamplingSunGridEngine(UmbrellaSampling):
                 self.openmm_system, self.serialized_system_file
             )
             self.commands = self.write_sge_scripts(path=path)
-            self.simulation_output = execute_bash_parallel(command=self.commands)
+            execute_bash_parallel(command=self.commands)
 
         except FileNotFoundError:
             raise FileNotFoundError(
