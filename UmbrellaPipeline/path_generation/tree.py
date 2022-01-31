@@ -1,4 +1,3 @@
-from calendar import c
 import math
 from typing import List
 import openmm.unit as u

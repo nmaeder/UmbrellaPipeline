@@ -1,4 +1,3 @@
-from ast import Assert
 import openmm.unit as u
 from typing import Tuple
 
