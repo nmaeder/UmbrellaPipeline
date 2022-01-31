@@ -194,7 +194,7 @@ def test_com_coords():
         indices=pipeline.system_info.ligand_indices,
         masses=system,
     ) == unit.Quantity(
-        value=Vec3(x=4.784349419490644, y=5.141548282974987, z=5.1745056529197),
+        value=Vec3(x=4.7843494194906455, y=5.141548282974986, z=5.1745056529197),
         unit=unit.nanometer,
     )
 
