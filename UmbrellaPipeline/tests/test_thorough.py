@@ -96,7 +96,8 @@ def test_script_writing():
         "run_umbrella_window_1.sh",
     ]
     tree = Tree.from_files(
-        positions=pipeline.system_info.crd_object.positions, psf=pipeline.system_info.psf_object
+        positions=pipeline.system_info.crd_object.positions,
+        psf=pipeline.system_info.psf_object,
     )
     st = tree.node_from_files(
         psf=pipeline.system_info.psf_object,
@@ -440,7 +441,8 @@ def test_tree_successor():
 
 def test_tree_path_finding():
     tree = Tree.from_files(
-        positions=pipeline.system_info.crd_object.positions, psf=pipeline.system_info.psf_object
+        positions=pipeline.system_info.crd_object.positions,
+        psf=pipeline.system_info.psf_object,
     )
     node = tree.node_from_files(
         psf=pipeline.system_info.psf_object,

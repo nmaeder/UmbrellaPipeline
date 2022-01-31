@@ -24,7 +24,7 @@ def test_treenode_generation():
                 y=34.1,
                 z=23.2,
             ),
-        unit=unit.nanometer
+            unit=unit.nanometer,
         )
     )
     treeNode4 = TreeNode.from_coords(coords=[4, 34.1, 23.2], unit=unit.angstrom)
