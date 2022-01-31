@@ -67,7 +67,7 @@ class PMFCalculator:
         coordinates = []
         for window in range(self.n_windows):
             trajectory = mdtraj.load_dcd(
-                filename=f"{self.trajectory_directory}/traj_{window}.dcd",
+                filename=f"{self.trajectory_directory}/production_trajcetory_window_{window}.dcd",
                 top=self.system_info.pdb_file,
             )
             coordinates.append(

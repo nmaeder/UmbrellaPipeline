@@ -254,3 +254,34 @@ def test_ghost_110():
     pmf.load_sampled_coordinates()
     pmf.calculate_pmf()
     pmf.plot_pytest()
+
+
+@pytest.mark.skipif(os.getenv("CI") == "true", reason="not real tests")
+def test_ghost_110():
+    trajectory_directory = (
+        "/data/shared/projects/enhanced_sampling/trajectories_new/ce-105-traj"
+    )
+    number_of_bins = None  # TODO: if NONE, number of bins = number of umbrella windows
+
+    sim_sys = SimulationSystem(
+        psf_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/01-CE-105/charmm-gui/openmm/step5_input.psf",
+        pdb_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/01-CE-105/charmm-gui/openmm/step5_input.pdb",
+        toppar_directory="/data/shared/projects/DAT_enhanced_sampling/00DATA/01-CE-105/charmm-gui/toppar",
+        toppar_stream_file="/data/shared/projects/DAT_enhanced_sampling/00DATA/01-CE-105/charmm-gui/openmm/toppar.str",
+        ligand_name="UNL",
+    )
+
+    pmf = PMFCalculator(
+        simulation_properties=SimulationProperties(
+            force_constant=1 * unit.kilocalorie_per_mole * unit.angstrom ** -2
+        ),
+        simulation_system=sim_sys,
+        original_path_interval=1 * unit.angstrom,
+        trajectory_directory=trajectory_directory,
+        n_bins=number_of_bins,
+    )
+
+    pmf.load_original_path()
+    pmf.parse_trajectories()
+    pmf.calculate_pmf()
+    pmf.plot_pytest("/home/nmaeder/letsgoooo.svg")
