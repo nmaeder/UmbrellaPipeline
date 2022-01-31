@@ -1,7 +1,4 @@
 import os, time, logging
-from sre_parse import State
-from turtle import st
-from matplotlib.pyplot import bar
 import openmm as mm
 import openmmtools
 from openmm import app, unit
