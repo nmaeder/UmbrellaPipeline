@@ -79,13 +79,15 @@ def test_add_harmonic_restraint():
     ind = get_residue_indices(
         atom_list=pipeline.system_info.psf_object.atom_list, name="unl"
     )
-    values = [
-        10 * unit.kilocalorie_per_mole / (unit.angstrom ** 2),
-        1 * unit.angstrom,
-        2 * unit.angstrom,
-        3 * unit.angstrom,
-    ]
-    add_ligand_restraint(system=system, atom_group=ind, values=values)
+    fc = 10 * unit.kilocalorie_per_mole / (unit.angstrom ** 2)
+    pos = Vec3(
+        x=1 * unit.angstrom,
+        y=2 * unit.angstrom,
+        z=3 * unit.angstrom,
+    )
+    add_ligand_restraint(
+        system=system, atom_group=ind, force_constant=fc, positions=pos
+    )
 
 
 def test_script_writing():

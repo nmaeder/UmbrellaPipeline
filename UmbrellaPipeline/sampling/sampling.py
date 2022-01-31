@@ -1,5 +1,7 @@
 import os, time, logging
 from sre_parse import State
+from turtle import st
+from matplotlib.pyplot import bar
 import openmm as mm
 import openmmtools
 from openmm import app, unit
@@ -14,10 +16,10 @@ from UmbrellaPipeline.sampling import (
     add_backbone_restraints,
     extract_nonbonded_parameters,
     write_path_to_file,
+    create_openmm_system,
 )
 from UmbrellaPipeline.sampling.sampling_helper import deserialize_state
 from UmbrellaPipeline.utils import (
-    execute_bash_parallel,
     display_time,
     SimulationProperties,
     SimulationSystem,
@@ -75,25 +77,24 @@ class UmbrellaSampling:
         rigid_water: bool = True,
         constraints: app.forcefield = app.HBonds,
     ) -> mm.State:
-
+        if use_membrane_barostat:
+            baro = "membrane"
+        else:
+            baro = "isotropic"
         if not self.system_info.psf_object.boxLengths:
             gen_pbc_box(
                 psf=self.system_info.psf_object,
                 pos=self.system_info.crd_object.positions,
             )
-        self.openmm_system = self.system_info.psf_object.createSystem(
-            params=self.system_info.params,
-            nonbondedMethod=nonbonded_method,
-            nonbondedCutoff=nonbonded_cutoff,
-            switchDistance=switch_distance,
+        self.openmm_system = create_openmm_system(
+            system_info=self.system_info,
+            simulation_properties=self.simulation_properties,
+            barostat=baro,
+            nonbonded_cutoff=nonbonded_cutoff,
+            nonbonded_method=nonbonded_method,
+            switch_distance=switch_distance,
             constraints=constraints,
-            rigidWater=rigid_water,
-        )
-
-        self.openmm_system = add_barostat(
-            system=self.openmm_system,
-            properties=self.simulation_properties,
-            membrane_barostat=use_membrane_barostat,
+            rigid_water=rigid_water,
         )
 
         self.integrator = mm.LangevinIntegrator(
@@ -153,30 +154,20 @@ class UmbrellaSampling:
                 psf=self.system_info.psf_object,
                 pos=self.system_info.crd_object.positions,
             )
-        self.openmm_system = self.system_info.psf_object.createSystem(
-            params=self.system_info.params,
-            nonbondedMethod=nonbonded_method,
-            nonbondedCutoff=nonbonded_cutoff,
-            switchDistance=switch_distance,
+        self.openmm_system = create_openmm_system(
+            system_info=self.system_info,
+            simulation_properties=self.simulation_properties,
+            ligand_restraint=True,
+            path=path,
+            bb_restraints=self.bb_restrains,
+            nonbonded_cutoff=nonbonded_cutoff,
+            nonbonded_method=nonbonded_method,
+            switch_distance=switch_distance,
             constraints=constraints,
-            rigidWater=rigid_water,
+            rigid_water=rigid_water,
+            positions=state.getPositions(),
         )
-        self.openmm_system = add_ligand_restraint(
-            system=self.openmm_system,
-            atom_group=self.system_info.ligand_indices,
-            values=[
-                self.simulation_properties.force_constant,
-                path[0].x,
-                path[0].y,
-                path[0].z,
-            ],
-        )
-        if self.bb_restrains:
-            self.openmm_system = add_backbone_restraints(
-                positions=state.getPositions(),
-                system=self.openmm_system,
-                atom_list=self.system_info.psf_object.atom_list,
-            )
+
         self.integrator = mm.LangevinIntegrator(
             self.simulation_properties.temperature,
             self.simulation_properties.friction_coefficient,
@@ -340,8 +331,7 @@ class SamplingSunGridEngine(UmbrellaSampling):
             with open(script_path, "w") as f:
                 f.write(c)
 
-            self.commands.append(f"qsub {self.hydra_working_dir}/{script_path}")
-
+            self.commands.append(f"qsub {script_path}")
         return self.commands
 
     def write_production_starter(self, commands: List[str]) -> str:
@@ -409,30 +399,19 @@ class SamplingSunGridEngine(UmbrellaSampling):
                     psf=self.system_info.psf_object,
                     pos=self.system_info.crd_object.positions,
                 )
-            self.openmm_system = self.system_info.psf_object.createSystem(
-                params=self.system_info.params,
-                nonbondedMethod=nonbonded_method,
-                nonbondedCutoff=nonbonded_cutoff,
-                switchDistance=switch_distance,
+            self.openmm_system = create_openmm_system(
+                system_info=self.system_info,
+                simulation_properties=self.simulation_properties,
+                ligand_restraint=True,
+                path=path,
+                bb_restraints=self.bb_restrains,
+                nonbonded_cutoff=nonbonded_cutoff,
+                nonbonded_method=nonbonded_method,
+                switch_distance=switch_distance,
                 constraints=constraints,
-                rigidWater=rigid_water,
+                rigid_water=rigid_water,
+                positions=state.getPositions(),
             )
-            self.openmm_system = add_ligand_restraint(
-                system=self.openmm_system,
-                atom_group=self.system_info.ligand_indices,
-                values=[
-                    self.simulation_properties.force_constant,
-                    path[0].x,
-                    path[0].y,
-                    path[0].z,
-                ],
-            )
-            if self.bb_restrains:
-                self.openmm_system = add_backbone_restraints(
-                    positions=state.getPositions(),
-                    system=self.openmm_system,
-                    atom_list=self.system_info.psf_object.atom_list,
-                )
             self.serialized_system_file = serialize_system(
                 self.openmm_system, self.serialized_system_file
             )
