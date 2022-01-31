@@ -92,9 +92,9 @@ class TreeNode(Node):
 
     def __init__(
         self,
-        x=0,
-        y=0,
-        z=0,
+        x: float = 0,
+        y: float = 0,
+        z: float = 0,
         distance_to_wall: float = 0,
         distance_walked: float = float("inf"),
         unit=u.nanometer,
@@ -129,11 +129,11 @@ class TreeNode(Node):
         parent=None,
     ):
         try:
-            u = coords[0].unit
+            u = coords.unit
             x, y, z = (
-                coords[0].value_in_unit(u),
-                coords[1].value_in_unit(u),
-                coords[2].value_in_unit(u),
+                coords.x,
+                coords.y,
+                coords.z,
             )
             p = parent
         except AttributeError:
