@@ -96,7 +96,7 @@ def test_script_writing():
         "run_umbrella_window_1.sh",
     ]
     tree = Tree.from_files(
-        crd=pipeline.system_info.crd_object, psf=pipeline.system_info.psf_object
+        positions=pipeline.system_info.crd_object.positions, psf=pipeline.system_info.psf_object
     )
     st = tree.node_from_files(
         psf=pipeline.system_info.psf_object,
@@ -419,7 +419,7 @@ def test_tree_successor():
     nodes = []
     for i in range(5):
         nodes.append(unit.Quantity(Vec3(i + 1, i + 1, i + 2), unit.nanometer))
-    tree = Tree(coordinates=nodes)
+    tree = Tree(coordinates=nodes, unit=unit.nanometer)
     start = TreeNode(0, 0, 0)
     escape_room = TreeEscapeRoom(tree=tree, start=start)
     children = escape_room.generate_successors(parent=start)
@@ -440,7 +440,7 @@ def test_tree_successor():
 
 def test_tree_path_finding():
     tree = Tree.from_files(
-        crd=pipeline.system_info.crd_object, psf=pipeline.system_info.psf_object
+        positions=pipeline.system_info.crd_object.positions, psf=pipeline.system_info.psf_object
     )
     node = tree.node_from_files(
         psf=pipeline.system_info.psf_object,
