@@ -1,4 +1,5 @@
 import os, time, logging
+from sre_parse import State
 import openmm as mm
 import openmmtools
 from openmm import app, unit
@@ -14,6 +15,7 @@ from UmbrellaPipeline.sampling import (
     extract_nonbonded_parameters,
     write_path_to_file,
 )
+from UmbrellaPipeline.sampling.sampling_helper import deserialize_state
 from UmbrellaPipeline.utils import (
     execute_bash_parallel,
     display_time,
@@ -171,6 +173,7 @@ class UmbrellaSampling:
         )
         if self.bb_restrains:
             self.openmm_system = add_backbone_restraints(
+                positions=state.getPositions(),
                 system=self.openmm_system,
                 atom_list=self.system_info.psf_object.atom_list,
             )
@@ -341,6 +344,12 @@ class SamplingSunGridEngine(UmbrellaSampling):
 
         return self.commands
 
+    def write_production_starter(self, commands: List[str]) -> str:
+        with open(f"{self.hydra_working_dir}/submit_production.sh", "w") as f:
+            f.write("#!/bin/bash\n")
+            for i in commands:
+                f.write(f"{i}\n")
+
     def run_equilibration(
         self,
         use_membrane_barostat: bool = False,
@@ -377,6 +386,7 @@ class SamplingSunGridEngine(UmbrellaSampling):
     def run_production(
         self,
         path: unit.Quantity,
+        state: mm.State,
         nonbonded_method: app.forcefield = app.PME,
         nonbonded_cutoff: unit.Quantity = 1.2 * unit.nanometer,
         switch_distance: unit.Quantity = 1 * unit.nanometer,
@@ -419,6 +429,7 @@ class SamplingSunGridEngine(UmbrellaSampling):
             )
             if self.bb_restrains:
                 self.openmm_system = add_backbone_restraints(
+                    positions=state.getPositions(),
                     system=self.openmm_system,
                     atom_list=self.system_info.psf_object.atom_list,
                 )
@@ -426,7 +437,7 @@ class SamplingSunGridEngine(UmbrellaSampling):
                 self.openmm_system, self.serialized_system_file
             )
             self.commands = self.write_sge_scripts(path=path)
-            execute_bash_parallel(command=self.commands)
+            self.write_production_starter(commands=self.commands)
 
         except FileNotFoundError:
             raise FileNotFoundError(

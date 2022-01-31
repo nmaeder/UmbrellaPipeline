@@ -125,6 +125,7 @@ class UmbrellaPipeline:
         log_prefix: str = "umbrella_simulation",
         membrane_barostat: bool = False,
         window_spacing: unit.Quantity = 1 * unit.angstrom,
+        restrain_backbone: bool = False,
     ) -> None:
         """
         Prepares and runs simulations on a cluster.
@@ -146,6 +147,7 @@ class UmbrellaPipeline:
             gpu=gpu,
             conda_environment=conda_environment,
             hydra_working_dir=hydra_working_dir,
+            restrain_backbone=restrain_backbone,
         )
 
         state, simulation.serialized_state_file = simulation.run_equilibration(
@@ -158,11 +160,14 @@ class UmbrellaPipeline:
             path_interval=window_spacing,
         )
         logger.info("path for production created.")
-        simulation.run_production(path=self.path)
+        simulation.run_production(path=self.path, state=state)
         logger.info("production simulation started!")
 
     def run_simulations_local(
-        self, trajectory_path: str, window_spacing: unit.Quantity = 1 * unit.angstrom
+        self,
+        trajectory_path: str,
+        window_spacing: unit.Quantity = 1 * unit.angstrom,
+        restrain_backbone: bool = False,
     ) -> None:
         """
         Prepares and runs simulations on your local machine.
@@ -174,6 +179,7 @@ class UmbrellaPipeline:
             properties=self.simulation_parameters,
             info=self.system_info,
             traj_write_path=trajectory_path,
+            restrain_protein_backbone=restrain_backbone,
         )
         self.state = simulation.run_equilibration(use_membrane_barostat=True)
         logger.info("Equilibration finished.")
