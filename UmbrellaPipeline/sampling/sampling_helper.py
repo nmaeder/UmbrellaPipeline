@@ -1,4 +1,3 @@
-from black import sys
 from matplotlib.pyplot import bar
 import openmm as mm
 from openmm import (
