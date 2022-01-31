@@ -1,4 +1,3 @@
-from matplotlib.pyplot import bar
 import openmm as mm
 from openmm import (
     unit,
@@ -6,14 +5,12 @@ from openmm import (
 )
 from typing import List
 import numpy as np
-from parmed import openmm
 
 from UmbrellaPipeline.utils import (
     SimulationProperties,
     SimulationSystem,
     get_backbone_indices,
     gen_pbc_box,
-    get_center_of_mass_coordinates,
 )
 
 
