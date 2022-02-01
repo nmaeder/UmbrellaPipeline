@@ -66,29 +66,28 @@ class PMFCalculator:
         """
         Reads in the trajectory files, extracts the center of mass positions for the ligand in every frame and writes them into one file to save time and memory.
         """
-        coordinates = []
-        for window in range(self.n_windows):
-            trajectory = mdtraj.load_dcd(
-                filename=f"{self.trajectory_directory}/production_trajectory_window_{window}.dcd",
-                top=self.system_info.psf_file,
-            )
-            coordinates.append(
-                [
-                    get_center_of_mass_coordinates(
-                        positions=trajectory.openmm_positions(frame),
-                        indices=self.system_info.ligand_indices,
-                        masses=self.masses,
-                    )
-                    for frame in range(self.simulation_properties.number_of_frames)
-                ]
-            )
-        self.sampled_coordinates = np.concatenate(coordinates).tolist()
         with open(
             self.trajectory_directory + "/sampled_coordinates.dat", mode="w"
         ) as f:
             f.write("#sampled center of mass coordinates of the ligand in nm\n")
-            for i in coordinates:
-                f.write(f"{i.x}, {i.y}, {i.z}\n")
+            for window in range(self.n_windows):
+                coordinates = []
+                trajectory = mdtraj.load_dcd(
+                    filename=f"{self.trajectory_directory}/production_trajectory_window_{window}.dcd",
+                    top=self.system_info.psf_file,
+                )
+                coordinates.append(
+                    [
+                        get_center_of_mass_coordinates(
+                            positions=trajectory.openmm_positions(frame),
+                            indices=self.system_info.ligand_indices,
+                            masses=self.masses,
+                        )
+                        for frame in range(self.simulation_properties.number_of_frames)
+                    ]
+                )
+                for i in coordinates:
+                    f.write(f"{i.x}, {i.y}, {i.z}\n")
 
     def update_class_attributes(self) -> None:
         self.n_windows = len(self.path_coordinates)
