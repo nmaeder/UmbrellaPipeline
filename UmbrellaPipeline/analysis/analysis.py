@@ -49,11 +49,13 @@ class PMFCalculator:
         self.path_interval = original_path_interval
         self.n_frames_tot = self.n_windows * self.simulation_properties.number_of_frames
 
+        self.use_kcal = False
+
         self.KBT = (
             unit.BOLTZMANN_CONSTANT_kB
             * self.simulation_properties.temperature
             * unit.AVOGADRO_CONSTANT_NA
-        ).value_in_unit(unit.kilocalorie_per_mole)
+        ).in_units_of(unit.kilojoule_per_mole)
 
         self.A: np.ndarray
         self.B: np.ndarray
@@ -169,17 +171,24 @@ class PMFCalculator:
         er.stepsize = 0.25 * unit.angstrom
         return er.get_path_for_sampling(stepsize=stepsize)
 
-    def calculate_pmf(self) -> Tuple[np.ndarray, np.ndarray]:
+    def calculate_pmf(self, use_kcal: bool = False) -> Tuple[np.ndarray, np.ndarray]:
         """
         Does the actual PMF calculations using the FastMBAR package.
 
         Args:
-            bin_path (List[unit.Quantity]): The bin points along the sampled path. if number of bins equals number of simulation windows,
-            this is just the restrain coordinates.
+            use_kcal (bool): If True, everything is calculated in kcal per mole instead of kJ per mol. Defaults to False.
 
         Returns:
             Tuple[np.ndarray, np.ndarray]: the calculated forces per bin and the stdeviation estimate.
         """
+        if use_kcal:
+            self.use_kcal = True
+        force_unit = (
+            unit.kilocalorie_per_mole * unit.angstrom ** -2
+            if use_kcal
+            else unit.kilojoule_per_mole * unit.angstrom ** -2
+        )
+        energy_unit = unit.kilocalorie_per_mole if use_kcal else unit.kilojoule_per_mole
 
         # create extra bin point coordinates if number of bins is bigger than number of windows.
         if self.n_windows == self.n_bins:
@@ -202,9 +211,9 @@ class PMFCalculator:
             # calculate reduced potential energy
             self.A[window_number, :] = (
                 0.5
-                * self.simulation_properties.force_constant
+                * self.simulation_properties.force_constant.in_units_of(force_unit)
                 * (dx ** 2 + dy ** 2 + dz ** 2)
-            ) / self.KBT
+            ) / self.KBT.in_units_of(energy_unit)
 
             # save number of samples per window. in our case same in every window.
             num_conf.append(self.simulation_properties.number_of_frames)
@@ -251,6 +260,7 @@ class PMFCalculator:
         Args:
             filename (str, optional): if given, a png file is exported to the filepath.
         """
+        energy_unit = "kcal per mole" if self.use_kcal else "kJ per mole"
         pmf_center = np.linspace(
             start=0,
             stop=(self.n_windows * self.path_interval).value_in_unit(unit.nanometer),
@@ -264,7 +274,7 @@ class PMFCalculator:
             pmf_center[-1],
         )
         plt.xlabel("Ligand distance from binding pocked [nm]")
-        plt.ylabel("Relative free energy [kcal per mole]")
+        plt.ylabel(f"Relative free energy [{energy_unit}]")
         if filename:
             if not filename.endswith(f".{format}"):
                 filename += f".{format}"
@@ -283,6 +293,7 @@ class PMFCalculator:
         Args:
             filename (str, optional): if given, a png file is exported to the filepath.
         """
+        energy_unit = "kcal per mole" if self.use_kcal else "kJ per mole"
         matplotlib.use("Agg")
         pmf_center = np.linspace(
             start=0,
@@ -297,7 +308,7 @@ class PMFCalculator:
             pmf_center[-1],
         )
         plt.xlabel("Ligand distance from binding pocked [nm]")
-        plt.ylabel("Relative free energy [kcal per mole]")
+        plt.ylabel(f"Relative free energy [{energy_unit}]")
         if filename:
             if not filename.endswith(f".{format}"):
                 filename += f".{format}"
