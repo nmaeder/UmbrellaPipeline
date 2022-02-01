@@ -279,6 +279,17 @@ class Tree:
         dist = dist * self.unit - vdw_radius.in_units_of(self.unit)
         return dist
 
+    def get_nearest_neighbour_index(self, coords: u.Quantity) -> int:
+        """
+        Returns the index of the nearest neighbour in the tree. used for the PMFCalculator binning.
+        Args:
+            coords (u.Quantity): coordinate for which to get the nearest neighbour
+        Returns:
+            (int): index of the nearest neighbour in the tree.
+        """
+        dist, i = self.tree.query(x=[coords.x, coords.y, coords.z], k=1)
+        return i
+
     @staticmethod
     def calculate_euclidean_distance(
         node: TreeNode, destination: TreeNode
