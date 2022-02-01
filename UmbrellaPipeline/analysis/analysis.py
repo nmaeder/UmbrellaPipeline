@@ -213,7 +213,7 @@ class PMFCalculator:
                 0.5
                 * self.simulation_properties.force_constant.in_units_of(force_unit)
                 * (dx ** 2 + dy ** 2 + dz ** 2)
-            ) #/ self.KBT.in_units_of(energy_unit)
+            ) / self.KBT.in_units_of(energy_unit)
 
             # save number of samples per window. in our case same in every window.
             num_conf.append(self.simulation_properties.number_of_frames)
