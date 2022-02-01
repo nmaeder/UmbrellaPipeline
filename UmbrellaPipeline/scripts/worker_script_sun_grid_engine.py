@@ -108,7 +108,7 @@ def main():
 
     simulation.reporters.append(
         app.DCDReporter(
-            file=f"{args.output_path}/production_trajcetory_window_{args.window_number}.dcd",
+            file=f"{args.output_path}/production_trajectory_window_{args.window_number}.dcd",
             reportInterval=args.write_out_frequency,
         )
     )

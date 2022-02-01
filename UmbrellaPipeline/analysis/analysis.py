@@ -41,6 +41,8 @@ class PMFCalculator:
         self.system_info = simulation_system
         self.trajectory_directory = trajectory_directory.rstrip("/")
 
+        self.masses = self.system_info.psf_object.createSystem(self.system_info.params)
+
         self.n_windows = len(path_coordinates)
         self.n_bins = n_bins if n_bins else self.n_windows
         self.path_coordinates = path_coordinates
@@ -67,15 +69,15 @@ class PMFCalculator:
         coordinates = []
         for window in range(self.n_windows):
             trajectory = mdtraj.load_dcd(
-                filename=f"{self.trajectory_directory}/production_trajcetory_window_{window}.dcd",
-                top=self.system_info.pdb_file,
+                filename=f"{self.trajectory_directory}/production_trajectory_window_{window}.dcd",
+                top=self.system_info.psf_file,
             )
             coordinates.append(
                 [
                     get_center_of_mass_coordinates(
                         positions=trajectory.openmm_positions(frame),
                         indices=self.system_info.ligand_indices,
-                        masses=self.system_info.psf_object.system,
+                        masses=self.masses,
                     )
                     for frame in range(self.simulation_properties.number_of_frames)
                 ]
@@ -226,7 +228,7 @@ class PMFCalculator:
         self.B = np.zeros(shape=(self.n_bins, self.n_frames_tot))
 
         for bin in range(self.n_bins):
-            tree = Tree(bin_path)
+            tree = Tree(bin_path, unit=unit.nanometer)
             # for every sampling window, check if the frames from that window are actually closest to that window.
             indicator = np.array(
                 [

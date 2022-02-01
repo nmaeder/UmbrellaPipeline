@@ -115,7 +115,7 @@ class UmbrellaSampling:
         )
         self.simulation.reporters.append(
             app.DCDReporter(
-                file=f"{self.traj_write_path}/equilibration_trajcetory.dcd",
+                file=f"{self.traj_write_path}/equilibration_trajectory.dcd",
                 reportInterval=self.simulation_properties.write_out_frequency,
             )
         )
@@ -191,7 +191,7 @@ class UmbrellaSampling:
             start_time = time.time()
             self.simulation.reporters.append(
                 app.DCDReporter(
-                    file=f"{self.traj_write_path}/production_trajcetory_window_{window}.dcd",
+                    file=f"{self.traj_write_path}/production_trajectory_window_{window}.dcd",
                     reportInterval=self.simulation_properties.write_out_frequency,
                 )
             )

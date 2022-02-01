@@ -146,7 +146,7 @@ def add_isotropic_barostat(
 
 
 def add_backbone_restraints(
-    positions: app.Simulation,
+    positions: unit.Quantity,
     system: mm.openmm.System,
     atom_list: app.internal.charmm.topologyobjects.AtomList,
     force_constant: unit.Quantity = 10 * unit.kilocalorie_per_mole / unit.angstrom ** 2,
@@ -163,13 +163,18 @@ def add_backbone_restraints(
     """
     indices = get_backbone_indices(atom_list=atom_list)
     force = mm.CustomExternalForce("1/2*k*periodicdistance(x, y, z, x0, y0, z0)^2")
-    force.addGlobalParameter("k", force_constant)
+    force.addPerParticleParameter("k")
     force.addPerParticleParameter("x0")
     force.addPerParticleParameter("y0")
     force.addPerParticleParameter("z0")
-    force.setName("bb_restraint_force")
     for index in indices:
-        force.addParticle(index, positions[index])
+        values = [
+            force_constant,
+            positions[index].x,
+            positions[index].y,
+            positions[index].z,
+        ]
+        force.addParticle(index, values)
     system.addForce(force)
     return system
 
@@ -470,7 +475,7 @@ def create_openmm_system(
 
     if bb_restraints:
         add_backbone_restraints(
-            positions=positions,
+            positions=pos,
             system=openmm_system,
             atom_list=system_info.psf_object.atom_list,
         )

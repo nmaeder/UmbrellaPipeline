@@ -163,9 +163,7 @@ def test_centroid_coords():
 
     print(get_centroid_coordinates(pipeline.system_info.crd_object.positions, ind2))
 
-    a = get_centroid_coordinates(
-        pipeline.system_info.crd_object.positions, ind1
-    )
+    a = get_centroid_coordinates(pipeline.system_info.crd_object.positions, ind1)
     b = unit.Quantity(
         value=Vec3(x=4.800868342909999, y=5.1623615832338885, z=5.116963445551665),
         unit=unit.nanometer,
@@ -173,9 +171,7 @@ def test_centroid_coords():
     assert round(a.x, 5) == round(b.x, 5)
     assert round(a.y, 5) == round(b.y, 5)
     assert round(a.z, 5) == round(b.z, 5)
-    a =  get_centroid_coordinates(
-        pipeline.system_info.crd_object.positions, ind2
-    )
+    a = get_centroid_coordinates(pipeline.system_info.crd_object.positions, ind2)
     b = unit.Quantity(
         value=Vec3(x=4.791905722784763, y=5.152082995253809, z=5.1381769457266655),
         unit=unit.nanometer,
@@ -201,7 +197,7 @@ def test_com_coords():
         positions=pipeline.system_info.crd_object.positions,
         indices=pipeline.system_info.ligand_indices,
         masses=system,
-    )  
+    )
     b = unit.Quantity(
         value=Vec3(x=4.7843494194906455, y=5.141548282974986, z=5.1745056529196995),
         unit=unit.nanometer,
