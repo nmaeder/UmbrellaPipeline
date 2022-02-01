@@ -29,12 +29,13 @@ class UmbrellaPipeline:
 
     def __init__(
         self,
-        psf_file: str,
-        crd_file: str,
-        toppar_stream_file: str,
-        toppar_directory: str,
-        ligand_residue_name: str,
         simulation_properties: SimulationProperties = SimulationProperties(),
+        system_info: SimulationSystem = None,
+        psf_file: str = None,
+        crd_file: str = None,
+        toppar_stream_file: str = None,
+        toppar_directory: str = None,
+        ligand_residue_name: str = None,
         only_run_production: bool = False,
     ) -> None:
         """
@@ -47,18 +48,27 @@ class UmbrellaPipeline:
             simulation_properties (SimulationProperties, optional): Simulation property object. refer to the README for further info. Defaults to SimulationProperties().
         """
         self.simulation_parameters = simulation_properties
-        self.system_info = SimulationSystem(
-            psf_file=psf_file,
-            crd_file=crd_file,
-            toppar_directory=toppar_directory,
-            toppar_stream_file=toppar_stream_file,
-            ligand_name=ligand_residue_name,
-        )
         self.path: List[unit.Quantity]
         self.openmm_system: mm.openmm.System
         self.escape_room: GridEscapeRoom or TreeEscapeRoom
         self.equilibrate = not only_run_production
         self.state: mm.State
+
+        if system_info:
+            self.system_info = system_info
+        else:
+            try:
+                self.system_info = SimulationSystem(
+                    psf_file=psf_file,
+                    crd_file=crd_file,
+                    toppar_directory=toppar_directory,
+                    toppar_stream_file=toppar_stream_file,
+                    ligand_name=ligand_residue_name,
+                )
+            except:
+                ValueError(
+                    "either give a system information object or all of the following inputs: psf_file, crd_file, toppar_stream_file, toppar_directory, ligand_residue_name"
+                )
 
     def generate_path(
         self,
@@ -67,6 +77,7 @@ class UmbrellaPipeline:
         use_grid: bool = False,
         positions: unit.Quantity = None,
         system=None,
+        visualize: bool = True,
     ) -> List[unit.Quantity]:
         """
         Creates the path out of the protein. use_grid is not recommended.
@@ -97,7 +108,8 @@ class UmbrellaPipeline:
             )
             self.escape_room.escape_room(distance=distance_to_protein)
             self.path = self.escape_room.get_path_for_sampling(stepsize=path_interval)
-
+            if visualize:
+                self.escape_room.visualize_path(path=self.path)
         else:
             grid = Grid.from_files(
                 crd=self.system_info.crd_object,

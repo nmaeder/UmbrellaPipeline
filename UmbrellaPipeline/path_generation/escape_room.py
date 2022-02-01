@@ -3,6 +3,9 @@ from typing import List
 import gemmi
 import numpy as np
 from openmm import Vec3, unit
+import plotly.express as px
+import plotly.graph_objects as go
+import pandas as pd
 
 from UmbrellaPipeline.path_generation import (
     GridNode,
@@ -544,3 +547,28 @@ class TreeEscapeRoom(EscapeRoom3D):
             except StopIteration:
                 end_reached = True
         return unit.Quantity(value=ret, unit=self.shortest_path[0].unit)
+
+    def visualize_path(self, path: unit.Quantity = None):
+        """
+        Basic visualization of the path generated and the protein.
+
+        Args:
+            path (unit.Quantity, optional): Specify if you dont want the classes path to be visualized. Defaults to None.
+        """
+        pos = path if path else self.get_path_for_sampling()
+        df = pd.DataFrame(
+            pos.value_in_unit(unit.nanometer),
+            columns=list("xyz"),
+        )
+        df2 = pd.DataFrame(self.tree.tree.data, columns=list("abc"))
+        a = px.scatter_3d(data_frame=df, x="x", y="y", z="z")
+        a.add_trace(
+            go.Scatter3d(
+                x=df2.a,
+                y=df2.b,
+                z=df2.c,
+                mode="lines",
+                line=dict(width=3, color="black"),
+            )
+        )
+        a.show()
