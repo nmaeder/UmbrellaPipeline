@@ -88,6 +88,7 @@ class PMFCalculator:
                 )
                 for i in coordinates:
                     f.write(f"{i.x}, {i.y}, {i.z}\n")
+        return self.trajectory_directory + "/sampled_coordinates.dat"
 
     def update_class_attributes(self) -> None:
         self.n_windows = len(self.path_coordinates)
@@ -107,17 +108,15 @@ class PMFCalculator:
         """
         file = fname if fname else self.trajectory_directory + "/coordinates.dat"
         dat = np.loadtxt(file, delimiter=",", skiprows=1)
-        self.path_coordinates = [
-            unit.Quantity(
-                value=Vec3(
-                    x=i[1],
-                    y=i[2],
-                    z=i[3],
-                ),
-                unit=unit.nanometer,
+        c = [
+            Vec3(
+                x=i[1],
+                y=i[2],
+                z=i[3],
             )
             for i in dat
         ]
+        self.path_coordinates = unit.Quantity(value=c, unit=unit.nanometer)
         self.update_class_attributes()
         return self.path_coordinates
 
@@ -134,18 +133,20 @@ class PMFCalculator:
         file = (
             fname if fname else self.trajectory_directory + "/sampled_coordinates.dat"
         )
-        dat = np.loadtxt(file, delimiter=",")
-        self.sampled_coordinates = [
-            unit.Quantity(
-                value=Vec3(
-                    x=i[0],
-                    y=i[1],
-                    z=i[2],
-                ),
-                unit=unit.nanometer,
+        try:
+            dat = np.loadtxt(file, delimiter=",")
+        except FileNotFoundError:
+            file = self.parse_trajectories()
+            dat = np.loadtxt(file, delimiter=",")
+        c = [
+            Vec3(
+                x=i[0],
+                y=i[1],
+                z=i[2],
             )
             for i in dat
         ]
+        self.sampled_coordinates = unit.Quantity(value=c, unit=unit.nanometer)
         return self.sampled_coordinates
 
     def create_extra_bin_points(self, stepsize):
