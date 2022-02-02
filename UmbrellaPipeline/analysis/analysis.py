@@ -51,7 +51,7 @@ class PMFCalculator:
 
         self.use_kcal = False
 
-        self.KBT = (
+        self.RT = (
             unit.BOLTZMANN_CONSTANT_kB
             * self.simulation_properties.temperature
             * unit.AVOGADRO_CONSTANT_NA
@@ -171,7 +171,9 @@ class PMFCalculator:
         er.stepsize = 0.25 * unit.angstrom
         return er.get_path_for_sampling(stepsize=stepsize)
 
-    def calculate_pmf(self, use_kcal: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+    def calculate_pmf(
+        self, use_kcal: bool = False, in_rt: bool = False
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Does the actual PMF calculations using the FastMBAR package.
 
@@ -188,7 +190,10 @@ class PMFCalculator:
             if use_kcal
             else unit.kilojoule_per_mole * unit.angstrom ** -2
         )
-        energy_unit = unit.kilocalorie_per_mole if use_kcal else unit.kilojoule_per_mole
+        energy_unit = (
+            unit.kilocalorie_per_mole if use_kcal else unit.kilojoule_per_mole
+        )  #
+        RT = self.RT.in_units_of(energy_unit) if in_rt else 1
 
         # create extra bin point coordinates if number of bins is bigger than number of windows.
         if self.n_windows == self.n_bins:
@@ -213,7 +218,7 @@ class PMFCalculator:
                 0.5
                 * self.simulation_properties.force_constant.in_units_of(force_unit)
                 * (dx ** 2 + dy ** 2 + dz ** 2)
-            ) / self.KBT.in_units_of(energy_unit)
+            ) / RT
 
             # save number of samples per window. in our case same in every window.
             num_conf.append(self.simulation_properties.number_of_frames)
