@@ -253,7 +253,13 @@ class PMFCalculator:
         )
         return self.pmf, self.pmf_error
 
-    def plot(self, filename: str = None, format: str = "svg", dpi: float = 300):
+    def plot(
+        self,
+        filename: str = None,
+        format: str = "svg",
+        dpi: float = 300,
+        cumulative: bool = False,
+    ):
         """
         plots the pmf with error bars.
 
@@ -267,8 +273,11 @@ class PMFCalculator:
             num=self.n_bins,
             endpoint=False,
         )
+        y = self.pmf if not cumulative else np.cumsum(self.pmf)
+        y_error = self.pmf_error if not cumulative else np.cumsum(self.pmf_error)
         fig = plt.figure()
-        plt.errorbar(pmf_center, self.pmf, yerr=self.pmf_error, fmt="-o")
+        plt.plot(pmf_center, y)
+        plt.errorbar(pmf_center, y, yerr=y_error, fmt="-o")
         plt.xlim(
             pmf_center[0],
             pmf_center[-1],
