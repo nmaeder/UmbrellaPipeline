@@ -63,6 +63,7 @@ class PMFCalculator:
 
         self.pmf: np.ndarray
         self.pmf_error: np.ndarray
+        self.in_rt = False
 
     def parse_trajectories(self) -> None:
         """
@@ -185,6 +186,8 @@ class PMFCalculator:
         """
         if use_kcal:
             self.use_kcal = True
+        if in_rt:
+            self.in_rt = True
         force_unit = (
             unit.kilocalorie_per_mole * unit.angstrom ** -2
             if use_kcal
@@ -270,8 +273,10 @@ class PMFCalculator:
 
         Args:
             filename (str, optional): if given, a png file is exported to the filepath.
-        """
-        energy_unit = "kcal per mole" if self.use_kcal else "kJ per mole"
+        """ 
+        energy_unit = " [kcal per mole]" if self.use_kcal else " [kJ per mole]"
+        if self.in_rt:
+            energy_unit = ""
         pmf_center = np.linspace(
             start=0,
             stop=(self.n_windows * self.path_interval).value_in_unit(unit.nanometer),
@@ -288,7 +293,7 @@ class PMFCalculator:
             pmf_center[-1],
         )
         plt.xlabel("Ligand distance from binding pocked [nm]")
-        plt.ylabel(f"Relative free energy [{energy_unit}]")
+        plt.ylabel(f"Relative free energy{energy_unit}")
         if filename:
             if not filename.endswith(f".{format}"):
                 filename += f".{format}"
@@ -307,7 +312,9 @@ class PMFCalculator:
         Args:
             filename (str, optional): if given, a png file is exported to the filepath.
         """
-        energy_unit = "kcal per mole" if self.use_kcal else "kJ per mole"
+        energy_unit = " [kcal per mole]" if self.use_kcal else " [kJ per mole]"
+        if self.in_rt:
+            energy_unit = ""
         matplotlib.use("Agg")
         pmf_center = np.linspace(
             start=0,
@@ -322,7 +329,7 @@ class PMFCalculator:
             pmf_center[-1],
         )
         plt.xlabel("Ligand distance from binding pocked [nm]")
-        plt.ylabel(f"Relative free energy [{energy_unit}]")
+        plt.ylabel(f"Relative free energy{energy_unit}")
         if filename:
             if not filename.endswith(f".{format}"):
                 filename += f".{format}"
