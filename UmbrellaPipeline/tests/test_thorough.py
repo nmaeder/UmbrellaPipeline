@@ -5,7 +5,7 @@ import numpy as np
 import warnings
 
 from UmbrellaPipeline import UmbrellaPipeline
-from UmbrellaPipeline.path_generation import (
+from UmbrellaPipeline.path_finding import (
     Tree,
     Grid,
     GridNode,

@@ -10,7 +10,7 @@ from UmbrellaPipeline.utils import (
     get_centroid_coordinates,
     get_center_of_mass_coordinates,
 )
-from UmbrellaPipeline.path_generation import TreeNode
+from UmbrellaPipeline.path_finding import TreeNode
 
 
 class Tree:

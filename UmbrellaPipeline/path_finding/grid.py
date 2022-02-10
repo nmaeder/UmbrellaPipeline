@@ -10,7 +10,7 @@ from UmbrellaPipeline.utils import (
     get_residue_indices,
     get_centroid_coordinates,
 )
-from UmbrellaPipeline.path_generation import GridNode
+from UmbrellaPipeline.path_finding import GridNode
 
 
 class Grid:

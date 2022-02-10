@@ -4,7 +4,7 @@ import gemmi
 import numpy as np
 from openmm import Vec3, unit
 
-from UmbrellaPipeline.path_generation import (
+from UmbrellaPipeline.path_finding import (
     GridNode,
     TreeNode,
     Grid,

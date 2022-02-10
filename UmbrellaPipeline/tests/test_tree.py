@@ -1,7 +1,7 @@
 from openmm import Vec3, unit
 import pytest
 
-from UmbrellaPipeline.path_generation import Tree, TreeNode
+from UmbrellaPipeline.path_finding import Tree, TreeNode
 
 
 def test_tree_generation():

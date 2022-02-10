@@ -6,7 +6,7 @@ import mdtraj
 from FastMBAR import FastMBAR
 import matplotlib.pyplot as plt
 
-from UmbrellaPipeline.path_generation import TreeNode, Tree, TreeEscapeRoom
+from UmbrellaPipeline.path_finding import TreeNode, Tree, TreeEscapeRoom
 from UmbrellaPipeline.utils import (
     SimulationProperties,
     SimulationSystem,

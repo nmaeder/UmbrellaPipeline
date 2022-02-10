@@ -11,7 +11,7 @@ from UmbrellaPipeline.utils import (
     SimulationProperties,
     SimulationSystem,
 )
-from UmbrellaPipeline.path_generation import (
+from UmbrellaPipeline.path_finding import (
     Tree,
     Grid,
     GridEscapeRoom,
