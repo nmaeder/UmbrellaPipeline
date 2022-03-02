@@ -7,6 +7,23 @@ UmbrellaPipeline
 
 Umbrella Sampling Pipeline for PMF of Protein Ligand Unbinding
 
+## Theory
+
+
+## How-To
+
+
+
+
+
+## Installation
+
+
+
+### Maintainer
+
+- Niels Maeder <maedern@student.ethz.ch> (ETH Zürich)
+
 ### Copyright
 
 Copyright (c) 2021, Niels Maeder
