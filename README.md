@@ -10,9 +10,8 @@ Umbrella Sampling Pipeline for PMF of Protein Ligand Unbinding
 ## Theory
 
 
+
 ## How-To
-
-
 
 
 
@@ -26,7 +25,7 @@ Umbrella Sampling Pipeline for PMF of Protein Ligand Unbinding
 
 ### Copyright
 
-Copyright (c) 2021, Niels Maeder
+Copyright (c) 2022, Niels Maeder
 
 
 #### Acknowledgements
