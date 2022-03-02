@@ -6,10 +6,10 @@ import mdtraj
 from FastMBAR import FastMBAR
 import matplotlib.pyplot as plt
 
-from UmbrellaPipeline.path_finding import TreeNode, Tree, TreeEscapeRoom
+from UmbrellaPipeline.path_finding import Node, Tree, TreeEscapeRoom
 from UmbrellaPipeline.utils import (
-    SimulationProperties,
-    SimulationSystem,
+    SimulationParameters,
+    SystemInfo,
     get_center_of_mass_coordinates,
 )
 
@@ -21,8 +21,8 @@ class PMFCalculator:
 
     def __init__(
         self,
-        simulation_properties: SimulationProperties,
-        simulation_system: SimulationSystem,
+        simulation_parameters: SimulationParameters,
+        simulation_system: SystemInfo,
         trajectory_directory: str,
         original_path_interval: unit.Quantity,
         path_coordinates: List[unit.Quantity] = [],
@@ -30,14 +30,14 @@ class PMFCalculator:
     ) -> None:
         """
         Args:
-            simulation_properties (SimulationProperties): [description]
-            simulation_system (SimulationSystem): [description]
+            simulation_parameters (SimulationParameters): [description]
+            simulation_system (SystemInfo): [description]
             trajectory_directory (str): [description]
             original_path_interval (unit.Quantity): [description]
             path_coordinates (List[unit.Quantity], optional): [description]. Defaults to [].
             n_bins (int, optional): [description]. Defaults to None.
         """
-        self.simulation_properties = simulation_properties
+        self.simulation_parameters = simulation_parameters
         self.system_info = simulation_system
         self.trajectory_directory = trajectory_directory.rstrip("/")
 
@@ -47,13 +47,13 @@ class PMFCalculator:
         self.n_bins = n_bins if n_bins else self.n_windows
         self.path_coordinates = path_coordinates
         self.path_interval = original_path_interval
-        self.n_frames_tot = self.n_windows * self.simulation_properties.number_of_frames
+        self.n_frames_tot = self.n_windows * self.simulation_parameters.number_of_frames
 
         self.use_kcal = False
 
         self.RT = (
             unit.BOLTZMANN_CONSTANT_kB
-            * self.simulation_properties.temperature
+            * self.simulation_parameters.temperature
             * unit.AVOGADRO_CONSTANT_NA
         ).in_units_of(unit.kilojoule_per_mole)
 
@@ -86,7 +86,7 @@ class PMFCalculator:
                             indices=self.system_info.ligand_indices,
                             masses=self.masses,
                         )
-                        for frame in range(self.simulation_properties.number_of_frames)
+                        for frame in range(self.simulation_parameters.number_of_frames)
                     ]
                 )
                 for i in coordinates:
@@ -97,7 +97,7 @@ class PMFCalculator:
         self.n_windows = len(self.path_coordinates)
         if self.n_bins == 0:
             self.n_bins = self.n_windows
-        self.n_frames_tot = self.n_windows * self.simulation_properties.number_of_frames
+        self.n_frames_tot = self.n_windows * self.simulation_parameters.number_of_frames
 
     def load_original_path(self, fname: str = None) -> List[unit.Quantity]:
         """
@@ -157,11 +157,11 @@ class PMFCalculator:
         helper function, see usage below.
         """
         tree = Tree(self.path_coordinates)
-        er = TreeEscapeRoom(tree=tree, start=TreeNode())
+        er = TreeEscapeRoom(tree=tree, start=Node())
         newp = []
         for window in self.path_coordinates:
             newp.append(
-                TreeNode(
+                Node(
                     x=window.x,
                     y=window.y,
                     z=window.z,
@@ -219,12 +219,12 @@ class PMFCalculator:
             # calculate reduced potential energy
             self.A[window_number, :] = (
                 0.5
-                * self.simulation_properties.force_constant.in_units_of(force_unit)
+                * self.simulation_parameters.force_constant.in_units_of(force_unit)
                 * (dx ** 2 + dy ** 2 + dz ** 2)
             ) / RT
 
             # save number of samples per window. in our case same in every window.
-            num_conf.append(self.simulation_properties.number_of_frames)
+            num_conf.append(self.simulation_parameters.number_of_frames)
         num_conf = np.array(num_conf).astype(np.float64)
 
         # check if cuda is available.
@@ -273,7 +273,7 @@ class PMFCalculator:
 
         Args:
             filename (str, optional): if given, a png file is exported to the filepath.
-        """ 
+        """
         energy_unit = " [kcal per mole]" if self.use_kcal else " [kJ per mole]"
         if self.in_rt:
             energy_unit = ""

@@ -8,7 +8,7 @@ from UmbrellaPipeline.utils import (
 )
 
 
-class SimulationSystem:
+class SystemInfo:
     """
     This class stores all paths, crd, psf and parameter objects.
     """

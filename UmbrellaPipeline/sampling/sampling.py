@@ -18,8 +18,8 @@ from UmbrellaPipeline.sampling import (
 from UmbrellaPipeline.sampling.sampling_helper import deserialize_state
 from UmbrellaPipeline.utils import (
     display_time,
-    SimulationProperties,
-    SimulationSystem,
+    SimulationParameters,
+    SystemInfo,
     gen_pbc_box,
 )
 
@@ -33,20 +33,20 @@ class UmbrellaSampling:
 
     def __init__(
         self,
-        properties: SimulationProperties,
-        info: SimulationSystem,
+        properties: SimulationParameters,
+        info: SystemInfo,
         traj_write_path: str = None,
         restrain_protein_backbone: bool = False,
     ) -> None:
         """
         Args:
-            properties (SimulationProperties): simulation properties object, holding temp, pressure, etc
-            info (SimulationSystem): simulation system object holding psf, crd objects etc.
+            properties (SimulationParameters): simulation properties object, holding temp, pressure, etc
+            info (SystemInfo): simulation system object holding psf, crd objects etc.
             path (List[unit.Quantity]): path for the ligand to walk trough.
             openmm_system (mm.openmm.System): openmm System object. Defaults to None.
             traj_write_path (str, optional): output directory where the trajectories are written to. Defaults to None.
         """
-        self.simulation_properties = properties
+        self.simulation_parameters = properties
         self.system_info = info
         self.openmm_system: mm.openmm.System
         self.simulation: app.Simulation
@@ -85,7 +85,7 @@ class UmbrellaSampling:
             )
         self.openmm_system = create_openmm_system(
             system_info=self.system_info,
-            simulation_properties=self.simulation_properties,
+            simulation_parameters=self.simulation_parameters,
             barostat=baro,
             nonbonded_cutoff=nonbonded_cutoff,
             nonbonded_method=nonbonded_method,
@@ -95,9 +95,9 @@ class UmbrellaSampling:
         )
 
         self.integrator = mm.LangevinIntegrator(
-            self.simulation_properties.temperature,
-            self.simulation_properties.friction_coefficient,
-            self.simulation_properties.time_step,
+            self.simulation_parameters.temperature,
+            self.simulation_parameters.friction_coefficient,
+            self.simulation_parameters.time_step,
         )
 
         self.simulation = app.Simulation(
@@ -111,18 +111,18 @@ class UmbrellaSampling:
         self.simulation.context.setPositions(self.system_info.crd_object.positions)
         self.simulation.minimizeEnergy()
         self.simulation.context.setVelocitiesToTemperature(
-            self.simulation_properties.temperature
+            self.simulation_parameters.temperature
         )
         self.simulation.reporters.append(
             app.DCDReporter(
                 file=f"{self.traj_write_path}/equilibration_trajectory.dcd",
-                reportInterval=self.simulation_properties.write_out_frequency,
+                reportInterval=self.simulation_parameters.write_out_frequency,
             )
         )
         self.simulation.reporters.append(
             app.StateDataReporter(
                 file=f"{self.traj_write_path}/equilibration_state.out",
-                reportInterval=self.simulation_properties.write_out_frequency,
+                reportInterval=self.simulation_parameters.write_out_frequency,
                 step=True,
                 time=True,
                 potentialEnergy=True,
@@ -131,7 +131,7 @@ class UmbrellaSampling:
                 volume=True,
             )
         )
-        self.simulation.step(self.simulation_properties.n_equilibration_steps)
+        self.simulation.step(self.simulation_parameters.n_equilibration_steps)
         state = self.simulation.context.getState(getPositions=True, getVelocities=True)
         return state
 
@@ -153,7 +153,7 @@ class UmbrellaSampling:
             )
         self.openmm_system = create_openmm_system(
             system_info=self.system_info,
-            simulation_properties=self.simulation_properties,
+            simulation_parameters=self.simulation_parameters,
             ligand_restraint=True,
             path=path,
             bb_restraints=self.bb_restrains,
@@ -166,9 +166,9 @@ class UmbrellaSampling:
         )
 
         self.integrator = mm.LangevinIntegrator(
-            self.simulation_properties.temperature,
-            self.simulation_properties.friction_coefficient,
-            self.simulation_properties.time_step,
+            self.simulation_parameters.temperature,
+            self.simulation_parameters.friction_coefficient,
+            self.simulation_parameters.time_step,
         )
 
         self.simulation = app.Simulation(
@@ -181,7 +181,7 @@ class UmbrellaSampling:
 
         self.simulation.context.setState(state=state)
         self.simulation.minimizeEnergy()
-        self.simulation.step(self.simulation_properties.n_equilibration_steps)
+        self.simulation.step(self.simulation_parameters.n_equilibration_steps)
 
         self.ligand_non_bonded_parameters = extract_nonbonded_parameters(
             self.openmm_system, self.system_info.ligand_indices
@@ -192,13 +192,13 @@ class UmbrellaSampling:
             self.simulation.reporters.append(
                 app.DCDReporter(
                     file=f"{self.traj_write_path}/production_trajectory_window_{window}.dcd",
-                    reportInterval=self.simulation_properties.write_out_frequency,
+                    reportInterval=self.simulation_parameters.write_out_frequency,
                 )
             )
             self.simulation.reporters.append(
                 app.StateDataReporter(
                     file=f"{self.traj_write_path}/production_state_window_{window}.out",
-                    reportInterval=self.simulation_properties.write_out_frequency,
+                    reportInterval=self.simulation_parameters.write_out_frequency,
                     step=True,
                     time=True,
                     potentialEnergy=True,
@@ -208,7 +208,7 @@ class UmbrellaSampling:
                 )
             )
 
-            self.simulation.step(self.simulation_properties.n_production_steps)
+            self.simulation.step(self.simulation_parameters.n_production_steps)
 
             elapsed_time = time.time() - start_time
             total_time += elapsed_time
@@ -227,7 +227,7 @@ class UmbrellaSampling:
                     original_parameters=self.ligand_non_bonded_parameters,
                     position=position,
                 )
-                self.simulation.step(self.simulation_properties.n_equilibration_steps)
+                self.simulation.step(self.simulation_parameters.n_equilibration_steps)
             except IndexError:
                 pass
         write_path_to_file(path, self.traj_write_path)
@@ -241,8 +241,8 @@ class SamplingSunGridEngine(UmbrellaSampling):
 
     def __init__(
         self,
-        properties: SimulationProperties,
-        info: SimulationSystem,
+        properties: SimulationParameters,
+        info: SystemInfo,
         traj_write_path: str,
         conda_environment: str,
         mail: str = None,
@@ -253,10 +253,10 @@ class SamplingSunGridEngine(UmbrellaSampling):
     ) -> None:
         """
         Args:
-            properties (SimulationProperties): simulation_property object.
+            properties (SimulationParameters): simulation_property object.
             path (List[unit.Quantity]): path for the ligand to walk through.
             openmm_system (mm.openmm.System): openmm system of your simulation.
-            info (SimulationSystem): simulation system object.
+            info (SystemInfo): simulation system object.
             traj_write_path (str): output directory where the trajectories will be written to.
             conda_environment (str): name of the conda environment where this package and all its dependencies are installed.
             mail (str, optional): [description]. if given, a mail will be sent to this adress if a production run has finished.
@@ -315,13 +315,13 @@ class SamplingSunGridEngine(UmbrellaSampling):
             c += f"python {os.path.abspath(os.path.dirname(__file__)+'/../scripts/worker_script_sun_grid_engine.py')} "
 
             pos = f"-x {position.x} " f"-y {position.y} " f"-z {position.z}"
-            c += f" -t {self.simulation_properties.temperature.value_in_unit(unit=unit.kelvin)}"
-            c += f" -dt {self.simulation_properties.time_step.value_in_unit(unit=unit.femtosecond)}"
-            c += f" -fric {self.simulation_properties.friction_coefficient.value_in_unit(unit=unit.picosecond**-1)}"
+            c += f" -t {self.simulation_parameters.temperature.value_in_unit(unit=unit.kelvin)}"
+            c += f" -dt {self.simulation_parameters.time_step.value_in_unit(unit=unit.femtosecond)}"
+            c += f" -fric {self.simulation_parameters.friction_coefficient.value_in_unit(unit=unit.picosecond**-1)}"
             c += (
                 f" -psf {self.system_info.psf_file} -crd {self.system_info.crd_file} -sys {self.serialized_system_file} -state {self.serialized_state_file}"
-                f" {pos} -to {self.traj_write_path} -np {self.simulation_properties.n_production_steps} -ln {self.system_info.ligand_name}"
-                f" -ne {self.simulation_properties.n_equilibration_steps} -nw {window} -io {self.simulation_properties.write_out_frequency}"
+                f" {pos} -to {self.traj_write_path} -np {self.simulation_parameters.n_production_steps} -ln {self.system_info.ligand_name}"
+                f" -ne {self.simulation_parameters.n_equilibration_steps} -nw {window} -io {self.simulation_parameters.write_out_frequency}"
             )
             logger.info(f"{script_path} written.")
 
@@ -398,7 +398,7 @@ class SamplingSunGridEngine(UmbrellaSampling):
                 )
             self.openmm_system = create_openmm_system(
                 system_info=self.system_info,
-                simulation_properties=self.simulation_properties,
+                simulation_parameters=self.simulation_parameters,
                 ligand_restraint=True,
                 path=path,
                 bb_restraints=self.bb_restrains,
