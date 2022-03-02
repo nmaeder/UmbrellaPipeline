@@ -7,8 +7,8 @@ from typing import List
 import numpy as np
 
 from UmbrellaPipeline.utils import (
-    SimulationProperties,
-    SimulationSystem,
+    SimulationParameters,
+    SystemInfo,
     get_backbone_indices,
     gen_pbc_box,
 )
@@ -56,7 +56,7 @@ def add_ligand_restraint(
 
 def add_barostat(
     system: mm.openmm.System,
-    properties: SimulationProperties,
+    properties: SimulationParameters,
     membrane_barostat: bool = False,
     frequency: int = 25,
 ) -> mm.openmm.System:
@@ -65,7 +65,7 @@ def add_barostat(
 
     Args:
         system (mm.openmm.System): openmm system to add the barostat to.
-        properties (SimulationProperties): simulation properties object containint temperature and pressure.
+        properties (SimulationParameters): simulation properties object containint temperature and pressure.
         membrane_barostat (bool, optional): true if you want to use a membrane_barostat. Defaults to False.
         frequency (int, optional): update frequency for the barostat. Defaults to 25.
 
@@ -146,7 +146,7 @@ def add_isotropic_barostat(
 
 
 def add_backbone_restraints(
-    positions: app.Simulation,
+    positions: unit.Quantity,
     system: mm.openmm.System,
     atom_list: app.internal.charmm.topologyobjects.AtomList,
     force_constant: unit.Quantity = 10 * unit.kilocalorie_per_mole / unit.angstrom ** 2,
@@ -163,13 +163,18 @@ def add_backbone_restraints(
     """
     indices = get_backbone_indices(atom_list=atom_list)
     force = mm.CustomExternalForce("1/2*k*periodicdistance(x, y, z, x0, y0, z0)^2")
-    force.addGlobalParameter("k", force_constant)
+    force.addPerParticleParameter("k")
     force.addPerParticleParameter("x0")
     force.addPerParticleParameter("y0")
     force.addPerParticleParameter("z0")
-    force.setName("bb_restraint_force")
     for index in indices:
-        force.addParticle(index, positions[index])
+        values = [
+            force_constant,
+            positions[index].x,
+            positions[index].y,
+            positions[index].z,
+        ]
+        force.addParticle(index, values)
     system.addForce(force)
     return system
 
@@ -419,8 +424,8 @@ def extract_nonbonded_parameters(
 
 
 def create_openmm_system(
-    system_info: SimulationSystem,
-    simulation_properties: SimulationProperties,
+    system_info: SystemInfo,
+    simulation_parameters: SimulationParameters,
     nonbonded_method: app.forcefield = app.PME,
     nonbonded_cutoff: unit.Quantity = 1.2 * unit.nanometer,
     switch_distance: unit.Quantity = 1 * unit.nanometer,
@@ -456,7 +461,7 @@ def create_openmm_system(
             raise ValueError("barostat can either be None, 'membrane' or 'isotropic'.")
         add_barostat(
             system=openmm_system,
-            properties=simulation_properties,
+            properties=simulation_parameters,
             membrane_barostat=mem,
         )
 
@@ -464,13 +469,13 @@ def create_openmm_system(
         add_ligand_restraint(
             system=openmm_system,
             atom_group=system_info.ligand_indices,
-            force_constant=simulation_properties.force_constant,
+            force_constant=simulation_parameters.force_constant,
             positions=path[0],
         )
 
     if bb_restraints:
         add_backbone_restraints(
-            positions=positions,
+            positions=pos,
             system=openmm_system,
             atom_list=system_info.psf_object.atom_list,
         )

@@ -10,11 +10,9 @@ def get_centroid_coordinates(
 ) -> unit.Quantity:
     """
     Calculates centroid coordinates of a given number of atoms or molecules.
-
     Args:
         positions (unit.Quantity): positions of all atoms in the system
         indices (List[int]): indices of the atoms you want the centroid from.
-
     Returns:
         unit.Quantity: Centroid coordinates of the specified atoms
     """
@@ -33,12 +31,10 @@ def get_center_of_mass_coordinates(
 ) -> unit.Quantity:
     """
     Calculates center of mass coordinates of a given number of atoms or molecules.
-
     Args:
         positions (unit.Quantity): positions of all atoms in the system
         indices (List[int]): indices of the atoms you want the centroid from.
         masses (mm.openmm.System): openmm System that contains all the atom masses.
-
     Returns:
         unit.Quantity: center of mass coordinates of the specified atoms
     """

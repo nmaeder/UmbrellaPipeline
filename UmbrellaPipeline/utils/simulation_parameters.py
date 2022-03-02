@@ -2,7 +2,7 @@ import openmm.unit as u
 from typing import Tuple
 
 
-class SimulationProperties:
+class SimulationParameters:
     """
     This class store all simulation parameters and checks their validity.
     """

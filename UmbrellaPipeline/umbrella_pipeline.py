@@ -8,14 +8,11 @@ from UmbrellaPipeline.sampling import (
     SamplingSunGridEngine,
 )
 from UmbrellaPipeline.utils import (
-    SimulationProperties,
-    SimulationSystem,
+    SimulationParameters,
+    SystemInfo,
 )
-from UmbrellaPipeline.path_generation import (
-    Tree,
-    Grid,
-    GridEscapeRoom,
-    TreeEscapeRoom,
+from UmbrellaPipeline.path_finding import (
+    EscapeRoom3D,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,12 +26,13 @@ class UmbrellaPipeline:
 
     def __init__(
         self,
-        psf_file: str,
-        crd_file: str,
-        toppar_stream_file: str,
-        toppar_directory: str,
-        ligand_residue_name: str,
-        simulation_properties: SimulationProperties = SimulationProperties(),
+        simulation_properties: SimulationParameters = SimulationParameters(),
+        system_info: SystemInfo = None,
+        psf_file: str = None,
+        crd_file: str = None,
+        toppar_stream_file: str = None,
+        toppar_directory: str = None,
+        ligand_residue_name: str = None,
         only_run_production: bool = False,
     ) -> None:
         """
@@ -44,29 +42,38 @@ class UmbrellaPipeline:
             toppar_stream_file (str): toppar str file provided by charmm-gui. Don't move it around beforehand.
             toppar_directory (str): toppar directory provided by charmm-gui
             ligand_residue_name (str): name of the ligand that you want to pull out.
-            simulation_properties (SimulationProperties, optional): Simulation property object. refer to the README for further info. Defaults to SimulationProperties().
+            simulation_parameters (SimulationParameters, optional): Simulation property object. refer to the README for further info. Defaults to SimulationParameters().
         """
         self.simulation_parameters = simulation_properties
-        self.system_info = SimulationSystem(
-            psf_file=psf_file,
-            crd_file=crd_file,
-            toppar_directory=toppar_directory,
-            toppar_stream_file=toppar_stream_file,
-            ligand_name=ligand_residue_name,
-        )
         self.path: List[unit.Quantity]
         self.openmm_system: mm.openmm.System
-        self.escape_room: GridEscapeRoom or TreeEscapeRoom
+        self.escape_room: EscapeRoom3D
         self.equilibrate = not only_run_production
         self.state: mm.State
+
+        if system_info:
+            self.system_info = system_info
+        else:
+            try:
+                self.system_info = SystemInfo(
+                    psf_file=psf_file,
+                    crd_file=crd_file,
+                    toppar_directory=toppar_directory,
+                    toppar_stream_file=toppar_stream_file,
+                    ligand_name=ligand_residue_name,
+                )
+            except:
+                ValueError(
+                    "either give a system information object or all of the following inputs: psf_file, crd_file, toppar_stream_file, toppar_directory, ligand_residue_name"
+                )
 
     def generate_path(
         self,
         distance_to_protein: unit.Quantity = 1.5 * unit.nanometer,
         path_interval=0.1 * unit.nanometer,
-        use_grid: bool = False,
         positions: unit.Quantity = None,
         system=None,
+        visualize: bool = True,
     ) -> List[unit.Quantity]:
         """
         Creates the path out of the protein. use_grid is not recommended.
@@ -84,34 +91,13 @@ class UmbrellaPipeline:
         else:
             pos = self.system_info.crd_object.positions
 
-        if not use_grid:
-            tree = Tree.from_files(psf=self.system_info.psf_object, positions=pos)
-            start = tree.node_from_coords(
-                positions=pos,
-                psf=self.system_info.psf_object,
-                name=self.system_info.ligand_name,
-                masses=system,
-            )
-            self.escape_room = TreeEscapeRoom(
-                tree=tree, start=start, stepsize=0.05 * unit.nanometer
-            )
-            self.escape_room.escape_room(distance=distance_to_protein)
-            self.path = self.escape_room.get_path_for_sampling(stepsize=path_interval)
-
-        else:
-            grid = Grid.from_files(
-                crd=self.system_info.crd_object,
-                psf=self.system_info.psf_object,
-                gridsize=0.02 * unit.nanometer,
-            )
-            start = grid.node_from_files(
-                psf=self.system_info.psf_object,
-                crd=self.system_info.crd_object,
-                name=self.system_info.ligand_name,
-            )
-            self.escape_room = GridEscapeRoom(grid=grid, start=start)
-            self.escape_room.escape_room(distance=distance_to_protein)
-            self.path = self.escape_room.get_path_for_sampling(path_interval)
+        self.escape_room = EscapeRoom3D.from_files(
+            system_info=self.system_info, positions=pos,
+        )
+        self.escape_room.find_path(distance=distance_to_protein)
+        self.path = self.escape_room.get_path_for_sampling(stepsize=path_interval)
+        if visualize:
+            self.escape_room.visualize_path(self.path)
 
         return self.path
 
