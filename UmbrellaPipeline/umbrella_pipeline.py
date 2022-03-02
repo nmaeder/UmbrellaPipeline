@@ -97,6 +97,8 @@ class UmbrellaPipeline:
         )
         self.escape_room.find_path(distance=distance_to_protein)
         self.path = self.escape_room.get_path_for_sampling(stepsize=path_interval)
+        if visualize:
+            self.escape_room.visualize_path(self.path)
 
         return self.path
 
