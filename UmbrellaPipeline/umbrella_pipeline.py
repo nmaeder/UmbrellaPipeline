@@ -12,7 +12,6 @@ from UmbrellaPipeline.utils import (
     SystemInfo,
 )
 from UmbrellaPipeline.path_finding import (
-    Tree,
     EscapeRoom3D,
 )
 
