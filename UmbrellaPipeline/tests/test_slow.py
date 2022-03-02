@@ -301,7 +301,7 @@ def test_tree_successor():
     start = unit.Quantity(Vec3(0,0,0), unit.nanometer)
     escape_room = EscapeRoom3D(tree=tree, start=start)
     parent = Node()
-    children = escape_room.generate_successors(parent=parent, resolution=1, wall_radius=.12*unit.nanometer)
+    children = escape_room.generate_successors(parent=parent, resolution=1, wall_radius=.12)
     supposedchildren = []
     for i in tree.POSSIBLE_NEIGHBOURS:
         supposedchildren.append(
