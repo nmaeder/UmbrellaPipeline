@@ -11,7 +11,7 @@ from UmbrellaPipeline.sampling import (
 )
 from UmbrellaPipeline.utils import (
     SimulationProperties,
-    SimulationSystem,
+    SystemInfo,
 )
 from UmbrellaPipeline.path_finding import (
     Tree,
@@ -52,7 +52,7 @@ class UmbrellaPipeline:
             simulation_properties (SimulationProperties, optional): Simulation property object. refer to the README for further info. Defaults to SimulationProperties().
         """
         self.simulation_parameters = simulation_properties
-        self.system_info = SimulationSystem(
+        self.system_info = SystemInfo(
             psf_file=psf_file,
             crd_file=crd_file,
             toppar_directory=toppar_directory,

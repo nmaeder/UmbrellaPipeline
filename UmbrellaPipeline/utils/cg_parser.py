@@ -1,6 +1,9 @@
 import os
 from typing import List
 from openmm import unit, app
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def parse_params(
@@ -27,6 +30,7 @@ def parse_params(
             parFiles += (parfile,)
     ret = app.CharmmParameterSet(*parFiles)
     os.chdir(current_dir)
+    logger.info("Charmm Parameters read in.")
     return ret
 
 
@@ -65,4 +69,7 @@ def gen_pbc_box(
     boxlz = max_crds[2] - min_crds[2]
 
     psf.setBox(boxlx, boxly, boxlz)
+    logger.info(
+        f"Periodic boundary conditions added to psf object with size {boxlx}, {boxly}, {boxlz}."
+    )
     return min_crds

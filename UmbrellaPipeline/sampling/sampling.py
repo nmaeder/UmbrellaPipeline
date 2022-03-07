@@ -15,9 +15,14 @@ from UmbrellaPipeline.sampling import (
 from UmbrellaPipeline.utils import (
     display_time,
     SimulationProperties,
-    SimulationSystem,
+    SystemInfo,
     gen_pbc_box,
 )
+
+try:
+    from typing import Literal
+except:
+    from typing_extensions import Literal
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +35,14 @@ class UmbrellaSampling:
     def __init__(
         self,
         properties: SimulationProperties,
-        info: SimulationSystem,
+        info: SystemInfo,
         traj_write_path: str = None,
         restrain_protein_backbone: bool = False,
     ) -> None:
         """
         Args:
             properties (SimulationProperties): simulation properties object, holding temp, pressure, etc
-            info (SimulationSystem): simulation system object holding psf, crd objects etc.
+            info (SystemInfo): simulation system object holding psf, crd objects etc.
             path (List[unit.Quantity]): path for the ligand to walk trough.
             openmm_system (mm.openmm.System): openmm System object. Defaults to None.
             traj_write_path (str, optional): output directory where the trajectories are written to. Defaults to None.
@@ -127,7 +132,11 @@ class UmbrellaSampling:
                 volume=True,
             )
         )
+        st = time.time()
+        logger.info("Equilibration started.")
         self.simulation.step(self.simulation_properties.n_equilibration_steps)
+        et = time.time() - st
+        logger.info(f"Equilibration finished. Elapsed time: {display_time(et)}")
         state = self.simulation.context.getState(getPositions=True, getVelocities=True)
         return state
 
@@ -223,16 +232,13 @@ class UmbrellaSampling:
                     original_parameters=self.ligand_non_bonded_parameters,
                     position=position,
                 )
-                logger.info(
-                    f"Ligand moved to position {window + 1} of {len(self.lamdas)}."
-                )
                 self.simulation.step(self.simulation_properties.n_equilibration_steps)
             except IndexError:
                 pass
         write_path_to_file(path, self.traj_write_path)
 
 
-class SamplingSunGridEngine(UmbrellaSampling):
+class SamplingCluster(UmbrellaSampling):
     """
     This class holds all information for running your umbrella simulation on the hydra cluster. it works entirely differnt than the UmbrellaSampling class.
     It first writes bash scirpts which it then submits to the submission system.
@@ -240,8 +246,9 @@ class SamplingSunGridEngine(UmbrellaSampling):
 
     def __init__(
         self,
+        cluster: Literal,
         properties: SimulationProperties,
-        info: SimulationSystem,
+        info: SystemInfo,
         traj_write_path: str,
         conda_environment: str,
         mail: str = None,
@@ -255,7 +262,7 @@ class SamplingSunGridEngine(UmbrellaSampling):
             properties (SimulationProperties): simulation_property object.
             path (List[unit.Quantity]): path for the ligand to walk through.
             openmm_system (mm.openmm.System): openmm system of your simulation.
-            info (SimulationSystem): simulation system object.
+            info (SystemInfo): simulation system object.
             traj_write_path (str): output directory where the trajectories will be written to.
             conda_environment (str): name of the conda environment where this package and all its dependencies are installed.
             mail (str, optional): [description]. if given, a mail will be sent to this adress if a production run has finished.
@@ -311,7 +318,7 @@ class SamplingSunGridEngine(UmbrellaSampling):
                 c += "#$ -pe smp 1\n"
             c += "hostname\n"
             c += f"conda activate {self.conda_environment}\n"
-            c += f"python {os.path.abspath(os.path.dirname(__file__)+'/../scripts/worker_script_sun_grid_engine.py')} "
+            c += f"python {os.path.abspath(os.path.dirname(__file__)+'/../scripts/worker_script_cluster.py')} "
 
             pos = f"-x {position.x} " f"-y {position.y} " f"-z {position.z}"
             c += f" -t {self.simulation_properties.temperature.value_in_unit(unit=unit.kelvin)}"
@@ -330,11 +337,45 @@ class SamplingSunGridEngine(UmbrellaSampling):
             self.commands.append(f"qsub {script_path}")
         return self.commands
 
+    def write_slurm_scripts(self, path: unit.Quantity) -> str:
+        """
+        Writes shell script which is then submitted to a sun grid engine cluster queue.
+
+        Args:
+            umbrella path: lambda of your simulation
+
+        Returns:
+            str: the path where the file is written to.
+        """
+        pass
+
+    def write_lsf_scripts(self, path: unit.Quantity) -> str:
+        """
+        Writes shell script which is then submitted to a sun grid engine cluster queue.
+
+        Args:
+            umbrella path: lambda of your simulation
+
+        Returns:
+            str: the path where the file is written to.
+        """
+        pass
+
     def write_production_starter(self, commands: List[str]) -> str:
+        """
+        Writes a bash file, that submits all production jobs
+
+        Args:
+            commands (List[str]): list of starting commands
+
+        Returns:
+            str: path to file
+        """
         with open(f"{self.hydra_working_dir}/submit_production.sh", "w") as f:
             f.write("#!/bin/bash\n")
             for i in commands:
                 f.write(f"{i}\n")
+        return f"{self.hydra_working_dir}/submit_production.sh"
 
     def run_equilibration(
         self,
@@ -366,6 +407,7 @@ class SamplingSunGridEngine(UmbrellaSampling):
             rigid_water=rigid_water,
             constraints=constraints,
         )
+
         path = serialize_state(state=state, path=self.serialized_state_file)
         return state, path
 

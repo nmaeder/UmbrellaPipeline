@@ -157,7 +157,7 @@ class Grid:
                 ):
                     if dx == dy == dz == 0:
                         continue
-                    if math.sqrt(dx ** 2 + dy ** 2 + dz ** 2) > numadd[0]:
+                    if math.sqrt(dx**2 + dy**2 + dz**2) > numadd[0]:
                         continue
                     grid[x - dx][y - dy][z - dz] = True
                     grid[x - dx][y - dy][z + dz] = True

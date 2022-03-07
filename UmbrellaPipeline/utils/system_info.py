@@ -8,7 +8,7 @@ from UmbrellaPipeline.utils import (
 )
 
 
-class SimulationSystem:
+class SystemInfo:
     """
     This class stores all paths, crd, psf and parameter objects.
     """
@@ -70,7 +70,6 @@ class SimulationSystem:
         return self._ligand_indices
 
     # Setters
-
     @params.setter
     def params(self, value: Tuple[str]) -> None:
         try:

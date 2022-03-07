@@ -3,15 +3,20 @@ from openmm import (
     unit,
     app,
 )
-from typing import List
+from typing import List, Literal
 import numpy as np
 import logging
+
+try:
+    from typing import Literal
+except:
+    from typing_extensions import Literal
 
 logger = logging.getLogger(__name__)
 
 from UmbrellaPipeline.utils import (
     SimulationProperties,
-    SimulationSystem,
+    SystemInfo,
     get_backbone_indices,
     gen_pbc_box,
 )
@@ -54,6 +59,9 @@ def add_ligand_restraint(
     force.addBond([0])
     force.setUsesPeriodicBoundaryConditions(True)
     system.addForce(force)
+    logger.info(
+        f"Ligand restraint added at position x={round(positions.x,3)}, y={round(positions.x,3)} ,z={round(positions.x,3)} with a force constant of {force_constant}"
+    )
     return system
 
 
@@ -118,6 +126,9 @@ def add_membrane_barostat(
         frequency,
     )
     system.addForce(barostat)
+    logger.info(
+        f"Membrane MC Barostat added with p = {properties.pressure}, T ={properties.temperature} and frequency = {frequency}."
+    )
     return system
 
 
@@ -145,6 +156,9 @@ def add_isotropic_barostat(
         frequency,
     )
     system.addForce(barostat)
+    logger.info(
+        f"Isotropic MC Barostat added with p = {properties.pressure}, T ={properties.temperature} and frequency = {frequency}."
+    )
     return system
 
 
@@ -152,7 +166,7 @@ def add_backbone_restraints(
     positions: unit.Quantity,
     system: mm.openmm.System,
     atom_list: app.internal.charmm.topologyobjects.AtomList,
-    force_constant: unit.Quantity = 10 * unit.kilocalorie_per_mole / unit.angstrom ** 2,
+    force_constant: unit.Quantity = 10 * unit.kilocalorie_per_mole / unit.angstrom**2,
 ) -> mm.openmm.System:
     """Adds a CustomExternalForce object to your systems force list. it will not restrain at this point, since the force constant is set to 0.
     Use activate_backbone_restraints() to set the restraints active.
@@ -179,6 +193,9 @@ def add_backbone_restraints(
         ]
         force.addParticle(index, values)
     system.addForce(force)
+    logger.info(
+        f"Protein backbone restraints added with a force constant of {force_constant}."
+    )
     return system
 
 
@@ -322,15 +339,11 @@ def update_restraint(
         window (int): path window.
     """
     ghost_ligand(simulation=simulation, ligand_indices=ligand_indices)
-    logger.info("Liggand turned to dummy.")
     for a, b in zip(
         ["x0", "y0", "z0"],
         [position.x, position.y, position.z],
     ):
         simulation.context.setParameter(a, b)
-        logger.info(
-            f"Restraint position updated to x={path[window].x} y={path[window].y} z={path[window].z}"
-        )
     simulation.minimizeEnergy()
     simulation.step(250000)
     ghost_busters_ligand(
@@ -339,7 +352,9 @@ def update_restraint(
         original_parameters=original_parameters,
         nr_steps=nr_steps,
     )
-    logger.info("Ligand back to full throttle. :)")
+    logger.info(
+        f"Restraint position updated to x={path[window].x} y={path[window].y} z={path[window].z}"
+    )
     return simulation
 
 
@@ -352,6 +367,7 @@ def serialize_system(system: mm.openmm.System, path: str) -> str:
     """
     with open(file=path, mode="w") as f:
         f.write(mm.openmm.XmlSerializer.serialize(system))
+    logger.info(f"System serialized to {path}.")
     return path
 
 
@@ -373,6 +389,7 @@ def serialize_state(state: mm.State, path: str) -> str:
         TypeError("State has to contain velocities and positions.")
     with open(file=path, mode="w") as f:
         f.write(mm.openmm.XmlSerializer.serialize(state))
+
     return path
 
 
@@ -391,6 +408,7 @@ def deserialize_state(path: str) -> mm.State:
             state = mm.openmm.XmlSerializer.deserialize(f.read())
     except:
         FileNotFoundError
+    logger.info(f"State deserialized from {path}.")
     return state
 
 
@@ -407,6 +425,7 @@ def write_path_to_file(path: unit.Quantity, directory: str) -> str:
     orgCoords.write(f"#lamda, x0, y0, z0, all in units of {path[0].unit}\n")
     for window, position in enumerate(path):
         orgCoords.write(f"{window}, {position.x}, {position.y}, {position.z}\n")
+    logger.info(f"Unbinding Pathway written to {path}.")
     return path
 
 
@@ -432,14 +451,14 @@ def extract_nonbonded_parameters(
 
 
 def create_openmm_system(
-    system_info: SimulationSystem,
+    system_info: SystemInfo,
     simulation_properties: SimulationProperties,
     nonbonded_method: app.forcefield = app.PME,
     nonbonded_cutoff: unit.Quantity = 1.2 * unit.nanometer,
     switch_distance: unit.Quantity = 1 * unit.nanometer,
     rigid_water: bool = True,
     constraints: app.forcefield = app.HBonds,
-    barostat: str = None,
+    barostat: Literal = None,
     ligand_restraint: bool = False,
     path: unit.Quantity = None,
     bb_restraints: bool = False,
@@ -487,5 +506,24 @@ def create_openmm_system(
             system=openmm_system,
             atom_list=system_info.psf_object.atom_list,
         )
-
+    msg = "OpenMM system created."
+    if bb_restraints:
+        if msg.endswith("."):
+            msg.rstrip(".")
+            msg += " with "
+        msg += "Backbone restraints and "
+    if ligand_restraint:
+        if msg.endswith("."):
+            msg.rstrip(".")
+            msg += " with "
+        msg += "Ligand restraints and "
+    if barostat:
+        if msg.endswith("."):
+            msg.rstrip(".")
+            msg += " with "
+        msg += "Barostat and "
+    if msg.endswith(" "):
+        msg.rstrip(" ")
+        msg += "."
+    logger.info(msg)
     return openmm_system

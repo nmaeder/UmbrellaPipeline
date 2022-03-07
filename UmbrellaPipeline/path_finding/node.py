@@ -6,9 +6,9 @@ from openmm import Vec3
 class Node:
     def __init__(
         self,
-        x:int=0,
-        y:int=0,
-        z:int=0,
+        x: int = 0,
+        y: int = 0,
+        z: int = 0,
         distance_to_wall: float = 0,
         parent=None,
     ) -> None:
@@ -95,7 +95,7 @@ class TreeNode(Node):
             distance_to_wall=distance_to_wall,
         )
         self.parent: TreeNode = parent
-    
+
     def __hash__(self) -> int:
         return hash((self.x, self.y, self.z))
 

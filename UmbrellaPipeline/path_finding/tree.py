@@ -88,7 +88,9 @@ class Tree:
         return cls(coordinates=u.Quantity(value=coords, unit=positions.unit))
 
     @staticmethod
-    def calculate_euclidean_distance(node: TreeNode, destination: TreeNode) -> u.Quantity:
+    def calculate_euclidean_distance(
+        node: TreeNode, destination: TreeNode
+    ) -> u.Quantity:
         """
         calculates euclidean distance between node and destination.
         Args:
@@ -111,7 +113,9 @@ class Tree:
             )
 
     @staticmethod
-    def calculate_diagonal_distance(node: TreeNode, destination: TreeNode) -> u.Quantity:
+    def calculate_diagonal_distance(
+        node: TreeNode, destination: TreeNode
+    ) -> u.Quantity:
         """
         calculates diagonal distance between node and destination.
         Args:

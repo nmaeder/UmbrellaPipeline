@@ -360,7 +360,11 @@ class TreeEscapeRoom(EscapeRoom3D):
             return node.distance_to_wall >= distance
 
     def create_child(
-        self, neighbour: List[int], parent: TreeNode, resolution: float, wall_radius: float
+        self,
+        neighbour: List[int],
+        parent: TreeNode,
+        resolution: float,
+        wall_radius: float,
     ) -> TreeNode:
         """
         Creates a neighbouring node to parent.
@@ -465,7 +469,7 @@ class TreeEscapeRoom(EscapeRoom3D):
             raise StartIsFinishError
         if resolution:
             self.resolution = resolution.value_in_unit(unit.nanometer)
-        
+
         distance = distance.value_in_unit(unit.nanometer)
         wall_radius = wall_radius.value_in_unit(unit.nanometer)
 
