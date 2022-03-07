@@ -477,7 +477,7 @@ class TreeEscapeRoom(EscapeRoom3D):
         open_set = set()
         open_set.add(first_node)
         closed_map = dict()
-
+        st = time.time()
         while open_queue.queue:
             best_node = open_queue.pop()
             open_set.remove(best_node)
@@ -494,6 +494,9 @@ class TreeEscapeRoom(EscapeRoom3D):
                     closed_map[best_node] = best_node.parent
                     closed_map[n] = n.parent
                     self.shortest_path = self.backtrace_path(closed_map, key=n)
+                    logger.info(
+                        f"Path out of Cavity found! Hurray. Time Elapsed: {display_time(time.time()-st)}"
+                    )
                     return self.shortest_path
 
                 if self.child_already_exists(n, open_set, closed_map):
@@ -554,6 +557,9 @@ class TreeEscapeRoom(EscapeRoom3D):
                     diff = self.tree.calculate_euclidean_distance(current, new)
             except StopIteration:
                 end_reached = True
+        logger.info(
+            f"Path for sampling generated. Total number of umbrella windows = {len(ret)}"
+        )
         return unit.Quantity(value=ret, unit=unit.nanometer)
 
     def visualize_path(self, path: unit.Quantity = None):
