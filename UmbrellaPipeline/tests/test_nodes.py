@@ -1,7 +1,6 @@
-import openmm.unit as unit
-from openmm import Vec3
+from openmm import Vec3, unit
 
-from UmbrellaPipeline.path_generation import GridNode, Node, TreeNode
+from UmbrellaPipeline.path_finding import GridNode, Node, TreeNode
 
 
 def test_generate_basenode():
@@ -19,11 +18,14 @@ def test_treenode_generation():
         coords=unit.Quantity(value=Vec3(4, 34.1, 23.2), unit=unit.nanometer)
     )
     treeNode3 = TreeNode.from_coords(
-        coords=[
-            unit.Quantity(value=4, unit=unit.nanometer),
-            unit.Quantity(value=34.1, unit=unit.nanometer),
-            unit.Quantity(value=23.2, unit=unit.nanometer),
-        ]
+        coords=unit.Quantity(
+            value=Vec3(
+                x=4,
+                y=34.1,
+                z=23.2,
+            ),
+            unit=unit.nanometer,
+        )
     )
     treeNode4 = TreeNode.from_coords(coords=[4, 34.1, 23.2], unit=unit.angstrom)
     assert treeNode4.x == 4

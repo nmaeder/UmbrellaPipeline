@@ -80,18 +80,25 @@ class SimulationProperties:
     @temperature.setter
     def temperature(self, value: u.Quantity) -> None:
         try:
-            if value < 0 * u.kelvin:
-                raise ValueError("Temperature can not be negative Kelvin!")
-        except (TypeError, AttributeError):
-            raise TypeError("Temperature has to be in units of kelvin!")
+            assert value >= 0 * u.kelvin
+        except (AssertionError, AttributeError):
+            raise TypeError(
+                "Temperature has to be in units of kelvin and greater equal 0!"
+            )
         self._temperature = value.in_units_of(u.kelvin)
 
     @pressure.setter
     def pressure(self, value: u.Quantity) -> None:
-        try:
-            self._pressure = value.in_units_of(u.bar)
-        except (TypeError, AttributeError):
-            raise TypeError("Temperature has to be in units of bar!")
+        if value:
+            try:
+                assert value >= 0 * u.bar
+            except (AssertionError, AttributeError):
+                raise TypeError(
+                    "Pressure has to be in a unit of pressure and greater equal 0!"
+                )
+            self._pressure = value
+        else:
+            self._pressure = None
 
     @time_step.setter
     def time_step(self, value: u.Quantity) -> None:
@@ -103,9 +110,9 @@ class SimulationProperties:
     @force_constant.setter
     def force_constant(self, value: u.Quantity) -> None:
         try:
-            self._force_constant = value  # .in_units_of(
-            # u.kilocalorie_per_mole / (u.angstrom ** 2)
-            # )
+            self._force_constant = value.in_units_of(
+                u.kilocalorie_per_mole * u.angstrom ** -2
+            )
         except (TypeError, AttributeError):
             raise TypeError(
                 "Force Constant has to be in units of energy per mole per length²!"
@@ -114,7 +121,7 @@ class SimulationProperties:
     @friction_coefficient.setter
     def friction_coefficient(self, value: u.Quantity) -> None:
         try:
-            self._friction_coefficient = value  # .in_units_of(1/u.picoseconds)
+            self._friction_coefficient = value.in_units_of(u.picosecond ** -1)
         except (TypeError, AttributeError):
             raise TypeError("Friction Coefficient has to be in units of inverse time!")
 
@@ -129,8 +136,7 @@ class SimulationProperties:
 
     @n_production_steps.setter
     def n_production_steps(self, value: int) -> None:
-        if value < 0:
-            raise ValueError("Number of production steps cannot be negative!")
+        assert value >= 0, "Number of production steps cannot be negative!"
         try:
             self._n_production_steps = int(value)
         except:
@@ -138,8 +144,7 @@ class SimulationProperties:
 
     @write_out_frequency.setter
     def write_out_frequency(self, value: int) -> None:
-        if value < 0:
-            raise ValueError("Output frequency cannot be negative!")
+        assert value > 0, "Output frequency cannot be negative!"
         try:
             if value == 0:
                 self._write_out_frequency = self.n_production_steps

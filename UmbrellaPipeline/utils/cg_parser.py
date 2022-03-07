@@ -1,7 +1,6 @@
 import os
 from typing import List
-import openmm.app as app
-import openmm.unit as unit
+from openmm import unit, app
 
 
 def parse_params(
@@ -16,9 +15,7 @@ def parse_params(
     Returns:
         app.charmmparameterset.CharmmParameterSet: [description]
     """
-    if not toppar_str_file.startswith("/"):
-        now = os.getcwd()
-        toppar_str_file = now + "/" + toppar_str_file
+    toppar_str_file = os.path.abspath(toppar_str_file)
     current_dir = os.getcwd()
     os.chdir(toppar_directory)
     parFiles = ()
@@ -35,23 +32,22 @@ def parse_params(
 
 def gen_pbc_box(
     psf: str or app.CharmmPsfFile,
-    pdb: str or app.PDBFile,
+    pos: unit.Quantity,
 ) -> List[unit.Quantity]:
     """
     Adapted from charmm_gui readparams. Generates pbc box and adds it to the psf. returns offset of the box from 0,0,0.
 
     Args:
         psf (strorapp.CharmmPsfFile): psf file or path to psf file
-        pdb (strorapp.PDBFile): pdb file or path to pdb file
+        crd (strorapp.CharmmCrdFile): crd file or path to crd file
 
     Returns:
         List[unit.Quantity]: offset of box from 0,0,0
     """
-    if type(pdb) is str:
-        pdb = app.PDBFile(pdb)
-    if type(psf) is str:
+
+    if isinstance(psf, str):
         psf = app.CharmmPsfFile(psf)
-    coords = pdb.positions
+    coords = pos
 
     min_crds = [coords[0][0], coords[0][1], coords[0][2]]
     max_crds = [coords[0][0], coords[0][1], coords[0][2]]

@@ -2,7 +2,7 @@ import os
 import numpy as np
 import openmm.unit as unit
 
-from UmbrellaPipeline.path_generation import Grid, GridNode
+from UmbrellaPipeline.path_finding import Grid, GridNode
 
 
 def test_initialize_no_files():
