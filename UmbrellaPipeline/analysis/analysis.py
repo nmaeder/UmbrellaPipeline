@@ -172,7 +172,13 @@ class PMFCalculator:
         er.stepsize = 0.25 * unit.angstrom
         return er.get_path_for_sampling(stepsize=stepsize)
 
-    def calculate_pmf(
+    def calculate_pmf_pymbar(
+        self,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        T_K = np.ones(self.n_windows, float)*self.simulation_properties.temperature._value
+        kT = (unit.BOLTZMANN_CONSTANT_kB*unit.AVOGADRO_CONSTANT_NA*self.simulation_properties.temperature).value_in_unit(unit.kilocalorie_per_mole*unit.angstrom**-2)
+
+    def calculate_pmf_fastMBAR(
         self, use_kcal: bool = False, in_rt: bool = False
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -233,7 +239,7 @@ class PMFCalculator:
         ]
 
         # solve mbar equations.
-        wham = FastMBAR(
+        mbar = FastMBAR(
             energy=self.A,
             num_conf=num_conf,
             cuda=cuda_available,
@@ -256,7 +262,7 @@ class PMFCalculator:
             self.B[bin, ~indicator] = np.inf
 
         # calculate the free energies of the perturbed states
-        self.pmf, self.pmf_error = wham.calculate_free_energies_of_perturbed_states(
+        self.pmf, self.pmf_error = mbar.calculate_free_energies_of_perturbed_states(
             self.B
         )
         return self.pmf, self.pmf_error

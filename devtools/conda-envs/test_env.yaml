@@ -11,6 +11,8 @@ dependencies:
   - openmm
   - openmmtools
   - scipy
+  - FastMBAR
+  - pymbar
     # Testing
   - pytest
   - pytest-cov
