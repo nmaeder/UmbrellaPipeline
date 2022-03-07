@@ -1,16 +1,25 @@
 import copy, time, logging, math
-from typing import List
+from typing import List, Dict, Set, Tuple
 import gemmi
 import numpy as np
 from openmm import Vec3, unit
+import plotly.express as px
+import plotly.graph_objects as go
+import pandas as pd
 
 from UmbrellaPipeline.path_finding import (
     GridNode,
     TreeNode,
     Grid,
     Tree,
+    Queue,
 )
-from UmbrellaPipeline.utils import display_time
+from UmbrellaPipeline.utils import (
+    display_time,
+    get_center_of_mass_coordinates,
+    NoWayOutError,
+    StartIsFinishError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -305,237 +314,264 @@ class TreeEscapeRoom(EscapeRoom3D):
     def __init__(
         self,
         tree: Tree,
-        start: TreeNode,
-        pathsize: unit.Quantity = 0.12 * unit.nanometer,
-        stepsize: unit.Quantity = 0.025 * unit.nanometer,
+        start: unit.Quantity,
     ) -> None:
-        super().__init__(start=start)
-        self.shortest_path: List[TreeNode] = []
         self.tree = tree
-        self.stepsize = stepsize
+        self.start = start
+        self.shortest_path: List[TreeNode] = []
+        self.resolution = 0.01
+
+    @classmethod
+    def from_files(cls, system_info: SystemInfo, positions: unit.Quantity = None):
+        if not positions:
+            positions = system_info.crd_object.positions
+        tree = Tree.from_files(positions=positions, psf=system_info.psf_object)
+        try:
+            start = get_center_of_mass_coordinates(
+                positions=positions,
+                indices=system_info.ligand_indices,
+                masses=system_info.psf_object.system,
+            ).value_in_unit(unit.nanometer)
+        except:
+            _ = system_info.psf_object.createSystem(system_info.params)
+            start = get_center_of_mass_coordinates(
+                positions=positions,
+                indices=system_info.ligand_indices,
+                masses=system_info.psf_object.system,
+            ).value_in_unit(unit.nanometer)
+        return cls(tree=tree, start=start)
 
     def is_goal_reached(
         self,
         node: TreeNode,
-        box: unit.Quantity = None,
-        distance: unit.Quantity = None,
+        distance: unit.Quantity,
     ):
         """
-        Checks if the end is reached. either reached when distance bigger than dist_to_protein or, if box is given, when path is outside the box.
-
+        Checks wheter a node meets the goal criteria.
         Args:
             node (TreeNode): [description]
-            box (unit.Quantity): [description]
             dist_to_protein (unit.Quantity, optional): [description]. Defaults to 2*unit.nanometer.
-
         Returns:
             [type]: [description]
         """
         try:
-            if node.distance_to_wall * node.unit >= distance:
-                return True
-            else:
-                return False
-        except (TypeError, AttributeError):
-            pass
-        try:
-            return (
-                (node.x * node.unit < box[0] or node.x * node.unit > box[1])
-                or (node.y * node.unit < box[2] or node.y * node.unit > box[3])
-                or (node.z * node.unit < box[4] or node.z * node.unit > box[5])
-            )
-        except (TypeError):
-            raise TypeError("Either give distance_to_protein or box vectors!")
+            return node.distance_to_wall >= distance.value_in_unit(u.nanometer)
+        except AttributeError:
+            return node.distance_to_wall >= distance
 
-    def create_child(self, neighbour: List[int], parent: TreeNode) -> TreeNode:
+    def create_child(
+        self, neighbour: List[int], parent: TreeNode, resolution: float, wall_radius: float
+    ) -> TreeNode:
         """
-        _summary_
-
+        Creates a neighbouring node to parent.
         Args:
-            neighbour (List[int]): neighbour position
-            parent (TreeNode): parent node
-
+            neighbour (List[int]): position offset to parent
+            parent (TreeNode): parent TreeNode
         Returns:
-            TreeNode: child at given neighbour position
+            TreeNode: Neighbouring node if its not inside the wall
         """
-        child = TreeNode.from_coords(
-            [
-                a + b * self.stepsize.value_in_unit(self.tree.unit)
-                for a, b in zip(
-                    parent.get_coordinates_for_query(self.tree.unit), neighbour
-                )
+        child_position = [
+            a + b for a, b in zip(parent.get_grid_coordinates(), neighbour)
+        ]
+        distance_to_wall = self.tree.get_distance_to_wall(
+            coordinates=[
+                child_position[0] * resolution + self.start.x,
+                child_position[1] * resolution + self.start.y,
+                child_position[2] * resolution + self.start.z,
             ],
-            unit=parent.unit,
+            vdw_radius=wall_radius,
         )
-        child.distance_walked = (
-            parent.distance_walked
-            + self.tree.calculate_diagonal_distance(
-                node=parent, destination=child
-            ).value_in_unit(self.tree.unit)
-        )
-        child.distance_to_wall = self.tree.get_distance_to_protein(
-            node=child
-        ).value_in_unit(self.tree.unit)
-        child.parent = parent
-        return child
+        try:
+            return TreeNode.from_coords(
+                coords=child_position, distance_to_wall=distance_to_wall, parent=parent
+            )
+        except:
+            pass
 
     def generate_successors(
         self,
         parent: TreeNode,
+        resolution: float,
+        wall_radius: float,
     ) -> List[TreeNode]:
         """
-        generates possible successors for the a star grid
+        Creates a max of 6 neibhbouring nodes for the input node.
         Args:
-            parent (Node): parent Node
-            pathsize (int): diameter of path that has to be free
+            parent (TreeNode): parent TreeNode
         Returns:
-            List[Node]: list of possible successor nodes
+            List[TreeNode]: list of possible successor nodes
         """
-        ret = []
-        for neighbour in self.tree.POSSIBLE_NEIGHBOURS:
-            child = self.create_child(neighbour=neighbour, parent=parent)
-            if not child.distance_to_wall == 0 * unit.meter:
-                ret.append(child)
-        return ret
+        return [
+            self.create_child(
+                neighbour=neighbour,
+                parent=parent,
+                resolution=resolution,
+                wall_radius=wall_radius,
+            )
+            for neighbour in self.tree.POSSIBLE_NEIGHBOURS
+        ]
 
-    def backtrace_path(self) -> List[TreeNode]:
+    def backtrace_path(
+        self,
+        closed: Dict,
+        key: Tuple,
+    ) -> List[TreeNode]:
         """
-        removes all the unsuccesfull path legs and returns the direct path from start to end. Does only make sense to run with or after self.escape_room
+        removes all the unsuccesfull path legs and returns the direct path from start to end.
         Returns:
-            List[TreeNode]: direct path from self.start to self.end
+            List[TreeNode]: path found by the escape room algorithm
         """
-        self.shortest_path.reverse()
-        new = []
-        current = self.shortest_path[0]
+        current = closed[key]
+        self.shortest_path = [key]
         while current:
-            new.insert(0, current)
-            current = current.parent
-        self.shortest_path = new
+            self.shortest_path.append(current)
+            current = closed[current]
+        self.shortest_path.reverse()
         return self.shortest_path
 
-    def is_child_good(self, child: TreeNode, open_list: List[TreeNode]) -> bool:
+    def child_already_exists(
+        self, child: TreeNode, open_set: Set, closed_map: Dict
+    ) -> bool:
         """
-        Checks if a there is already a node with the same coordinates but lower distance_walked in either open_list or shortest_path.
-
+        Checks wether a given node was already looked at.
         Args:
-            child (TreeNode): node that should be checked
-            open_list (List[TreeNode]): list of nodes to go through.
-
+            child (TreeNode): TreeNode to check
+            open_set (Set): open set to search
+            closed_map (Dict): closed map to search
         Returns:
-            bool: True if no child with same coordinates and lower distance_walked is in open_list and shortes_path
+            bool: True if it already exists
         """
-        if any(
-            (
-                round(list_entry, 3) == round(child, 3)
-                and list_entry.distance_walked <= child.distance_walked
-            )
-            for list_entry in open_list
-        ):
-            return False
-        elif any(
-            (
-                round(list_entry, 3) == round(child, 3)
-                and list_entry.distance_walked <= child.distance_walked
-            )
-            for list_entry in self.shortest_path
-        ):
-            return False
-        else:
-            return True
+        return child in open_set or child in closed_map
 
-    def escape_room(
+    def find_path(
         self,
-        distance: unit.Quantity = None,
-        box: List[unit.Quantity] = None,
+        resolution: unit.Quantity = None,
+        wall_radius: unit.Quantity = 0.12 * unit.nanometer,
+        distance: unit.Quantity = 1.5 * unit.nanometer,
     ) -> List[TreeNode]:
         """
-        lets a slightly addapted (greedier) version of the A* star algorithm search for the shortest path between start end end point.
+        core function implementing the escape room algorithm
         Args:
-            backtrace (bool): set to false if you want the function to return all searched nodes instead of the shortet path: Defaults to True
+            distance (u.Quantity, optional): distance to wall that defines the goal. Defaults to 1.5 u.nanometer.
+            resolution (u.Quantity, optional): resolution of the searched grid. Defaults to .25 u.nanometer.
         Returns:
-            List[TreeNode]: shortest path from a to b if class settint backtrace is true. else returns all searched nodes.
+            List[TreeNode]: List of TreeNodes describing the most accessible path oud of 3D object.
         """
-        start = time.time()
-        if self.is_goal_reached(node=self.start, box=box, distance=distance):
-            logger.warning(
-                "Start point does already a goal point. Try using a bigger distance, or giving the method a box instead of a distance :)."
+        try:
+            first_node = TreeNode(
+                distance_to_wall=self.tree.get_distance_to_wall(coordinates=self.start)
             )
-            self.shortest_path.append(self.start)
-            return self.shortest_path
-        self.start.distance_to_wall = self.tree.get_distance_to_protein(
-            node=self.start
-        ).value_in_unit(self.tree.unit)
-        self.start.distance_walked = 0
-        open_list = [self.start]
-        while open_list:
-            q = open_list[0]
-            for node in open_list:
-                if node.distance_to_wall > q.distance_to_wall:
-                    q = node
-                if (
-                    node.distance_to_wall == q.distance_to_wall
-                    and node.distance_walked < q.distance_walked
-                ):
-                    q = node
-            open_list.remove(q)
-            children = self.generate_successors(parent=q)
-            for child in children:
-                if self.is_goal_reached(node=child, box=box, distance=distance):
-                    self.shortest_path.append(q)
-                    logger.info(
-                        f"Shortes path was found! Elapsed Time = {display_time(time.time() - start)}"
-                    )
-                    return self.backtrace_path()
-                if not self.is_child_good(child, open_list):
+        except:
+            raise StartIsFinishError
+        if resolution:
+            self.resolution = resolution.value_in_unit(unit.nanometer)
+        
+        distance = distance.value_in_unit(unit.nanometer)
+        wall_radius = wall_radius.value_in_unit(unit.nanometer)
+
+        open_queue = Queue([first_node])
+        open_set = set()
+        open_set.add(first_node)
+        closed_map = dict()
+
+        while open_queue.queue:
+            best_node = open_queue.pop()
+            open_set.remove(best_node)
+
+            neighbors = self.generate_successors(
+                parent=best_node,
+                resolution=self.resolution,
+                wall_radius=wall_radius,
+            )
+
+            for n in neighbors:
+
+                if self.is_goal_reached(n, distance=distance):
+                    closed_map[best_node] = best_node.parent
+                    closed_map[n] = n.parent
+                    self.shortest_path = self.backtrace_path(closed_map, key=n)
+                    return self.shortest_path
+
+                if self.child_already_exists(n, open_set, closed_map):
                     continue
-                else:
-                    open_list.insert(0, child)
-            self.shortest_path.append(q)
-        logger.warning(
-            "No way out was found! :( Try again, using a smaller stepsize when searching a way out."
-        )
-        return []
+
+                open_queue.push(n)
+                open_set.add(n)
+
+            closed_map[best_node] = best_node.parent
+        raise NoWayOutError
 
     def get_path_for_sampling(
-        self, stepsize: unit.Quantity = 0.1 * unit.nanometer
+        self,
+        stepsize: unit.Quantity = 0.1 * unit.nanometer,
     ) -> List[unit.Quantity]:
         """
         Generates path of evenly spaced nodes for the sampling. Tree uses grid where diagonal jumps are bigger than nondiagonal jumps, hence this function is needed.
         It can also be used if you want to generated differently spaced paths
-
         Args:
             stepsize (unit.Quantity, optional): Stepsite of the path you want. Defaults to .1*unit.nanometer.
-
         Returns:
             List[TreeNode]: list of path nodes.
         """
         ret = []
-        path = copy.deepcopy(self.shortest_path)
+        stepsize = stepsize.value_in_unit(u.nanometer)
+        path = [
+            [
+                i.x * self.resolution + self.start.x,
+                i.y * self.resolution + self.start.y,
+                i.z * self.resolution + self.start.z,
+            ]
+            for i in self.shortest_path
+        ]
         iterator = iter(path)
         current = next(iterator)
         new = next(iterator)
-        ret.append(Vec3(x=current.x, y=current.y, z=current.z))
+        ret.append(Vec3(x=current[0], y=current[1], z=current[2]))
         end_reached = False
         diff = self.tree.calculate_euclidean_distance(current, new)
         while not end_reached:
             try:
                 if stepsize < diff:
                     factor = stepsize / diff
-                    current.x += (new.x - current.x) * factor
-                    current.y += (new.y - current.y) * factor
-                    current.z += (new.z - current.z) * factor
-                    ret.append(Vec3(x=current.x, y=current.y, z=current.z))
+                    current[0] += (new[0] - current[0]) * factor
+                    current[1] += (new[1] - current[1]) * factor
+                    current[2] += (new[2] - current[2]) * factor
+                    ret.append(Vec3(x=current[0], y=current[1], z=current[2]))
                     diff = self.tree.calculate_euclidean_distance(current, new)
                 else:
                     while stepsize > diff:
                         new = next(iterator)
                         diff = self.tree.calculate_euclidean_distance(current, new)
                     factor = stepsize / diff
-                    current.x += (new.x - current.x) * factor
-                    current.y += (new.y - current.y) * factor
-                    current.z += (new.z - current.z) * factor
-                    ret.append(Vec3(x=current.x, y=current.y, z=current.z))
+                    current[0] += (new[0] - current[0]) * factor
+                    current[1] += (new[1] - current[1]) * factor
+                    current[2] += (new[2] - current[2]) * factor
+                    ret.append(Vec3(x=current[0], y=current[1], z=current[2]))
                     diff = self.tree.calculate_euclidean_distance(current, new)
             except StopIteration:
                 end_reached = True
-        return unit.Quantity(value=ret, unit=self.shortest_path[0].unit)
+        return unit.Quantity(value=ret, unit=unit.nanometer)
+
+    def visualize_path(self, path: unit.Quantity = None):
+        """
+        Basic visualization of the path generated and the protein.
+        Args:
+            path (unit.Quantity, optional): Specify if you dont want the classes path to be visualized. Defaults to None.
+        """
+        pos = path if path else self.get_path_for_sampling()
+        df = pd.DataFrame(
+            pos.value_in_unit(u.nanometer),
+            columns=list("xyz"),
+        )
+        df2 = pd.DataFrame(self.tree.tree.data, columns=list("abc"))
+        a = px.scatter_3d(data_frame=df, x="x", y="y", z="z")
+        a.add_trace(
+            go.Scatter3d(
+                x=df2.a,
+                y=df2.b,
+                z=df2.c,
+                mode="lines",
+                line=dict(width=3, color="black"),
+            )
+        )
+        a.show()
