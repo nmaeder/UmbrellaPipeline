@@ -2,9 +2,16 @@ from typing import List, Tuple
 import numpy as np
 import openmmtools
 from openmm import Vec3, unit
-import mdtraj
+import mdtraj, pymbar
 from FastMBAR import FastMBAR
+import matplotlib as mtl
 import matplotlib.pyplot as plt
+
+try:
+    from typing import Literal
+except:
+    from typing_extensions import Literal
+
 
 from UmbrellaPipeline.path_finding import TreeNode, Tree, TreeEscapeRoom
 from UmbrellaPipeline.utils import (
@@ -27,6 +34,7 @@ class PMFCalculator:
         original_path_interval: unit.Quantity,
         path_coordinates: List[unit.Quantity] = [],
         n_bins: int = None,
+        solver: Literal = "pymbar"
     ) -> None:
         """
         Args:
@@ -51,11 +59,11 @@ class PMFCalculator:
 
         self.use_kcal = False
 
-        self.RT = (
+        self.kT = (
             unit.BOLTZMANN_CONSTANT_kB
             * self.simulation_properties.temperature
             * unit.AVOGADRO_CONSTANT_NA
-        ).in_units_of(unit.kilojoule_per_mole)
+        ).in_units_of(unit.kilocalorie_per_mole)
 
         self.A: np.ndarray
         self.B: np.ndarray
@@ -63,7 +71,13 @@ class PMFCalculator:
 
         self.pmf: np.ndarray
         self.pmf_error: np.ndarray
-        self.in_rt = False
+
+        if solver.lower() == "pymbar":
+            self.calculate_pmf = self.calculate_pmf_pymbar
+        elif solver.lower() == "fastmbar":
+            self.calculate_pmf = self.calculate_pmf_fastMBAR
+        else:
+            raise ValueError("solver needs to be of type Literal and can either be 'pymbar' or 'fastmbar'!")
 
     def parse_trajectories(self) -> None:
         """
@@ -152,34 +166,78 @@ class PMFCalculator:
         self.sampled_coordinates = unit.Quantity(value=c, unit=unit.nanometer)
         return self.sampled_coordinates
 
-    def create_extra_bin_points(self, stepsize):
-        """
-        helper function, see usage below.
-        """
-        tree = Tree(self.path_coordinates)
-        er = TreeEscapeRoom(tree=tree, start=TreeNode())
-        newp = []
-        for window in self.path_coordinates:
-            newp.append(
-                TreeNode(
-                    x=window.x,
-                    y=window.y,
-                    z=window.z,
-                    unit=window.unit,
-                )
-            )
-        er.shortest_path = newp
-        er.stepsize = 0.25 * unit.angstrom
-        return er.get_path_for_sampling(stepsize=stepsize)
-
     def calculate_pmf_pymbar(
         self,
     ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Does the actual PMF calculations using the pymbar package.
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: the calculated forces per bin and the stdeviation estimate.
+        """
         T_K = np.ones(self.n_windows, float)*self.simulation_properties.temperature._value
-        kT = (unit.BOLTZMANN_CONSTANT_kB*unit.AVOGADRO_CONSTANT_NA*self.simulation_properties.temperature).value_in_unit(unit.kilocalorie_per_mole*unit.angstrom**-2)
+        dmin = 0
+        dmax = self.n_windows*self.path_interval.value_in_unit(unit.nanometer)
+        N_k = np.ones([self.n_windows], np.int32)*self.simulation_properties.number_of_frames
+        pos0_k = np.zeros([self.n_windows,3], np.float64)
+        pos_kn = np.zeros([self.n_windows,self.simulation_properties.number_of_frames,3], np.float64)
+        u_kn = np.zeros([self.n_windowsK,self.simulation_properties.number_of_frames], np.float64)
+        force_constant = self.simulation_properties.force_constant.value_in_unit(unit.kilocalorie_per_mole*unit.nanometer**-2)
+
+        for it, p in enumerate(self.path_coordinates):
+            pos0_k[it][0] = p.x
+            pos0_k[it][1] = p.y 
+            pos0_k[it][2] = p.z
+
+        window = 0
+        frame = 0
+        for it, p in enumerate(self.sampled_coordinates):
+            if it % self.simulation_properties.number_of_frames == 0 and it != 0:
+                window += 1
+            if frame % self.simulation_properties.number_of_frame == 0:
+                frame = 0
+            pos_kn[window][frame][0] = p.x
+            pos_kn[window][frame][1] = p.y
+            pos_kn[window][frame][2] = p.z
+            frame += 1
+        del window
+        del frame
+
+        u_kln = np.zeros([self.n_windows,self.n_windows,self.simulation_properties.number_of_frame], np.float64)
+
+        for k in range(self.n_windows):
+            for l in range(self.n_windows):
+                for n in range(self.simulation_properties.number_of_frame):
+                    dx = pos_kn[l][n][0] - pos0_k[k][0] 
+                    dy = pos_kn[l][n][1] - pos0_k[k][1]
+                    dz = pos_kn[l][n][2] - pos0_k[k][2]
+                u_kln[k][l][n] = 0.5*force_constant*(dx**2 + dy**2 + dz**2) / self.kT
+
+        mbar = pymbar.MBAR(u_kln, N_k, verbose=True)
+        bins = self.path_coordinates
+        nbins = self.n_windows
+        tree = Tree(bins, unit=unit.nanometer)
+        bin_kn = np.zeros([self.n_windows, self.simulation_properties.number_of_frames])
+        for k in range(self.n_windows):
+            indlow = 0 + k*self.simulation_properties.number_of_frames
+            indhigh = self.simulation_properties.number_of_frames-1 + k*self.simulation_properties.number_of_frames
+            indicator = np.array(
+                [
+                    tree.get_nearest_neighbour_index(frame)
+                    for frame in self.sampled_coordinates[indlow:indhigh]
+                ], dtype=np.int32
+            )
+            for n,bin in enumerate(indicator):
+                bin_kn[k][n] = bin
+
+        
+
+        results = mbar.computePMF(u_kn, bin_kn, nbins, return_dict=True)
+        return results["f_i"], results["df_i"]
+
 
     def calculate_pmf_fastMBAR(
-        self, use_kcal: bool = False, in_rt: bool = False
+        self, 
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Does the actual PMF calculations using the FastMBAR package.
@@ -190,19 +248,7 @@ class PMFCalculator:
         Returns:
             Tuple[np.ndarray, np.ndarray]: the calculated forces per bin and the stdeviation estimate.
         """
-        if use_kcal:
-            self.use_kcal = True
-        if in_rt:
-            self.in_rt = True
-        force_unit = (
-            unit.kilocalorie_per_mole * unit.angstrom ** -2
-            if use_kcal
-            else unit.kilojoule_per_mole * unit.angstrom ** -2
-        )
-        energy_unit = (
-            unit.kilocalorie_per_mole if use_kcal else unit.kilojoule_per_mole
-        )  #
-        RT = self.RT.in_units_of(energy_unit) if in_rt else 1
+    
 
         # create extra bin point coordinates if number of bins is bigger than number of windows.
         if self.n_windows == self.n_bins:
@@ -225,9 +271,9 @@ class PMFCalculator:
             # calculate reduced potential energy
             self.A[window_number, :] = (
                 0.5
-                * self.simulation_properties.force_constant.in_units_of(force_unit)
+                * self.simulation_properties.force_constant.in_units_of(unit.kilocalorie_per_mole*unit.nanometer**-2)
                 * (dx ** 2 + dy ** 2 + dz ** 2)
-            ) / RT
+            ) / self.kT
 
             # save number of samples per window. in our case same in every window.
             num_conf.append(self.simulation_properties.number_of_frames)
@@ -275,11 +321,14 @@ class PMFCalculator:
         cumulative: bool = False,
     ):
         """
-        plots the pmf with error bars.
+        Plots the pmf values calculated including error bars.
 
         Args:
-            filename (str, optional): if given, a png file is exported to the filepath.
-        """ 
+            filename (str, optional): If given, plot is saved to file. Defaults to None.
+            format (str, optional): Desired File Format. Defaults to "svg".
+            dpi (float, optional): desired resolution. Defaults to 300.
+            cumulative (bool, optional): wheter to plot the cumulative pmf values or . Defaults to False.
+        """
         energy_unit = " [kcal per mole]" if self.use_kcal else " [kJ per mole]"
         if self.in_rt:
             energy_unit = ""
@@ -310,18 +359,18 @@ class PMFCalculator:
             )
 
     def plot_pytest(self, filename: str = None, format: str = "svg", dpi: float = 300):
-        import matplotlib
-
         """
         plots the pmf with error bars. only use together with pytest cases in vscode. will probabely be removed later.
 
         Args:
-            filename (str, optional): if given, a png file is exported to the filepath.
+            filename (str, optional): if given, a png file is exported to the filepath.. Defaults to None.
+            format (str, optional): format of the saved file. Defaults to "svg".
+            dpi (float, optional): resolution of the saved file. Defaults to 300.
         """
         energy_unit = " [kcal per mole]" if self.use_kcal else " [kJ per mole]"
         if self.in_rt:
             energy_unit = ""
-        matplotlib.use("Agg")
+        mtl.use("Agg")
         pmf_center = np.linspace(
             start=0,
             stop=(self.n_windows * self.path_interval).value_in_unit(unit.nanometer),
