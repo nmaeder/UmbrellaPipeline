@@ -11,13 +11,11 @@ dependencies:
   - openmm
   - openmmtools
   - scipy
-  - FastMBAR
   - pymbar
     # Testing
   - pytest
   - pytest-cov
   - codecov
-
     # Pip-only installs
   - pip:
     - FastMBAR
