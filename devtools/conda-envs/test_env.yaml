@@ -12,6 +12,7 @@ dependencies:
   - openmmtools
   - scipy
   - pymbar
+  - matplotlib
     # Testing
   - pytest
   - pytest-cov
