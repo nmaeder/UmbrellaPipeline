@@ -1,8 +1,18 @@
 import openmm as mm
-import openmm.unit as unit
-import openmm.app as app
+from openmm import (
+    unit,
+    app,
+)
 from typing import List
 import numpy as np
+
+from UmbrellaPipeline.utils import (
+    SimulationProperties,
+    SimulationSystem,
+    get_backbone_indices,
+    gen_pbc_box,
+)
+
 
 HARMONIC_FORMULA = (
     "0.5 * k * (dx^2 + dy^2 + dz^2); dx=abs(x1-x0); dy=abs(y1-y0); dz=abs(z1-z0)"
@@ -11,10 +21,11 @@ HARMONIC_FORMULA = (
 HARMONIC_PARAMS = ["k", "x0", "y0", "z0"]
 
 
-def add_harmonic_restraint(
+def add_ligand_restraint(
     system: mm.openmm.System,
     atom_group: List[int],
-    values: List[unit.Quantity],
+    force_constant: unit.Quantity,
+    positions: unit.Quantity,
 ) -> mm.openmm.System:
     """
     This function adds a harmonic to the center of mass of given atom group at given cartesian values, by adding a CustomCentroidBondForce.
@@ -30,6 +41,7 @@ def add_harmonic_restraint(
     Returns:
         mm.openmm.System: system with added force.
     """
+    values = [force_constant, positions.x, positions.y, positions.z]
     if len(values) != len(HARMONIC_PARAMS):
         raise IndexError("Give same number of parameters and values!")
     force = mm.CustomCentroidBondForce(1, HARMONIC_FORMULA)
@@ -37,6 +49,132 @@ def add_harmonic_restraint(
         force.addGlobalParameter(HARMONIC_PARAMS[i], val)
     force.addGroup(atom_group)
     force.addBond([0])
+    force.setUsesPeriodicBoundaryConditions(True)
+    system.addForce(force)
+    return system
+
+
+def add_barostat(
+    system: mm.openmm.System,
+    properties: SimulationProperties,
+    membrane_barostat: bool = False,
+    frequency: int = 25,
+) -> mm.openmm.System:
+    """
+    Add a monte carlo barostat to a openmm system. either an isotropic or a membrane barostat.
+
+    Args:
+        system (mm.openmm.System): openmm system to add the barostat to.
+        properties (SimulationProperties): simulation properties object containint temperature and pressure.
+        membrane_barostat (bool, optional): true if you want to use a membrane_barostat. Defaults to False.
+        frequency (int, optional): update frequency for the barostat. Defaults to 25.
+
+    Returns:
+        mm.openmm.System: openmm system with added barostat.
+    """
+    if membrane_barostat:
+        add_membrane_barostat(
+            system=system,
+            pressure=properties.pressure,
+            temperature=properties.temperature,
+            frequency=frequency,
+        )
+    else:
+        add_isotropic_barostat(
+            system=system,
+            pressure=properties.pressure,
+            temperature=properties.temperature,
+            frequency=frequency,
+        )
+    return system
+
+
+def add_membrane_barostat(
+    system: mm.openmm.System,
+    pressure: unit.Quantity,
+    temperature: unit.Quantity,
+    frequency: int,
+) -> mm.openmm.System:
+    """
+    Implements add barostat, in case you want a membrane barostat
+
+    Args:
+        system (mm.openmm.System): openmm system object to which the barostat is added.
+        pressure (unit.Quantity): pressure
+        temperature (unit.Quantity): temperature
+        frequency (int): update frequency
+    Returns:
+        mm.openmm.System: openmm system object with added barostat
+    """
+    barostat = mm.MonteCarloMembraneBarostat(
+        pressure,
+        0 * unit.bar * unit.nanometer,
+        temperature,
+        mm.MonteCarloMembraneBarostat.XYIsotropic,
+        mm.MonteCarloMembraneBarostat.ZFree,
+        frequency,
+    )
+    system.addForce(barostat)
+    return system
+
+
+def add_isotropic_barostat(
+    system: mm.openmm.System,
+    pressure: unit.Quantity,
+    temperature: unit.Quantity,
+    frequency: int,
+) -> mm.openmm.System:
+    """
+    Implements add barostat, in case you want a isotropic barostat
+
+    Args:
+        system (mm.openmm.System): openmm system object to which the barostat is added.
+        pressure (unit.Quantity): pressure
+        temperature (unit.Quantity): temperature
+        frequency (int): update frequency
+
+    Returns:
+        mm.openmm.System: openmm system object with added barostat
+    """
+    barostat = mm.MonteCarloBarostat(
+        pressure,
+        temperature,
+        frequency,
+    )
+    system.addForce(barostat)
+    return system
+
+
+def add_backbone_restraints(
+    positions: unit.Quantity,
+    system: mm.openmm.System,
+    atom_list: app.internal.charmm.topologyobjects.AtomList,
+    force_constant: unit.Quantity = 10 * unit.kilocalorie_per_mole / unit.angstrom ** 2,
+) -> mm.openmm.System:
+    """Adds a CustomExternalForce object to your systems force list. it will not restrain at this point, since the force constant is set to 0.
+    Use activate_backbone_restraints() to set the restraints active.
+
+    Args:
+        system (mm.openmm.System): openmm system object
+        atom_list (app.internal.charmm.topologyobjects.AtomList): psf.atom_list of your whole system
+
+    Returns:
+        mm.openmm.System: [description]
+    """
+    indices = get_backbone_indices(atom_list=atom_list)
+    force = mm.CustomExternalForce("1/2*k*periodicdistance(x, y, z, x0, y0, z0)^2")
+    force.addPerParticleParameter("k")
+    force.addPerParticleParameter("x0")
+    force.addPerParticleParameter("y0")
+    force.addPerParticleParameter("z0")
+    for index in indices:
+        values = [
+            force_constant,
+            positions[index].x,
+            positions[index].y,
+            positions[index].z,
+        ]
+        force.addParticle(index, values)
     system.addForce(force)
     return system
 
@@ -51,11 +189,10 @@ def scale(
         initial_value (unit.Quantity): initial value.
         final_value (unit.Quantity): final value
         lamda (float): value between 0 and 1 to scale between the two values.
-
     Returns:
         unit.Quantity: scaled value between initial and final value
     """
-    assert lamda <= 1.0 and lamda >= 0.0
+    assert 0 <= lamda <= 1.0
     return (1 - lamda) * initial_value + lamda * final_value
 
 
@@ -173,8 +310,7 @@ def update_restraint(
     simulation: app.Simulation,
     ligand_indices: List[int],
     original_parameters: List[unit.Quantity],
-    path: List[unit.Quantity],
-    window: int,
+    position: unit.Quantity,
     nr_steps: int = 1000,
 ) -> None:
     """Updates the constraint coordinates of the simulation
@@ -185,7 +321,7 @@ def update_restraint(
     ghost_ligand(simulation=simulation, ligand_indices=ligand_indices)
     for a, b in zip(
         ["x0", "y0", "z0"],
-        [path[window].x, path[window].y, path[window].z],
+        [position.x, position.y, position.z],
     ):
         simulation.context.setParameter(a, b)
     simulation.minimizeEnergy()
@@ -209,3 +345,139 @@ def serialize_system(system: mm.openmm.System, path: str) -> str:
     with open(file=path, mode="w") as f:
         f.write(mm.openmm.XmlSerializer.serialize(system))
     return path
+
+
+def serialize_state(state: mm.State, path: str) -> str:
+    """
+    Serializes a state to an rst file. take sin velocities, positions and pbc box info.
+
+    Args:
+        state (mm.State): State object. use Simulation.context.getState(getPositions=True, getVelocities=True)
+        path (str): path to the serialization file
+
+    Returns:
+        str: path of the serialization file
+    """
+    try:
+        assert state.getPositions() is not None
+        assert state.getVelocities() is not None
+    except AssertionError:
+        TypeError("State has to contain velocities and positions.")
+    with open(file=path, mode="w") as f:
+        f.write(mm.openmm.XmlSerializer.serialize(state))
+    return path
+
+
+def deserialize_state(path: str) -> mm.State:
+    """
+    Deserializes state for simulations from a file
+
+    Args:
+        path (str): path of the file that contains the serialized state.
+
+    Returns:
+        mm.State: openmm state with pbc box info, positions and velocities.
+    """
+    try:
+        with open(file=path, mode="r") as f:
+            state = mm.openmm.XmlSerializer.deserialize(f.read())
+    except:
+        FileNotFoundError
+    return state
+
+
+def write_path_to_file(path: unit.Quantity, directory: str) -> str:
+    """
+    Writes the restrain coordinates to a file, so analysis is still possible without the umbrellapipeline object
+
+    Returns:
+        str: path for the coordinates file
+    """
+
+    opath = "{}/coordinates.dat".format(directory.rstrip("/"))
+    orgCoords = open(file=opath, mode="w")
+    orgCoords.write(f"#lamda, x0, y0, z0, all in units of {path[0].unit}\n")
+    for window, position in enumerate(path):
+        orgCoords.write(f"{window}, {position.x}, {position.y}, {position.z}\n")
+    return path
+
+
+def extract_nonbonded_parameters(
+    system: mm.openmm.System, indices: List[int]
+) -> List[unit.Quantity]:
+    """
+    Extracts lennard-Jones and coulomb parameters of given atoms.
+
+    Args:
+        system (mm.openmm.System): openmm system object.
+        indices (List[int]): list of the atoms from which to extract the nb parameters
+
+    Returns:
+        List[unit.Quantity]: list of nonbonded parameters.
+    """
+    ret = []
+    for force in system.getForces():
+        if type(force).__name__ == "NonbondedForce":
+            for index in indices:
+                ret.append(force.getParticleParameters(index))
+    return ret
+
+
+def create_openmm_system(
+    system_info: SimulationSystem,
+    simulation_properties: SimulationProperties,
+    nonbonded_method: app.forcefield = app.PME,
+    nonbonded_cutoff: unit.Quantity = 1.2 * unit.nanometer,
+    switch_distance: unit.Quantity = 1 * unit.nanometer,
+    rigid_water: bool = True,
+    constraints: app.forcefield = app.HBonds,
+    barostat: str = None,
+    ligand_restraint: bool = False,
+    path: unit.Quantity = None,
+    bb_restraints: bool = False,
+    positions: unit.Quantity = None,
+) -> mm.openmm.System:
+    pos = positions if positions else system_info.crd_object.positions
+    if not system_info.psf_object.boxLengths:
+        gen_pbc_box(
+            psf=system_info.psf_object,
+            pos=system_info.crd_object.positions,
+        )
+    openmm_system = system_info.psf_object.createSystem(
+        params=system_info.params,
+        nonbondedMethod=nonbonded_method,
+        nonbondedCutoff=nonbonded_cutoff,
+        switchDistance=switch_distance,
+        constraints=constraints,
+        rigidWater=rigid_water,
+    )
+
+    if barostat:
+        if barostat == "membrane":
+            mem = True
+        elif barostat == "isotropic":
+            mem = False
+        else:
+            raise ValueError("barostat can either be None, 'membrane' or 'isotropic'.")
+        add_barostat(
+            system=openmm_system,
+            properties=simulation_properties,
+            membrane_barostat=mem,
+        )
+
+    if ligand_restraint:
+        add_ligand_restraint(
+            system=openmm_system,
+            atom_group=system_info.ligand_indices,
+            force_constant=simulation_properties.force_constant,
+            positions=path[0],
+        )
+
+    if bb_restraints:
+        add_backbone_restraints(
+            positions=pos,
+            system=openmm_system,
+            atom_list=system_info.psf_object.atom_list,
+        )
+
+    return openmm_system
