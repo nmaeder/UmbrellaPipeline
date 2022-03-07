@@ -51,7 +51,7 @@ class GridEscapeRoom(EscapeRoom3D):
         self.grid = grid
         self.shortest_path: List[GridNode] = []
         logger.warning(
-            "You are now using the grid version of the escape room module. This is generally not advised and should only be used for visualization purposes. Use the Tree version instead, which is much faster and memory efficient!"
+            "You are now using the grid version of the escape room module. This module is deprecated. Use the Tree version instead, which is much faster and memory efficient!"
         )
 
     def is_goal_reached(self, node: GridNode, distance: unit.Quantity = None) -> bool:
