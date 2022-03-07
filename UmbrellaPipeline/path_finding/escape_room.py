@@ -349,19 +349,14 @@ class TreeEscapeRoom(EscapeRoom3D):
 
     def create_child(self, neighbour: List[int], parent: TreeNode) -> TreeNode:
         """
-        Creates child node at given neighbour position.
+        _summary_
 
-        Parameters
-        ----------
-        neighbour : List[int]
-            neighbour position
-        parent : TreeNode
-            parent node
+        Args:
+            neighbour (List[int]): neighbour position
+            parent (TreeNode): parent node
 
-        Returns
-        -------
-        TreeNode
-            child at given neighbour position
+        Returns:
+            TreeNode: child at given neighbour position
         """
         child = TreeNode.from_coords(
             [
