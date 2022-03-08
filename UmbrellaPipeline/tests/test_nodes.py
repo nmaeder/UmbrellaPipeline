@@ -1,4 +1,4 @@
-from openmm import Vec3, unit
+from openmm import Vec3
 import pytest
 from UmbrellaPipeline.path_finding import GridNode, Node, TreeNode
 

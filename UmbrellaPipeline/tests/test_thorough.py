@@ -1,4 +1,4 @@
-import os, pytest, sys, time, math
+import os, pytest, time, math
 import openmmtools
 from openmm import Vec3, unit, app
 import numpy as np
@@ -20,6 +20,7 @@ from UmbrellaPipeline.sampling import (
     ramp_up_coulomb,
     ramp_up_vdw,
     SamplingCluster,
+    create_openmm_system,
 )
 from UmbrellaPipeline.utils import (
     gen_pbc_box,
@@ -100,7 +101,7 @@ def test_script_writing():
         positions=pipeline.system_info.crd_object.positions,
         psf=pipeline.system_info.psf_object,
     )
-    st = Vec3(1,2,3)
+    st = Vec3(1, 2, 3)
     path = [st, st]
 
     sim = SamplingCluster(
@@ -109,7 +110,7 @@ def test_script_writing():
         traj_write_path=os.path.dirname(__file__),
         conda_environment="openmm",
         hydra_working_dir=os.path.dirname(__file__),
-        cluster = "sge"
+        cluster="sge",
     )
 
     sim.openmm_system = sim.system_info.psf_object.createSystem(sim.system_info.params)
@@ -205,7 +206,6 @@ def test_com_coords():
     assert round(a.z, 5) == round(b.z, 5)
 
 
-@pytest.mark.skipif("W64" in sys.platform, reason="Bash not supported on Windows.")
 def test_execute_bash():
     command1 = "echo Hello World"
     command2 = ["echo", "Hello World"]
@@ -222,7 +222,6 @@ def test_execute_bash():
     os.remove(stdout)
 
 
-@pytest.mark.skipif("W64" in sys.platform, reason="Bash not supported on Windows.")
 def test_parallel_bash():
     commands = ["sleep 3", "sleep 3", "sleep 3", "echo World"]
     start = time.time()
@@ -302,6 +301,28 @@ def test_ghosting():
                     0.5 * orig_params[it][1],
                     0.5 * orig_params[it][2],
                 ]
+
+
+def test_sampling():
+
+    # create simulation, system and context
+    platform = openmmtools.utils.get_fastest_platform()
+    if platform.getName() == ("CUDA" or "OpenCL"):
+        props = {"Precision": "mixed"}
+    else:
+        props = None
+    system = create_openmm_system(pipeline.system_info, pipeline.simulation_parameters)
+    integrator = openmmtools.integrators.LangevinIntegrator()
+    simulation = app.Simulation(
+        topology=pipeline.system_info.psf_object.topology,
+        system=system,
+        integrator=integrator,
+        platform=platform,
+        platformProperties=props,
+    )
+    simulation.context.setPositions(pipeline.system_info.crd_object.positions)
+    simulation.minimizeEnergy(maxIterations=100)
+    simulation.step(5)
 
 
 def test_grid_escape_room_basic():
@@ -427,10 +448,12 @@ def test_tree_successor():
     for i in range(5):
         nodes.append(unit.Quantity(Vec3(i + 1, i + 1, i + 2), unit.nanometer))
     tree = Tree(coordinates=nodes)
-    start = unit.Quantity(Vec3(0,0,0), unit.nanometer)
+    start = unit.Quantity(Vec3(0, 0, 0), unit.nanometer)
     escape_room = TreeEscapeRoom(tree=tree, start=start)
     parent = TreeNode()
-    children = escape_room.generate_successors(parent=parent, resolution=1, wall_radius=.12)
+    children = escape_room.generate_successors(
+        parent=parent, resolution=1, wall_radius=0.12
+    )
     supposedchildren = []
     for i in tree.POSSIBLE_NEIGHBOURS:
         supposedchildren.append(
@@ -454,12 +477,13 @@ def test_tree_path_partitioning():
     escape_room = TreeEscapeRoom.from_files(pipeline.system_info)
     path = escape_room.find_path()
     newp = escape_room.get_path_for_sampling()
-    for i,p in enumerate(newp):
+    for i, p in enumerate(newp):
         try:
-            dist = Tree.calculate_euclidean_distance(p, newp[i+1])
-            assert round(dist,3) == 0.1
+            dist = Tree.calculate_euclidean_distance(p, newp[i + 1])
+            assert round(dist, 3) == 0.1
         except IndexError:
             pass
+
 
 def test_load_path():
     pmf = PMFCalculator(
@@ -498,5 +522,5 @@ def test_fastmbar_pmf():
     )
     a = pmf.load_original_path()
     b = pmf.load_sampled_coordinates()
-    p,e = pmf.calculate_pmf()
+    p, e = pmf.calculate_pmf()
     assert len(a) == len(p)

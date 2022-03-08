@@ -1,5 +1,4 @@
 from openmm import Vec3, unit
-import pytest
 
 from UmbrellaPipeline.path_finding import Tree, TreeNode
 
