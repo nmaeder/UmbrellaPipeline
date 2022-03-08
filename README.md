@@ -14,9 +14,28 @@ Umbrella Sampling Pipeline for PMF of Protein Ligand Unbinding
 ## How-To
 
 
+## Requirements
+
+- Python 3.7, 3.8, 3.9
+- numpy
+- openmm
+- openmmtools
+- scipy
+- pymbar
+- matplotlib
+- plotly
+- FastMBAR
+- gemmi
 
 ## Installation
-
+Either download the source code or clone the repository to the desired destination and run 
+```
+pip install .
+```
+inside the downloaded folder. To install the dependencies use
+```
+pip install -r docs/requirements.yaml
+```
 
 ### Maintainer
 
