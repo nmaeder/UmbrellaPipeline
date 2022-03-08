@@ -4,7 +4,7 @@ matplotlib==3.2.2
 mdtraj==1.9.7
 numpy==1.18.5
 openmm==0.2
-openmmtools==0.18.1
+openmmtools==0.21.2
 pandas==1.0.5
 plotly==5.6.0
 pymbar==3.0.5
