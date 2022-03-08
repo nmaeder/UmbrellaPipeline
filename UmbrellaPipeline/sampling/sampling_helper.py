@@ -127,7 +127,7 @@ def add_membrane_barostat(
     )
     system.addForce(barostat)
     logger.info(
-        f"Membrane MC Barostat added with p = {properties.pressure}, T ={properties.temperature} and frequency = {frequency}."
+        f"Membrane MC Barostat added with p = {pressure}, T ={temperature} and frequency = {frequency}."
     )
     return system
 
@@ -157,7 +157,7 @@ def add_isotropic_barostat(
     )
     system.addForce(barostat)
     logger.info(
-        f"Isotropic MC Barostat added with p = {properties.pressure}, T ={properties.temperature} and frequency = {frequency}."
+        f"Isotropic MC Barostat added with p = {pressure}, T ={temperature} and frequency = {frequency}."
     )
     return system
 

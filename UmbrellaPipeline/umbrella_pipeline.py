@@ -195,3 +195,6 @@ class UmbrellaPipeline:
         logger.info("path for production created.")
         simulation.run_production(path=self.path, state=self.state)
         logger.info("production simulation started!")
+
+    def run_analysis(self, trajectory_path: str):
+        pass
