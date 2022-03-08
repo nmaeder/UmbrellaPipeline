@@ -3,7 +3,7 @@ from openmm import (
     unit,
     app,
 )
-from typing import List, Literal
+from typing import List
 import numpy as np
 import logging
 
