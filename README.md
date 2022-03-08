@@ -16,6 +16,7 @@ This package estimates the sterically least hindered protein ligand dissociation
 Using a modified version of the A* path finding algorithm, this tool takes a docked ligand as a starting point, and then finds (if existing) the sterically least hindreds way out of the protein cavity by following a simple best-first search algorihtm. 
 
 ![escape room algorithm](docs/_static/escape_room_no_bottleneck.eps  "2D schematic of how the generated paths look like")
+<img src="docs/_static/escape_room_no_bottleneck.eps" alt="MarineGEO circle logo" style="height: 100px; width:100px;"/>
 
 ### Sampling
 
