@@ -6,6 +6,7 @@ from .node import (
     TreeNode,
     GridNode,
 )
+from .queue import Queue
 from .tree import (
     Tree,
 )

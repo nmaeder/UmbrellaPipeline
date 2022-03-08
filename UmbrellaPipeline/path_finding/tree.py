@@ -1,15 +1,10 @@
 import math
 from typing import List
 import openmm.unit as u
-import openmm as mm
 from openmm import Vec3, app
 from scipy.spatial import KDTree
 
-from UmbrellaPipeline.utils import (
-    get_residue_indices,
-    get_centroid_coordinates,
-    get_center_of_mass_coordinates,
-)
+from UmbrellaPipeline.utils import get_residue_indices
 from UmbrellaPipeline.path_finding import TreeNode
 
 
@@ -21,77 +16,30 @@ class Tree:
     def __init__(
         self,
         coordinates: u.Quantity or List[u.Quantity] or List[float],
-        unit: u.Unit = None,
     ):
         """
-
         Args:
             coordinates (u.Quantity or List[u.Quantity] or List[float]): List of coordinates to be added to the tree
-            unit (u.Unit): unit of coordinates if they are given without any.
         """
-        if unit:
-            try:
-                self.unit = unit
-                pos = []
-                for i in coordinates:
-                    pos.append(list(i.value_in_unit(i.unit)))
-                self.tree = KDTree(pos)
-            except AttributeError:
-                self.unit = unit
-                self.tree = KDTree(coordinates)
-        else:
-            try:
-                self.unit = coordinates.unit
-                pos = [
-                    [
-                        c.x,
-                        c.y,
-                        c.z,
-                    ]
-                    for c in coordinates
-                ]
-                self.tree = KDTree(pos)
-            except AttributeError:
-                raise ValueError("no unit provided.")
+
+        try:
+            pos = [i.value_in_unit(u.nanometer) for i in coordinates]
+            self.tree = KDTree(pos)
+        except AttributeError:
+            self.tree = KDTree(coordinates)
+
         self.POSSIBLE_NEIGHBOURS = [
-            [-1, -1, -1],
-            [-1, -1, 0],
-            [-1, -1, 1],
-            [-1, 0, -1],
             [-1, 0, 0],
-            [-1, 0, 1],
-            [-1, 1, -1],
-            [-1, 1, 0],
-            [-1, 1, 1],
-            [0, -1, -1],
             [0, -1, 0],
-            [0, -1, 1],
             [0, 0, -1],
-            [0, 0, 1],
-            [0, 1, -1],
-            [0, 1, 0],
-            [0, 1, 1],
-            [1, -1, -1],
-            [1, -1, 0],
-            [1, -1, 1],
-            [1, 0, -1],
             [1, 0, 0],
-            [1, 0, 1],
-            [1, 1, -1],
-            [1, 1, 0],
-            [1, 1, 1],
+            [0, 1, 0],
+            [0, 0, 1],
         ]
 
     @property
     def unit(self):
-        return self._unit
-
-    @unit.setter
-    def unit(self, value: u.Unit):
-        if not value.is_compatible(u.nanometer):
-            raise TypeError("The unit of Tree has to be a length.")
-        else:
-            self._unit = value
+        return u.nanometer
 
     @classmethod
     def from_files(
@@ -100,226 +48,74 @@ class Tree:
         psf: str or app.CharmmPsfFile,
     ):
         """
-        Constructor for grid. takes in psf and crd files generated from charmmgui and generates a grid where all points with a protein atom are true. every other gridpoint is False.
-
+        creates a k-d tree out of positions and a psf file. only takes the protein (and membrane) atom from the positions.
         Args:
-            crdfile (str): give either path to crd file as string or an openmm.app.CharmmCrdFile object.
-            psffile (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
+            positions (u.Quantity or app.CharmmCrdFile): positions as unit.Quantity or as path to .crd file
+            psf (str or app.CharmmPsfFile): path to psf file or CharmmPsfFile object
+        Raises:
+            ValueError: _description_
         Returns:
-            Grid: KDTree with the protein positions used for the adapted A* algorithm
+            Tree: k-d tree created from input given.
         """
         try:
             psf = app.CharmmPsfFile(psf)
         except TypeError:
             pass
 
+        try:
+            positions = app.CharmmCrdFile(positions).positions
+        except TypeError:
+            pass
+
+        try:
+            positions.unit
+        except AttributeError:
+            raise ValueError(
+                "Give atomic positions as a unit.Quantity object or as a list of unit.Quantities"
+            )
+
         indices = get_residue_indices(psf.atom_list)
         coords = [
             Vec3(
-                x=round(positions[i].x, 4),
-                y=round(positions[i].y, 4),
-                z=round(positions[i].z, 4),
+                x=positions[i].x,
+                y=positions[i].y,
+                z=positions[i].z,
             )
             for i in indices
         ]
         return cls(coordinates=u.Quantity(value=coords, unit=positions.unit))
 
     @staticmethod
-    def node_from_files(
-        psf: str,
-        crd: str,
-        name: str,
-        include_hydrogens: bool = True,
-        masses: mm.openmm.System = None,
-    ) -> TreeNode:
-        """
-        calculates the centroid coordinates of the ligand and returns the grid node closest to the centriod Cordinates.
-
-        Args:
-            psf (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
-            crd (str): give either path to crd file as string or an openmm.app.CharmmCrdFile object.
-            name (str): name of the residue that is the starting point.
-
-        Returns:
-            Node: grid node closest to ligand centroid.
-
-        TODO: add support for center of mass -> more complicated since it needs an initialized system.
-        """
-        try:
-            crd = app.CharmmCrdFile(crd)
-        except TypeError:
-            pass
-        try:
-            psf = app.CharmmPsfFile(psf)
-        except TypeError:
-            pass
-
-        indices = get_residue_indices(
-            atom_list=psf.atom_list, name=name, include_hydrogens=include_hydrogens
-        )
-        if masses:
-            coordinates = get_center_of_mass_coordinates(
-                positions=crd.positions.in_units_of(u.nanometer),
-                indices=indices,
-                masses=masses,
-            )
-        else:
-            coordinates = get_centroid_coordinates(
-                positions=crd.positions.in_units_of(u.nanometer), indices=indices
-            )
-        return TreeNode.from_coords(
-            coords=[
-                round(coordinates.x, 4),
-                round(coordinates.y, 4),
-                round(coordinates.z, 4),
-            ],
-            unit=u.nanometer,
-        )
-
-    @staticmethod
-    def node_from_coords(
-        positions: u.Quantity,
-        psf: str or app.CharmmPsfFile,
-        name: str,
-        masses: mm.openmm.System = None,
-        include_hydrogens: bool = True,
-    ) -> TreeNode:
-        """
-        calculates the centroid coordinates of the ligand and returns the grid node closest to the centriod Cordinates.
-
-        Args:
-            positions (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
-            crd (str): give either path to crd file as string or an openmm.app.CharmmCrdFile object.
-            name (str): name of the residue that is the starting point.
-
-        Returns:
-            Node: grid node closest to ligand centroid.
-
-        TODO: add support for center of mass -> more complicated since it needs an initialized system.
-        """
-        try:
-            psf = app.CharmmPsfFile(psf)
-        except:
-            pass
-
-        indices = get_residue_indices(
-            atom_list=psf.atom_list, name=name, include_hydrogens=include_hydrogens
-        )
-        if masses:
-            coordinates = get_center_of_mass_coordinates(
-                positions=positions, indices=indices, masses=masses
-            )
-        else:
-            coordinates = get_centroid_coordinates(positions=positions, indices=indices)
-        return TreeNode.from_coords(
-            coords=[
-                round(coordinates.x, 4),
-                round(coordinates.y, 4),
-                round(coordinates.z, 4),
-            ],
-            unit=coordinates.unit,
-        )
-
-    def position_is_blocked(
-        self,
-        node: TreeNode = None,
-        coordinates: List[float] = None,
-        unit: u.Unit = u.nanometer,
-        vdw_radius: u.Quantity = 0.12 * u.nanometer,
-    ) -> bool:
-        """
-        Checks if a Node is the vdw_radius of a protein Atom in the tree
-
-        Args:
-            node (TreeNode, optional): TreeNode type object. Defaults to None.
-            coordinates (u.Wuantity, optional): grid cell coordinates. Defaults to None.
-            unit (u.Unit, optional): unit of coordinates. Defaults to u.nanometer.
-            vdw_radius (u.Quantity): vdw_radius given to each protein atom. Defaults to .12 * u.nanometer
-
-        Returns:
-            bool: True if Node is within grid
-        """
-        try:
-            dist, i = self.tree.query(x=node.get_coordinates_for_query(self.unit), k=1)
-        except AttributeError:
-            coords = u.Quantity(
-                value=Vec3(coordinates[0], coordinates[1], coordinates[2]), unit=unit
-            )
-            dist, i = self.tree.query(x=coords.value_in_unit(self.unit))
-        return dist * self.unit < vdw_radius
-
-    def get_distance_to_protein(
-        self,
-        node: TreeNode = None,
-        coordinates: List[float] = None,
-        unit: u.Unit = u.nanometer,
-        vdw_radius: u.Quantity = 0.12 * u.nanometer,
-    ) -> u.Quantity:
-        """get_distance_to_protein
-        returns distance to the nearest protein atom
-
-        Parameters
-        ----------
-        node : Node
-            node for which the distance should be calculated
-        vdw_radius : u.Quantity, optional
-            vdw_radius to be used for protein atoms, defaults to .12*u.nanometer
-
-        Returns
-        -------
-        u.Quantity: distance to nearest protein atom
-        """
-        try:
-            dist, i = self.tree.query(x=node.get_coordinates_for_query(self.unit), k=1)
-        except AttributeError:
-            coords = u.Quantity(
-                value=Vec3(coordinates[0], coordinates[1], coordinates[2]), unit=unit
-            )
-            dist, i = self.tree.query(x=coords.value_in_unit(self.unit), k=1)
-        dist = dist * self.unit - vdw_radius.in_units_of(self.unit)
-        return dist
-
-    def get_nearest_neighbour_index(self, coords: u.Quantity) -> int:
-        """
-        Returns the index of the nearest neighbour in the tree. used for the PMFCalculator binning.
-
-        Args:
-            coords (u.Quantity): coordinate for which to get the nearest neighbour
-
-        Returns:
-            (int): index of the nearest neighbour in the tree.
-        """
-        dist, i = self.tree.query(x=[coords.x, coords.y, coords.z], k=1)
-        return i
-
-    @staticmethod
     def calculate_euclidean_distance(
         node: TreeNode, destination: TreeNode
     ) -> u.Quantity:
         """
-        calculates euclidean distance heuristics between node and destination.
-        NOT USED
+        calculates euclidean distance between node and destination.
         Args:
             node (TreeNode): point a
             destination (TreeNode): point b
         Returns:
             float: euclidean distance
         """
-        return u.Quantity(
-            value=math.sqrt(
+        try:
+            return math.sqrt(
                 (node.x - destination.x) ** 2
                 + (node.y - destination.y) ** 2
                 + (node.z - destination.z) ** 2
-            ),
-            unit=node.unit,
-        )
+            )
+        except AttributeError:
+            return math.sqrt(
+                (node[0] - destination[0]) ** 2
+                + (node[1] - destination[1]) ** 2
+                + (node[2] - destination[2]) ** 2
+            )
 
     @staticmethod
     def calculate_diagonal_distance(
         node: TreeNode, destination: TreeNode
     ) -> u.Quantity:
         """
-        calculates diagonal distance heuristics between node and destination.
+        calculates diagonal distance between node and destination.
         Args:
             node (TreeNode): point a
             destination (TreeNode): point b
@@ -338,3 +134,34 @@ class Tree:
         return u.Quantity(
             value=(D3 - D2) * dmin + (D2 - D1) * dmid + D1 * dmax, unit=node.unit
         )
+
+    def get_distance_to_wall(
+        self,
+        coordinates: List[float] = None,
+        vdw_radius: float = 0.12,
+    ) -> u.Quantity:
+        """
+        Returns the distance to the nearest wall.
+        Args:
+            node (TreeNode, optional): TreeNode for which to get the nearest distance. Defaults to None.
+            coordinates (List[float], optional): position in 3d space to get the nearest distance. Defaults to None.
+            vdw_radius (u.Quantity, optional): Radius to set for  walls.. Defaults to 0.12*u.nanometer.
+        Returns:
+            u.Quantity: Distance to the nearest wall.
+        """
+        try:
+            dist, _ = self.tree.query(x=coordinates.get_coordinates_for_query(), k=1)
+        except AttributeError:
+            dist, _ = self.tree.query(x=coordinates, k=1)
+        return dist - vdw_radius
+
+    def get_nearest_neighbour_index(self, coords: u.Quantity) -> int:
+        """
+        Returns the index of the nearest neighbour in the tree. used for the PMFCalculator binning.
+        Args:
+            coords (u.Quantity): coordinate for which to get the nearest neighbour
+        Returns:
+            (int): index of the nearest neighbour in the tree.
+        """
+        _, i = self.tree.query(x=[coords.x, coords.y, coords.z], k=1)
+        return i

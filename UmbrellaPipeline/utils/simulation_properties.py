@@ -12,7 +12,7 @@ class SimulationProperties:
         temperature: u.Quantity = 310 * u.kelvin,
         pressure: u.Quantity = 1 * u.bar,
         time_step: u.Quantity = 2 * u.femtoseconds,
-        force_constant: u.Quantity = 100 * u.kilocalorie_per_mole / (u.angstrom ** 2),
+        force_constant: u.Quantity = 100 * u.kilocalorie_per_mole / (u.angstrom**2),
         friction_coefficient: u.Quantity = 1 / u.picosecond,
         n_equilibration_steps: int = 500000,
         n_production_steps: int = 2500000,
@@ -76,7 +76,6 @@ class SimulationProperties:
         return self._number_of_frames
 
     # Setters
-
     @temperature.setter
     def temperature(self, value: u.Quantity) -> None:
         try:
@@ -111,7 +110,7 @@ class SimulationProperties:
     def force_constant(self, value: u.Quantity) -> None:
         try:
             self._force_constant = value.in_units_of(
-                u.kilocalorie_per_mole * u.angstrom ** -2
+                u.kilocalorie_per_mole * u.angstrom**-2
             )
         except (TypeError, AttributeError):
             raise TypeError(
@@ -121,7 +120,7 @@ class SimulationProperties:
     @friction_coefficient.setter
     def friction_coefficient(self, value: u.Quantity) -> None:
         try:
-            self._friction_coefficient = value.in_units_of(u.picosecond ** -1)
+            self._friction_coefficient = value.in_units_of(u.picosecond**-1)
         except (TypeError, AttributeError):
             raise TypeError("Friction Coefficient has to be in units of inverse time!")
 

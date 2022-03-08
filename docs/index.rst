@@ -6,12 +6,21 @@
 Welcome to UmbrellaPipeline's documentation!
 =========================================================
 
+What is the UmbrellaPipeline?
+-----------------------------
+
+Why using the UmbrellaPipeline?
+-------------------------------
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-   getting_started
-   api
+   installation
+   usage
+   API
+   examples
+   references
 
 
 

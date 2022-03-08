@@ -16,7 +16,7 @@ except:
 from UmbrellaPipeline.path_finding import TreeNode, Tree, TreeEscapeRoom
 from UmbrellaPipeline.utils import (
     SimulationProperties,
-    SimulationSystem,
+    SystemInfo,
     get_center_of_mass_coordinates,
 )
 
@@ -29,17 +29,17 @@ class PMFCalculator:
     def __init__(
         self,
         simulation_properties: SimulationProperties,
-        simulation_system: SimulationSystem,
+        simulation_system: SystemInfo,
         trajectory_directory: str,
         original_path_interval: unit.Quantity,
         path_coordinates: List[unit.Quantity] = [],
         n_bins: int = None,
-        solver: Literal = "pymbar"
+        solver: Literal = "pymbar",
     ) -> None:
         """
         Args:
             simulation_properties (SimulationProperties): [description]
-            simulation_system (SimulationSystem): [description]
+            simulation_system (SystemInfo): [description]
             trajectory_directory (str): [description]
             original_path_interval (unit.Quantity): [description]
             path_coordinates (List[unit.Quantity], optional): [description]. Defaults to [].
@@ -63,7 +63,7 @@ class PMFCalculator:
             unit.BOLTZMANN_CONSTANT_kB
             * self.simulation_properties.temperature
             * unit.AVOGADRO_CONSTANT_NA
-        ).in_units_of(unit.kilocalorie_per_mole)
+        ).value_in_unit(unit.kilocalorie_per_mole)
 
         self.A: np.ndarray
         self.B: np.ndarray
@@ -77,7 +77,9 @@ class PMFCalculator:
         elif solver.lower() == "fastmbar":
             self.calculate_pmf = self.calculate_pmf_fastMBAR
         else:
-            raise ValueError("solver needs to be of type Literal and can either be 'pymbar' or 'fastmbar'!")
+            raise ValueError(
+                "solver needs to be of type Literal and can either be 'pymbar' or 'fastmbar'!"
+            )
 
     def parse_trajectories(self) -> None:
         """
@@ -175,18 +177,24 @@ class PMFCalculator:
         Returns:
             Tuple[np.ndarray, np.ndarray]: the calculated forces per bin and the stdeviation estimate.
         """
-        T_K = np.ones(self.n_windows, float)*self.simulation_properties.temperature._value
-        dmin = 0
-        dmax = self.n_windows*self.path_interval.value_in_unit(unit.nanometer)
-        N_k = np.ones([self.n_windows], np.int32)*self.simulation_properties.number_of_frames
-        pos0_k = np.zeros([self.n_windows,3], np.float64)
-        pos_kn = np.zeros([self.n_windows,self.simulation_properties.number_of_frames,3], np.float64)
-        u_kn = np.zeros([self.n_windowsK,self.simulation_properties.number_of_frames], np.float64)
-        force_constant = self.simulation_properties.force_constant.value_in_unit(unit.kilocalorie_per_mole*unit.nanometer**-2)
+        N_k = (
+            np.ones([self.n_windows], np.int32)
+            * self.simulation_properties.number_of_frames
+        )
+        pos0_k = np.zeros([self.n_windows, 3], np.float64)
+        pos_kn = np.zeros(
+            [self.n_windows, self.simulation_properties.number_of_frames, 3], np.float64
+        )
+        u_kn = np.zeros(
+            [self.n_windows, self.simulation_properties.number_of_frames], np.float64
+        )
+        force_constant = self.simulation_properties.force_constant.value_in_unit(
+            unit.kilocalorie_per_mole * unit.nanometer**-2
+        )
 
         for it, p in enumerate(self.path_coordinates):
             pos0_k[it][0] = p.x
-            pos0_k[it][1] = p.y 
+            pos0_k[it][1] = p.y
             pos0_k[it][2] = p.z
 
         window = 0
@@ -194,7 +202,7 @@ class PMFCalculator:
         for it, p in enumerate(self.sampled_coordinates):
             if it % self.simulation_properties.number_of_frames == 0 and it != 0:
                 window += 1
-            if frame % self.simulation_properties.number_of_frame == 0:
+            if frame % self.simulation_properties.number_of_frames == 0:
                 frame = 0
             pos_kn[window][frame][0] = p.x
             pos_kn[window][frame][1] = p.y
@@ -203,41 +211,52 @@ class PMFCalculator:
         del window
         del frame
 
-        u_kln = np.zeros([self.n_windows,self.n_windows,self.simulation_properties.number_of_frame], np.float64)
+        u_kln = np.zeros(
+            [
+                self.n_windows,
+                self.n_windows,
+                self.simulation_properties.number_of_frames,
+            ],
+            np.float64,
+        )
 
         for k in range(self.n_windows):
             for l in range(self.n_windows):
-                for n in range(self.simulation_properties.number_of_frame):
-                    dx = pos_kn[l][n][0] - pos0_k[k][0] 
+                for n in range(self.simulation_properties.number_of_frames):
+                    dx = pos_kn[l][n][0] - pos0_k[k][0]
                     dy = pos_kn[l][n][1] - pos0_k[k][1]
                     dz = pos_kn[l][n][2] - pos0_k[k][2]
-                u_kln[k][l][n] = 0.5*force_constant*(dx**2 + dy**2 + dz**2) / self.kT
+                u_kln[k][l][n] = (
+                    0.5 * force_constant * (dx**2 + dy**2 + dz**2) / self.kT
+                )
 
         mbar = pymbar.MBAR(u_kln, N_k, verbose=True)
         bins = self.path_coordinates
         nbins = self.n_windows
-        tree = Tree(bins, unit=unit.nanometer)
+        tree = Tree(bins)
         bin_kn = np.zeros([self.n_windows, self.simulation_properties.number_of_frames])
         for k in range(self.n_windows):
-            indlow = 0 + k*self.simulation_properties.number_of_frames
-            indhigh = self.simulation_properties.number_of_frames-1 + k*self.simulation_properties.number_of_frames
+            indlow = 0 + k * self.simulation_properties.number_of_frames
+            indhigh = (
+                self.simulation_properties.number_of_frames
+                - 1
+                + k * self.simulation_properties.number_of_frames
+            )
             indicator = np.array(
                 [
                     tree.get_nearest_neighbour_index(frame)
                     for frame in self.sampled_coordinates[indlow:indhigh]
-                ], dtype=np.int32
+                ],
+                dtype=np.int32,
             )
-            for n,bin in enumerate(indicator):
+            for n, bin in enumerate(indicator):
                 bin_kn[k][n] = bin
-
-        
 
         results = mbar.computePMF(u_kn, bin_kn, nbins, return_dict=True)
         return results["f_i"], results["df_i"]
 
-
     def calculate_pmf_fastMBAR(
-        self, 
+        self,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Does the actual PMF calculations using the FastMBAR package.
@@ -248,7 +267,6 @@ class PMFCalculator:
         Returns:
             Tuple[np.ndarray, np.ndarray]: the calculated forces per bin and the stdeviation estimate.
         """
-    
 
         # create extra bin point coordinates if number of bins is bigger than number of windows.
         if self.n_windows == self.n_bins:
@@ -271,8 +289,10 @@ class PMFCalculator:
             # calculate reduced potential energy
             self.A[window_number, :] = (
                 0.5
-                * self.simulation_properties.force_constant.in_units_of(unit.kilocalorie_per_mole*unit.nanometer**-2)
-                * (dx ** 2 + dy ** 2 + dz ** 2)
+                * self.simulation_properties.force_constant.in_units_of(
+                    unit.kilocalorie_per_mole * unit.nanometer**-2
+                )
+                * (dx**2 + dy**2 + dz**2)
             ) / self.kT
 
             # save number of samples per window. in our case same in every window.
@@ -297,7 +317,7 @@ class PMFCalculator:
         self.B = np.zeros(shape=(self.n_bins, self.n_frames_tot))
 
         for bin in range(self.n_bins):
-            tree = Tree(bin_path, unit=unit.nanometer)
+            tree = Tree(bin_path)
             # for every sampling window, check if the frames from that window are actually closest to that window.
             indicator = np.array(
                 [

@@ -1,6 +1,6 @@
 def display_time(seconds: float) -> str:
     """
-    Nice string representation for time
+    Converts float type seconds into a nice string representation
     Args:
         seconds (float): time you want a strin gfrom
 
