@@ -32,6 +32,7 @@ Visit the documentation.
 ## Requirements
 
 - Python 3.7, 3.8, 3.9
+- pip
 - numpy
 - openmm
 - openmmtools
