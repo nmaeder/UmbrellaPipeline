@@ -12,5 +12,6 @@ python:
   install:
     - requirements: docs/requirements.yaml
 
-
+formats:
+  - pdf
 
