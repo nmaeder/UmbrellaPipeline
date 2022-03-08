@@ -31,7 +31,7 @@ The trajectories are analysed and the PMF is calculated using either pymbar or F
 
 ## How-To
 
-Visit the documentation.
+Visit the [Documentation](readthedocs.io).
 
 ## Requirements
 
