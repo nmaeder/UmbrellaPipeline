@@ -10,3 +10,7 @@ inside the root directory of this package to install the package. To simultaneou
 ```
 pip install -r docs/requirements.yaml 
 ```
+To run tests suite comming with the package, run 
+```
+testicles
+```
