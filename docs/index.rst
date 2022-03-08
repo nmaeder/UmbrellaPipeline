@@ -1,28 +1,14 @@
 .. UmbrellaPipeline documentation master file, created by
-   sphinx-quickstart on Thu Mar 15 13:55:56 2018.
+   sphinx-quickstart on Tue Mar  8 22:41:40 2022.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to the UmbrellaPipeline documentation!
+Welcome to UmbrellaPipeline's documentation!
 ============================================
-
-What is the UmbrellaPipeline?
------------------------------
-
-
-
-Why using the UmbrellaPipeline?
--------------------------------
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
-
-   installation
-   usage
-   api/index
-   examples
-   references
 
 
 

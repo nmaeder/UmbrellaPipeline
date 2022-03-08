@@ -1,6 +1,0 @@
-# readthedocs.yml
-version: 2
-formats: 
-  - pdf
-conda:
-  environment: docs/requirements.yaml
