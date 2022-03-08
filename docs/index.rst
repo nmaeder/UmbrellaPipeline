@@ -20,7 +20,7 @@ Why using the UmbrellaPipeline?
 
    installation
    usage
-   API
+   api
    examples
    references
 
