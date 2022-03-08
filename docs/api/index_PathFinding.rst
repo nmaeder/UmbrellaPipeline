@@ -1,14 +1,15 @@
-pylipid.api
-===========
+path_finding
+============
 
 .. currentmodule:: path_finding
 
    .. autosummary::
-        :toctree:
+        :toctree: generated/
+        :template: class
 
-        escape_room
-        node
-        tree
-        grid
-        queue
+        ~path_finding.escape_room
+        ~path_finding.node
+        ~path_finding.tree
+        ~path_finding.grid
+        ~path_finding.queue
     

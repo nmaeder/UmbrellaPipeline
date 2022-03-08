@@ -1,18 +1,13 @@
+Analysis
+========
+
 .. currentmodule:: analysis
 
-    .. autoclass:: PMFCalculator
-
-    .. rubric:: Methods
-
-    .. autosummary::
+   .. autosummary::
         :toctree: generated/
+        :template: class
 
-        ~PMFCalculator.parse_trajectories
-        ~PMFCalculator.update_class_attributes
-        ~PMFCalculator.load_original_path
-        ~PMFCalculator.load_sampled_coordinates
-        ~PMFCalculator.calculate_pmf_pymbar
-        ~PMFCalculator.plot
+        ~analysis.PMFCalculator
 
 
 

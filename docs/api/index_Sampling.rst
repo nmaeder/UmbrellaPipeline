@@ -1,7 +1,18 @@
+sampling
+========
+
 .. currentmodule:: sampling
 
-    .. autosummary::
-        :toctree: generated
+   .. autosummary::
+        :toctree: generated/
+        :template: class
 
-        sampling
-        sampling_helper
+        ~sampling.UmbrellaSampling
+        ~sampling.SamplingCluster$
+
+helper functions for sampling
+
+   .. autosummary::
+        :toctree: generated/
+
+        ~sampling_helper

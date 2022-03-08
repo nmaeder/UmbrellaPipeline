@@ -1,8 +1,11 @@
+utils
+=====
+
 .. currentmodule:: utils
 
-    .. rubric:: Methods
-
     .. autosummary::
-        :toctree: generated
+        :toctree: generated/
 
-        .. a
+        {% for util in utils %}
+        ~{{ util }}
+        {% endfor %}
