@@ -16,7 +16,6 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
-sys.path.insert(0, os.path.abspath('.'))
 
 import UmbrellaPipeline
 
@@ -24,8 +23,7 @@ import UmbrellaPipeline
 # -- Project information -----------------------------------------------------
 
 project = 'UmbrellaPipeline'
-copyright = ("2021, Niels Maeder. Project structure based on the "
-             "Computational Molecular Science Python Cookiecutter version 1.6")
+copyright = ("2022, Niels Maeder")
 author = 'Niels Maeder'
 
 # The short X.Y version
