@@ -32,6 +32,7 @@ Visit the documentation.
 ## Requirements
 
 - Python 3.7, 3.8, 3.9
+- pip
 - numpy
 - openmm
 - openmmtools
@@ -45,12 +46,9 @@ Visit the documentation.
 ## Installation
 Either download the source code or clone the repository to the desired destination and run 
 ```
-pip install .
+python setup.py install
 ```
-inside the downloaded folder. To install the dependencies use
-```
-pip install -r docs/requirements.yaml
-```
+inside the downloaded folder. Make sure to install the needed dependencies first.
 
 ### Maintainer
 
