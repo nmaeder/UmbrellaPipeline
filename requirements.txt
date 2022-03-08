@@ -1,0 +1,11 @@
+FastMBAR==0.1.0
+gemmi==0.5.2
+matplotlib==3.2.2
+mdtraj==1.9.7
+numpy==1.18.5
+openmm==0.2
+pandas==1.0.5
+plotly==5.6.0
+pymbar==3.0.5
+pytest==5.4.3
+scipy==1.5.0

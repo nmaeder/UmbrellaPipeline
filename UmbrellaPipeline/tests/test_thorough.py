@@ -21,6 +21,7 @@ from UmbrellaPipeline.sampling import (
     ramp_up_vdw,
     SamplingCluster,
     create_openmm_system,
+    add_barostat,
 )
 from UmbrellaPipeline.utils import (
     gen_pbc_box,
@@ -324,8 +325,29 @@ def test_sampling():
         platformProperties=props,
     )
     simulation.context.setPositions(pipeline.system_info.crd_object.positions)
-    simulation.minimizeEnergy(maxIterations=100)
+    simulation.minimizeEnergy(maxItearations=100)
     simulation.step(5)
+
+
+def test_system_creation():
+    system = create_openmm_system(pipeline.system_info, pipeline.simulation_parameters)
+    system = create_openmm_system(
+        pipeline.system_info,
+        pipeline.simulation_parameters,
+        ligand_restraint=True,
+        bb_restraints=True,
+        path=[Vec3(1, 2, 3)],
+    )
+
+
+def test_barostat_creation():
+    system = create_openmm_system(pipeline.system_info, pipeline.simulation_parameters)
+    add_barostat(
+        system, properties=pipeline.simulation_parameters, membrane_barostat=True
+    )
+    add_barostat(
+        system, properties=pipeline.simulation_parameters, membrane_barostat=False
+    )
 
 
 def test_grid_escape_room_basic():
