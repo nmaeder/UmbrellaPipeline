@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Welcome to the UmbrellaPipeline documentation!
-============================================
+==============================================
 
 What is the UmbrellaPipeline?
 -----------------------------
@@ -19,7 +19,6 @@ Why using the UmbrellaPipeline?
    :caption: Contents:
 
    installation
-   usage
    api/index
    examples
    references
@@ -30,4 +29,5 @@ Indices and tables
 ==================
 
 * :ref:`genindex`
+* :ref:`modindex`
 * :ref:`search`
