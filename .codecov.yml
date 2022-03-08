@@ -5,6 +5,7 @@ coverage:
     project:
       default:
         threshold: 50%
+  range: "60...90"
 comment:
   layout: "header"
   require_changes: false
