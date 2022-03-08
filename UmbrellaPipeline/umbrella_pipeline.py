@@ -1,3 +1,4 @@
+from glob import escape
 from typing import List
 import logging
 import openmm as mm
@@ -7,11 +8,12 @@ import logging
 
 from UmbrellaPipeline.sampling import (
     UmbrellaSampling,
-    SamplingSunGridEngine,
+    SamplingCluster,
 )
 from UmbrellaPipeline.utils import (
     SimulationProperties,
     SystemInfo,
+    get_center_of_mass_coordinates,
 )
 from UmbrellaPipeline.path_finding import (
     Tree,
@@ -90,17 +92,14 @@ class UmbrellaPipeline:
             pos = self.system_info.crd_object.positions
 
         if not use_grid:
-            tree = Tree.from_files(psf=self.system_info.psf_object, positions=pos)
-            start = tree.node_from_coords(
-                positions=pos,
-                psf=self.system_info.psf_object,
-                name=self.system_info.ligand_name,
-                masses=system,
+            self.escape_room = TreeEscapeRoom.from_files(
+                system_info=self.system_info, positions=pos
             )
-            self.escape_room = TreeEscapeRoom(
-                tree=tree, start=start, stepsize=0.05 * unit.nanometer
+            self.escape_room.find_path(
+                resolution=0.1 * unit.angstrom,
+                wall_radius=1.2 * unit.angstrom,
+                distance=distance_to_protein,
             )
-            self.escape_room.escape_room(distance=distance_to_protein)
             self.path = self.escape_room.get_path_for_sampling(stepsize=path_interval)
 
         else:
@@ -143,7 +142,7 @@ class UmbrellaPipeline:
             gpu (int, optional): set to one if you want to use CUDA. Defaults to 1.
             log_prefix (str, optional): name of the log files. Defaults to "umbrella_simulation".
         """
-        simulation = SamplingSunGridEngine(
+        simulation = SamplingCluster(
             properties=self.simulation_parameters,
             info=self.system_info,
             traj_write_path=trajectory_path,

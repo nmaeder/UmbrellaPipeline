@@ -9,7 +9,7 @@ class Node:
         x: int = 0,
         y: int = 0,
         z: int = 0,
-        distance_to_wall: float = 0,
+        distance_to_wall: float = 0.1,
         parent=None,
     ) -> None:
         self.x = x
@@ -27,9 +27,7 @@ class Node:
     def __eq__(self, o: object) -> bool:
         return self.get_coordinates() == o.get_coordinates()
 
-    def get_coordinates(self):
-        return [self.x, self.y, self.z]
-
+    # Getter
     @property
     def x(self):
         return self._x
@@ -46,26 +44,27 @@ class Node:
     def distance_to_wall(self):
         return self._distance_to_wall
 
+    # Setter
     @x.setter
     def x(self, value: int):
         try:
             self._x = int(value)
-        except TypeError as err:
-            raise err
+        except (TypeError, ValueError):
+            raise TypeError
 
     @y.setter
     def y(self, value: float):
         try:
             self._y = int(value)
-        except TypeError as err:
-            raise err
+        except (TypeError, ValueError):
+            raise TypeError
 
     @z.setter
     def z(self, value: float):
         try:
             self._z = int(value)
-        except TypeError as err:
-            raise err
+        except (TypeError, ValueError):
+            raise TypeError
 
     @distance_to_wall.setter
     def distance_to_wall(self, value) -> None:
@@ -73,6 +72,9 @@ class Node:
             raise ValueError("Position of node would be inside Wall.")
         else:
             self._distance_to_wall = value
+
+    def get_coordinates(self):
+        return [self.x, self.y, self.z]
 
 
 class TreeNode(Node):
@@ -85,7 +87,7 @@ class TreeNode(Node):
         x: int = 0,
         y: int = 0,
         z: int = 0,
-        distance_to_wall: float = 0,
+        distance_to_wall: float = 0.1,
         parent=None,
     ) -> None:
         super().__init__(
@@ -160,6 +162,7 @@ class GridNode(Node):
         x, y, z = coords[0], coords[1], coords[2]
         return cls(x=x, y=y, z=z)
 
+    # Getter
     @property
     def x(self):
         return self._x
@@ -172,6 +175,11 @@ class GridNode(Node):
     def z(self):
         return self._z
 
+    @property
+    def distance_to_wall(self):
+        return self._distance_to_wall
+
+    # Setter
     @x.setter
     def x(self, value: int):
         if value < 0:
@@ -198,3 +206,7 @@ class GridNode(Node):
             self._y = int(value)
         except TypeError:
             raise TypeError("GridNode coordinate has to be non-negative Integer!")
+
+    @distance_to_wall.setter
+    def distance_to_wall(self, value: float):
+        self._distance_to_wall = 0 if value < 0 else value

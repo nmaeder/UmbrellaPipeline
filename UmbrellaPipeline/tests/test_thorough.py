@@ -5,6 +5,7 @@ import numpy as np
 import warnings
 
 from UmbrellaPipeline import UmbrellaPipeline
+from UmbrellaPipeline.analysis import PMFCalculator
 from UmbrellaPipeline.path_finding import (
     Tree,
     Grid,
@@ -18,7 +19,7 @@ from UmbrellaPipeline.sampling import (
     ghost_ligand,
     ramp_up_coulomb,
     ramp_up_vdw,
-    SamplingSunGridEngine,
+    SamplingCluster,
 )
 from UmbrellaPipeline.utils import (
     gen_pbc_box,
@@ -99,24 +100,21 @@ def test_script_writing():
         positions=pipeline.system_info.crd_object.positions,
         psf=pipeline.system_info.psf_object,
     )
-    st = tree.node_from_files(
-        psf=pipeline.system_info.psf_object,
-        crd=pipeline.system_info.crd_object,
-        name="unl",
-    ).get_coordinates()
+    st = Vec3(1,2,3)
     path = [st, st]
 
-    sim = SamplingSunGridEngine(
+    sim = SamplingCluster(
         properties=pipeline.simulation_parameters,
         info=pipeline.system_info,
         traj_write_path=os.path.dirname(__file__),
         conda_environment="openmm",
         hydra_working_dir=os.path.dirname(__file__),
+        cluster = "sge"
     )
 
     sim.openmm_system = sim.system_info.psf_object.createSystem(sim.system_info.params)
 
-    sim.write_sge_scripts(path=path)
+    sim.write_scripts(path=path)
 
     for i in output:
         p = os.path.abspath(os.path.dirname(__file__) + "/" + i)
@@ -428,107 +426,77 @@ def test_tree_successor():
     nodes = []
     for i in range(5):
         nodes.append(unit.Quantity(Vec3(i + 1, i + 1, i + 2), unit.nanometer))
-    tree = Tree(coordinates=nodes, unit=unit.nanometer)
-    start = TreeNode(0, 0, 0)
+    tree = Tree(coordinates=nodes)
+    start = unit.Quantity(Vec3(0,0,0), unit.nanometer)
     escape_room = TreeEscapeRoom(tree=tree, start=start)
-    children = escape_room.generate_successors(parent=start)
+    parent = TreeNode()
+    children = escape_room.generate_successors(parent=parent, resolution=1, wall_radius=.12)
     supposedchildren = []
     for i in tree.POSSIBLE_NEIGHBOURS:
         supposedchildren.append(
             TreeNode(
-                x=i[0] * escape_room.stepsize.value_in_unit(tree.unit),
-                y=i[1] * escape_room.stepsize.value_in_unit(tree.unit),
-                z=i[2] * escape_room.stepsize.value_in_unit(tree.unit),
+                x=i[0] + start.x,
+                y=i[1] + start.y,
+                z=i[2] + start.z,
             )
         )
     for i, c in enumerate(children):
-        assert c.get_coordinates() == supposedchildren[i].get_coordinates().in_units_of(
-            c.unit
-        )
+        assert c.get_grid_coordinates() == supposedchildren[i].get_grid_coordinates()
 
 
-def test_tree_path_finding():
-    tree = Tree.from_files(
-        positions=pipeline.system_info.crd_object.positions,
-        psf=pipeline.system_info.psf_object,
-    )
-    node = tree.node_from_files(
-        psf=pipeline.system_info.psf_object,
-        crd=pipeline.system_info.crd_object,
-        name="UNL",
-    )
-    assert not tree.position_is_blocked(node=node)
-    box = []
-    for i in range(3):
-        box.append(min([row[i] for row in pipeline.system_info.crd_object.positions]))
-        box.append(max([row[i] for row in pipeline.system_info.crd_object.positions]))
-    escape_room = TreeEscapeRoom(tree=tree, start=node, stepsize=0.25 * unit.angstrom)
-    path = escape_room.escape_room(box=box)
+def test_path_finding():
+    escape_room = TreeEscapeRoom.from_files(pipeline.system_info)
+    path = escape_room.find_path()
     assert path != []
 
 
 def test_tree_path_partitioning():
+    escape_room = TreeEscapeRoom.from_files(pipeline.system_info)
+    path = escape_room.find_path()
+    newp = escape_room.get_path_for_sampling()
+    for i,p in enumerate(newp):
+        try:
+            dist = Tree.calculate_euclidean_distance(p, newp[i+1])
+            assert round(dist,3) == 0.1
+        except IndexError:
+            pass
 
-    # Generate trees and a star objects
+def test_load_path():
+    pmf = PMFCalculator(
+        simulation_properties=pipeline.simulation_parameters,
+        simulation_system=pipeline.system_info,
+        trajectory_directory="UmbrellaPipeline/data",
+        original_path_interval=1 * unit.nanometer,
+    )
+    a = pmf.load_original_path()
+    b = pmf.load_sampled_coordinates()
+    assert len(a) == 43
+    assert len(b) == 43 * 500
 
-    path1, path2 = [], []
-    goal1, goal2, goal3 = [], [], []
-    sq3 = 1 / math.sqrt(3)
-    sq2 = 1 / math.sqrt(2)
-    tree = Tree([[0, 0, 0]], unit.angstrom)
 
-    for i in range(5):
-        path1.append(TreeNode(x=i, y=i, z=i, unit=unit.angstrom))
-        path2.append(TreeNode(x=i, y=-i, z=1, unit=unit.angstrom))
+def test_pymbar_pmf():
+    pmf = PMFCalculator(
+        simulation_properties=pipeline.simulation_parameters,
+        simulation_system=pipeline.system_info,
+        trajectory_directory="UmbrellaPipeline/data",
+        original_path_interval=1 * unit.nanometer,
+        solver="pymbar",
+    )
+    a = pmf.load_original_path()
+    b = pmf.load_sampled_coordinates()
+    p, e = pmf.calculate_pmf()
+    assert len(a) == len(p)
 
-    escape_room1 = TreeEscapeRoom(tree=tree, start=TreeNode(x=0, y=0, z=0))
-    escape_room2 = TreeEscapeRoom(tree=tree, start=TreeNode(x=0, y=0, z=0))
 
-    # Generate paths
-
-    escape_room1.shortest_path = path1
-    escape_room2.shortest_path = path2
-
-    path1 = escape_room1.get_path_for_sampling(0.05 * unit.nanometer)
-    path2 = escape_room2.get_path_for_sampling(0.5 * unit.angstrom)
-    path3 = escape_room2.get_path_for_sampling(0.5 * unit.nanometer)
-
-    # Generate desired outcomes
-
-    for i in range(len(path1)):
-        goal1.append(
-            unit.Quantity(
-                Vec3(x=i * sq3 / 2, y=i * sq3 / 2, z=i * sq3 / 2), unit=unit.angstrom
-            )
-        )
-
-    for i in range(len(path2)):
-        goal2.append(
-            unit.Quantity(Vec3(x=i * sq2 / 2, y=-i * sq2 / 2, z=1), unit=unit.angstrom)
-        )
-
-    for i in range(len(path3)):
-        goal3.append(
-            unit.Quantity(
-                Vec3(x=10 * i * sq2 / 2, y=10 * -i * sq2 / 2, z=1), unit=unit.angstrom
-            )
-        )
-
-    # Check generated paths for tested outcome
-
-    for i in range(len(path1)):
-        for j in range(3):
-            assert round(path1[i][j].value_in_unit(path1[i].unit), 5) == round(
-                goal1[i][j].value_in_unit(path1[i].unit), 5
-            )
-    for i in range(len(path2)):
-        for j in range(3):
-            assert round(path2[i][j].value_in_unit(path2[i].unit), 5) == round(
-                goal2[i][j].value_in_unit(path2[i].unit), 5
-            )
-
-    for i in range(len(path3)):
-        for j in range(3):
-            assert round(path3[i][j].value_in_unit(path3[i].unit), 5) == round(
-                goal3[i][j].value_in_unit(path3[i].unit), 5
-            )
+def test_fastmbar_pmf():
+    pmf = PMFCalculator(
+        simulation_properties=pipeline.simulation_parameters,
+        simulation_system=pipeline.system_info,
+        trajectory_directory="UmbrellaPipeline/data",
+        original_path_interval=1 * unit.nanometer,
+        solver="fastmbar",
+    )
+    a = pmf.load_original_path()
+    b = pmf.load_sampled_coordinates()
+    p,e = pmf.calculate_pmf()
+    assert len(a) == len(p)

@@ -10,8 +10,11 @@ Welcome to UmbrellaPipeline's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   getting_started
-   api
+   installation
+   usage
+   API
+   examples
+   references
 
 
 

@@ -15,6 +15,7 @@ from UmbrellaPipeline.path_finding import (
     Queue,
 )
 from UmbrellaPipeline.utils import (
+    SystemInfo,
     display_time,
     get_center_of_mass_coordinates,
     NoWayOutError,
@@ -116,10 +117,6 @@ class GridEscapeRoom(EscapeRoom3D):
         except ValueError:
             return None
         child.distance_to_wall = self.grid.get_distance_to_protein(child)
-        child.distance_walked = (
-            parent.distance_walked
-            + self.grid.calculate_diagonal_distance(node=parent, destination=child)
-        )
         child.parent = parent
         return child
 
@@ -162,7 +159,6 @@ class GridEscapeRoom(EscapeRoom3D):
         if any(
             (
                 list_entry == child
-                and list_entry.distance_walked <= child.distance_walked
             )
             for list_entry in open_list
         ):
@@ -170,7 +166,6 @@ class GridEscapeRoom(EscapeRoom3D):
         elif any(
             (
                 list_entry == child
-                and list_entry.distance_walked <= child.distance_walked
             )
             for list_entry in self.shortest_path
         ):
@@ -205,10 +200,6 @@ class GridEscapeRoom(EscapeRoom3D):
                 if node.distance_to_wall > q.distance_to_wall:
                     q = node
                 # if two nodes are equally large apart from the protein, take the one that took less traveling to get there.
-                if (
-                    node.distance_to_wall == q.distance_to_wall
-                    and node.distance_walked < q.distance_walked
-                ):
                     q = node
             open_list.remove(q)
             children = self.generate_successors(parent=q)
@@ -355,7 +346,7 @@ class TreeEscapeRoom(EscapeRoom3D):
             [type]: [description]
         """
         try:
-            return node.distance_to_wall >= distance.value_in_unit(u.nanometer)
+            return node.distance_to_wall >= distance.value_in_unit(unit.nanometer)
         except AttributeError:
             return node.distance_to_wall >= distance
 
@@ -521,7 +512,7 @@ class TreeEscapeRoom(EscapeRoom3D):
             List[TreeNode]: list of path nodes.
         """
         ret = []
-        stepsize = stepsize.value_in_unit(u.nanometer)
+        stepsize = stepsize.value_in_unit(unit.nanometer)
         path = [
             [
                 i.x * self.resolution + self.start.x,
@@ -570,7 +561,7 @@ class TreeEscapeRoom(EscapeRoom3D):
         """
         pos = path if path else self.get_path_for_sampling()
         df = pd.DataFrame(
-            pos.value_in_unit(u.nanometer),
+            pos.value_in_unit(unit.nanometer),
             columns=list("xyz"),
         )
         df2 = pd.DataFrame(self.tree.tree.data, columns=list("abc"))

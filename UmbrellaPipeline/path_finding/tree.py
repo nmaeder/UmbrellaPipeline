@@ -46,14 +46,12 @@ class Tree:
         cls,
         positions: u.Quantity or app.CharmmCrdFile,
         psf: str or app.CharmmPsfFile,
-        include_membrane: bool = False,
     ):
         """
         creates a k-d tree out of positions and a psf file. only takes the protein (and membrane) atom from the positions.
         Args:
             positions (u.Quantity or app.CharmmCrdFile): positions as unit.Quantity or as path to .crd file
             psf (str or app.CharmmPsfFile): path to psf file or CharmmPsfFile object
-            include_membrane (bool): whether to include membrane atoms in the wall.
         Raises:
             ValueError: _description_
         Returns:

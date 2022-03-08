@@ -60,7 +60,7 @@ def add_ligand_restraint(
     force.setUsesPeriodicBoundaryConditions(True)
     system.addForce(force)
     logger.info(
-        f"Ligand restraint added at position x={round(positions.x,3)}, y={round(positions.x,3)} ,z={round(positions.x,3)} with a force constant of {force_constant}"
+        f"Ligand restraint added at position x={positions.x}, y={positions.x} ,z={positions.x} with a force constant of {force_constant}"
     )
     return system
 

@@ -63,7 +63,7 @@ class PMFCalculator:
             unit.BOLTZMANN_CONSTANT_kB
             * self.simulation_properties.temperature
             * unit.AVOGADRO_CONSTANT_NA
-        ).in_units_of(unit.kilocalorie_per_mole)
+        ).value_in_unit(unit.kilocalorie_per_mole)
 
         self.A: np.ndarray
         self.B: np.ndarray
@@ -177,12 +177,6 @@ class PMFCalculator:
         Returns:
             Tuple[np.ndarray, np.ndarray]: the calculated forces per bin and the stdeviation estimate.
         """
-        T_K = (
-            np.ones(self.n_windows, float)
-            * self.simulation_properties.temperature._value
-        )
-        dmin = 0
-        dmax = self.n_windows * self.path_interval.value_in_unit(unit.nanometer)
         N_k = (
             np.ones([self.n_windows], np.int32)
             * self.simulation_properties.number_of_frames
@@ -192,7 +186,7 @@ class PMFCalculator:
             [self.n_windows, self.simulation_properties.number_of_frames, 3], np.float64
         )
         u_kn = np.zeros(
-            [self.n_windowsK, self.simulation_properties.number_of_frames], np.float64
+            [self.n_windows, self.simulation_properties.number_of_frames], np.float64
         )
         force_constant = self.simulation_properties.force_constant.value_in_unit(
             unit.kilocalorie_per_mole * unit.nanometer**-2
@@ -208,7 +202,7 @@ class PMFCalculator:
         for it, p in enumerate(self.sampled_coordinates):
             if it % self.simulation_properties.number_of_frames == 0 and it != 0:
                 window += 1
-            if frame % self.simulation_properties.number_of_frame == 0:
+            if frame % self.simulation_properties.number_of_frames == 0:
                 frame = 0
             pos_kn[window][frame][0] = p.x
             pos_kn[window][frame][1] = p.y
@@ -221,14 +215,14 @@ class PMFCalculator:
             [
                 self.n_windows,
                 self.n_windows,
-                self.simulation_properties.number_of_frame,
+                self.simulation_properties.number_of_frames,
             ],
             np.float64,
         )
 
         for k in range(self.n_windows):
             for l in range(self.n_windows):
-                for n in range(self.simulation_properties.number_of_frame):
+                for n in range(self.simulation_properties.number_of_frames):
                     dx = pos_kn[l][n][0] - pos0_k[k][0]
                     dy = pos_kn[l][n][1] - pos0_k[k][1]
                     dz = pos_kn[l][n][2] - pos0_k[k][2]
@@ -239,7 +233,7 @@ class PMFCalculator:
         mbar = pymbar.MBAR(u_kln, N_k, verbose=True)
         bins = self.path_coordinates
         nbins = self.n_windows
-        tree = Tree(bins, unit=unit.nanometer)
+        tree = Tree(bins)
         bin_kn = np.zeros([self.n_windows, self.simulation_properties.number_of_frames])
         for k in range(self.n_windows):
             indlow = 0 + k * self.simulation_properties.number_of_frames
@@ -323,7 +317,7 @@ class PMFCalculator:
         self.B = np.zeros(shape=(self.n_bins, self.n_frames_tot))
 
         for bin in range(self.n_bins):
-            tree = Tree(bin_path, unit=unit.nanometer)
+            tree = Tree(bin_path)
             # for every sampling window, check if the frames from that window are actually closest to that window.
             indicator = np.array(
                 [

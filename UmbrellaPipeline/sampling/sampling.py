@@ -292,6 +292,12 @@ class SamplingCluster(UmbrellaSampling):
         )
         self.commands: List[str] = []
         self.simulation_output: List[str] = []
+        if cluster == "sge":
+            self.write_scripts = self.write_sge_scripts
+        if cluster == "slurm":
+            self.write_scripts = self.write_slurm_scripts
+        if cluster == "lsf":
+            self.write_scripts = self.write_lsf_scripts
 
     def write_sge_scripts(self, path: unit.Quantity) -> str:
         """

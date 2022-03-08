@@ -1,10 +1,23 @@
 name: docs
 channels:
+  - conda-forge
+  - defaults
 dependencies:
     # Base depends
   - python
   - pip
-
-
+  - numpy
+  - gemmi
+  - openmm
+  - openmmtools
+  - scipy
+  - pymbar
+  - matplotlib
+  - plotly
+    # Testing
+  - pytest
+  - pytest-cov
+  - codecov
     # Pip-only installs
-  #- pip:
+  - pip:
+    - FastMBAR
