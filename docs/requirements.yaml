@@ -5,7 +5,7 @@ dependencies:
     # Base depends
   - python
   - pip
-  - numpy
+  - numpy==1.21
   - gemmi
   - openmm
   - openmmtools
@@ -13,8 +13,4 @@ dependencies:
   - pymbar
   - matplotlib
   - plotly
-    # Testing
-  - pytest
-  - pytest-cov
-  - codecov
-    # Pip-only installs
+
