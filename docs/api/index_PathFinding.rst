@@ -1,10 +1,14 @@
 pylipid.api
 ===========
 
-.. currentmodule:: UmbrellaPipeline.api
-
-.. autoclass:: 
-
-   .. rubric:: Methods
+.. currentmodule:: path_finding
 
    .. autosummary::
+        :toctree:
+
+        escape_room
+        node
+        tree
+        grid
+        queue
+    
