@@ -1,6 +1,5 @@
 # readthedocs.yml
-
 version: 2
 formats: all
 conda:
-  environment: docs/environment.yml
+  environment: docs/environment.yaml
