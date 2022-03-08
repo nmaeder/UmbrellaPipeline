@@ -25,7 +25,7 @@ All sampling is done using openmm. After a equilibration period, the ligand is t
 
 ### PMF Calculations
 
-The trajectories are analysed and the PMF is calculated using either pymbar or FastMBAR.
+The trajectories are analysed and the PMF is calculated using pymbar.
 
 <img src="docs/_static/pmf.png" alt="drawing" width="400"/>
 
@@ -44,7 +44,6 @@ Visit the [Documentation](readthedocs.io).
 - pymbar
 - matplotlib
 - plotly
-- FastMBAR
 - gemmi
 
 ## Installation

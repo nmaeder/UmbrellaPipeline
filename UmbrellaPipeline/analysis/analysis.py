@@ -3,7 +3,7 @@ import numpy as np
 import openmmtools
 from openmm import Vec3, unit
 import mdtraj, pymbar
-from FastMBAR import FastMBAR
+
 import matplotlib as mtl
 import matplotlib.pyplot as plt
 
@@ -71,15 +71,9 @@ class PMFCalculator:
 
         self.pmf: np.ndarray
         self.pmf_error: np.ndarray
+        self.calculate_pmf = self.calculate_pmf_pymbar
 
-        if solver.lower() == "pymbar":
-            self.calculate_pmf = self.calculate_pmf_pymbar
-        elif solver.lower() == "fastmbar":
-            self.calculate_pmf = self.calculate_pmf_fastMBAR
-        else:
-            raise ValueError(
-                "solver needs to be of type Literal and can either be 'pymbar' or 'fastmbar'!"
-            )
+
 
     def parse_trajectories(self) -> None:
         """
@@ -255,83 +249,6 @@ class PMFCalculator:
         results = mbar.computePMF(u_kn, bin_kn, nbins, return_dict=True)
         return results["f_i"], results["df_i"]
 
-    def calculate_pmf_fastMBAR(
-        self,
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Does the actual PMF calculations using the FastMBAR package.
-
-        Args:
-            use_kcal (bool): If True, everything is calculated in kcal per mole instead of kJ per mol. Defaults to False.
-
-        Returns:
-            Tuple[np.ndarray, np.ndarray]: the calculated forces per bin and the stdeviation estimate.
-        """
-
-        # create extra bin point coordinates if number of bins is bigger than number of windows.
-        if self.n_windows == self.n_bins:
-            bin_path = self.path_coordinates
-        else:
-            stepsize = self.n_windows * self.path_interval / self.n_bins
-            bin_path = self.create_extra_bin_points(stepsize=stepsize)
-
-        num_conf = []
-
-        # initialize reduced potential energy matrix
-        self.A = np.zeros(shape=(self.n_windows, self.n_frames_tot))
-
-        # calculate deviations for every frame.
-        for window_number, window in enumerate(self.path_coordinates):
-            dx = np.array([frame.x - window.x for frame in self.sampled_coordinates])
-            dy = np.array([frame.y - window.y for frame in self.sampled_coordinates])
-            dz = np.array([frame.z - window.z for frame in self.sampled_coordinates])
-
-            # calculate reduced potential energy
-            self.A[window_number, :] = (
-                0.5
-                * self.simulation_properties.force_constant.in_units_of(
-                    unit.kilocalorie_per_mole * unit.nanometer**-2
-                )
-                * (dx**2 + dy**2 + dz**2)
-            ) / self.kT
-
-            # save number of samples per window. in our case same in every window.
-            num_conf.append(self.simulation_properties.number_of_frames)
-        num_conf = np.array(num_conf).astype(np.float64)
-
-        # check if cuda is available.
-        cuda_available = "CUDA" in [
-            pf.getName() for pf in openmmtools.utils.get_available_platforms()
-        ]
-
-        # solve mbar equations.
-        mbar = FastMBAR(
-            energy=self.A,
-            num_conf=num_conf,
-            cuda=cuda_available,
-            verbose=True,
-            bootstrap=True,
-        )
-
-        # initialize perturbed reduced potential energy matrix
-        self.B = np.zeros(shape=(self.n_bins, self.n_frames_tot))
-
-        for bin in range(self.n_bins):
-            tree = Tree(bin_path)
-            # for every sampling window, check if the frames from that window are actually closest to that window.
-            indicator = np.array(
-                [
-                    tree.get_nearest_neighbour_index(frame) == bin
-                    for frame in self.sampled_coordinates
-                ]
-            )
-            self.B[bin, ~indicator] = np.inf
-
-        # calculate the free energies of the perturbed states
-        self.pmf, self.pmf_error = mbar.calculate_free_energies_of_perturbed_states(
-            self.B
-        )
-        return self.pmf, self.pmf_error
 
     def plot(
         self,

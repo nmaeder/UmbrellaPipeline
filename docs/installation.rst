@@ -18,4 +18,3 @@ Before installation make sure you have install all the requirements
 * matplotlib
 * plotly
 * pytest
-* FastMBAR
