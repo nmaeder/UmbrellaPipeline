@@ -2,4 +2,4 @@
 version: 2
 formats: all
 conda:
-  environment: docs/environment.yaml
+  environment: docs/requirements.yaml
