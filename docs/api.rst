@@ -5,3 +5,4 @@ API Documentation
    :toctree: autosummary
 
    UmbrellaPipeline.canvas
+
