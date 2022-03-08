@@ -3,3 +3,6 @@
     .. rubric:: Methods
 
     .. autosummary::
+        :toctree: generated
+
+        utils
