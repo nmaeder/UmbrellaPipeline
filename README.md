@@ -7,7 +7,7 @@ UmbrellaPipeline
 
 Umbrella Sampling Pipeline for PMF of Protein Ligand Unbinding
 
-## Theory
+## What it does and how it works
 
 This package estimates the sterically least hindered protein ligand dissociation pathway, conducts umbrella sampling along this pathway and subsequently calculates the Potential of Mean Force (PMF) for the protein ligand unbinding. No alignement of the protein cavity or manually placing ligands necessary.
 
