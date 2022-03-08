@@ -9,10 +9,24 @@ Umbrella Sampling Pipeline for PMF of Protein Ligand Unbinding
 
 ## Theory
 
+This package estimates the sterically least hindered protein ligand dissociation pathway, conducts umbrella sampling along this pathway and subsequently calculates the Potential of Mean Force (PMF) for the protein ligand unbinding. No alignement of the protein cavity or manually placing ligands necessary.
 
+# Path Finding
+Using a modified version of the A* path finding algorithm, this tool takes a docked ligand as a starting point, and then finds (if existing) the sterically least hindreds way out of the protein cavity by following a simple best-first search algorihtm. 
+
+![Alt text](docs/_static/escape_room_no_bottleneck.eps?raw=true "Title")
+
+# Sampling
+
+All sampling is done using openmm. After a equilibration period, the ligand is then placed at evenly spaced positions along the dissociation pathway and umbrella sampling is conducted.
+
+# PMF Calculations
+
+The trajectories are analysed and the PMF is calculated using either pymbar or FastMBAR.
 
 ## How-To
 
+Visit the documentation.
 
 ## Requirements
 
