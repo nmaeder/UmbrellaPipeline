@@ -156,19 +156,9 @@ class GridEscapeRoom(EscapeRoom3D):
         [type]
             [description]
         """
-        if any(
-            (
-                list_entry == child
-            )
-            for list_entry in open_list
-        ):
+        if any((list_entry == child) for list_entry in open_list):
             return False
-        elif any(
-            (
-                list_entry == child
-            )
-            for list_entry in self.shortest_path
-        ):
+        elif any((list_entry == child) for list_entry in self.shortest_path):
             return False
         else:
             return True
@@ -199,7 +189,7 @@ class GridEscapeRoom(EscapeRoom3D):
                 # prioritize the node that is the fartest from any protein atom. -> will eventually lead out of the case as long as the goal distance is alrge enough.
                 if node.distance_to_wall > q.distance_to_wall:
                     q = node
-                # if two nodes are equally large apart from the protein, take the one that took less traveling to get there.
+                    # if two nodes are equally large apart from the protein, take the one that took less traveling to get there.
                     q = node
             open_list.remove(q)
             children = self.generate_successors(parent=q)

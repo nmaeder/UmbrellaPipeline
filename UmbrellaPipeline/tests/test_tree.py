@@ -26,9 +26,8 @@ def test_functions():
         nodes.append(unit.Quantity(Vec3(i, i + 1, i + 2), unit.nanometer))
     tree = Tree(coordinates=nodes)
 
-
     Node1 = TreeNode(x=1, y=2, z=3)
     Node2 = TreeNode(x=1, y=23, z=3)
 
-    assert tree.get_distance_to_wall(Node1) < 0 
-    assert tree.get_distance_to_wall(Node2) > 0 
+    assert tree.get_distance_to_wall(Node1) < 0
+    assert tree.get_distance_to_wall(Node2) > 0

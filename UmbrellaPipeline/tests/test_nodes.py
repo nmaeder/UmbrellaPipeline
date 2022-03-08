@@ -16,20 +16,15 @@ def test_basenode():
 
 def test_treenode_generation():
     treeNode1 = TreeNode(x=4, y=34.1, z=23.2)
-    treeNode2 = TreeNode.from_coords(
-        coords=Vec3(4, 34.1, 23.2)
-    )
+    treeNode2 = TreeNode.from_coords(coords=Vec3(4, 34.1, 23.2))
     assert treeNode2.y == 34
-    assert treeNode2.get_coordinates() == [4,34,23]
-    assert treeNode2.get_coordinates_for_query(start = [1,-2,3]) == [5, 32, 26]
-    
+    assert treeNode2.get_coordinates() == [4, 34, 23]
+    assert treeNode2.get_coordinates_for_query(start=[1, -2, 3]) == [5, 32, 26]
 
 
 def test_treenode_eq():
     treeNode1 = TreeNode(x=4, y=34.1, z=23.2)
-    treeNode2 = TreeNode.from_coords(
-        coords=[4, 34.1, 23.2]
-    )
+    treeNode2 = TreeNode.from_coords(coords=[4, 34.1, 23.2])
     treeNode3 = TreeNode.from_coords(coords=[4, 34.1, 83.2])
 
     assert treeNode1 == treeNode2
