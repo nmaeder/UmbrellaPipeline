@@ -4,10 +4,10 @@
    contain the root `toctree` directive.
 
 Welcome to UmbrellaPipeline's documentation!
-=========================================================
+============================================
 
 What is the UmbrellaPipeline?
------------------------------¨
+-----------------------------
 
 
 

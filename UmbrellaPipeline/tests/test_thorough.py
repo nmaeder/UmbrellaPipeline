@@ -325,7 +325,7 @@ def test_sampling():
         platformProperties=props,
     )
     simulation.context.setPositions(pipeline.system_info.crd_object.positions)
-    simulation.minimizeEnergy(maxItearations=100)
+    simulation.minimizeEnergy(maxIterations=50)
     simulation.step(5)
 
 

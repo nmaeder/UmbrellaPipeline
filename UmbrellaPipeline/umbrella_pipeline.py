@@ -24,10 +24,6 @@ from UmbrellaPipeline.path_finding import (
 
 logger = logging.getLogger(__name__)
 
-
-logger = logging.getLogger(__name__)
-
-
 class UmbrellaPipeline:
     """
     wrapper for the whole package. Runs the pipeline (almost) automatically.
@@ -43,6 +39,7 @@ class UmbrellaPipeline:
         ligand_residue_name: str,
         simulation_properties: SimulationProperties = SimulationProperties(),
         only_run_production: bool = False,
+        verbosity: int = 0,
     ) -> None:
         """
         Args:
@@ -66,6 +63,7 @@ class UmbrellaPipeline:
         self.escape_room: GridEscapeRoom or TreeEscapeRoom
         self.equilibrate = not only_run_production
         self.state: mm.State
+        logger.setLevel(verbosity)
 
     def generate_path(
         self,
