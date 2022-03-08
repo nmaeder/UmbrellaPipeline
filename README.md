@@ -54,6 +54,7 @@ python setup.py install
 ```
 inside the downloaded folder. Make sure to install the needed dependencies first.
 
+
 ### Maintainer
 
 - Niels Maeder <maedern@student.ethz.ch> (ETH Zürich)
