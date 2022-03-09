@@ -1,11 +1,11 @@
-.. currentmodule:: UmbrellaPipeline.utils.system_info
+.. currentmodule:: UmbrellaPipeline.utils
 
 SystemInfo
 ==========
 
 .. autosummary::
-    :toctree: generated/
-    :template: class
-    :nosignatures:
+   :toctree: generated/
+   :template: class.rst
+   :nosignatures:
 
-    ~SystemInfo
+   ~utils.SystemInfo

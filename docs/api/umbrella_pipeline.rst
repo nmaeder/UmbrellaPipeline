@@ -4,8 +4,8 @@ SystemInfo
 ==========
 
 .. autosummary::
-    :toctree: generated/
-    :template: class
-    :nosignatures:
+   :toctree: generated/
+   :template: class.rst
+   :nosignatures:
 
-    ~umbrella_pipeline.UmbrellaPipeline
+   ~umbrella_pipeline.UmbrellaPipeline

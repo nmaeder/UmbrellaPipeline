@@ -5,7 +5,7 @@ Analysis
 
 .. autosummary::
    :toctree: generated/
-   :template: class
+   :template: class.rst
 
    ~PMFCalculator
 

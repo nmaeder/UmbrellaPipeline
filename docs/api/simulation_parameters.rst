@@ -1,11 +1,11 @@
-.. currentmodule:: UmbrellaPipeline.utils.simulation_parameters
+.. currentmodule:: UmbrellaPipeline.utils
 
 SimulationParameters
 ====================
 
 .. autosummary::
-    :toctree: generated/
-    :template: class
-    :nosignatures:
+   :toctree: generated/
+   :template: class.rst
+   :nosignatures:
 
-    ~SimulationParameters
+   ~utils.SimulationParameters
