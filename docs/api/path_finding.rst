@@ -3,14 +3,16 @@
 Path Finding
 ============
 
+
 .. autosummary::
    :toctree: generated/
    :template: class.rst
    :nosignatures:
 
-   ~escape_room.TreeEscapeRoom
-   ~node.TreeNode
-   ~tree.Tree
-   ~grid.Grid
-   ~queue.Queue
+   ~TreeEscapeRoom
+   ~GridEscapeRoom
+   ~TreeNode
+   ~Tree
+   ~Grid
+   ~Queue
     

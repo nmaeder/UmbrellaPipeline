@@ -13,6 +13,8 @@ The tool automatically creates a ligand unbinding pathway based on the sterics o
 It then creates starting conformations along this pathway and runs umbrella sampling. The trajectories
 can then be analysed using this tool and PMF Values can be calculated.
 
+
+
 Contents
 ========
 
@@ -23,6 +25,11 @@ Contents
    api/index
    examples
    references
+
+License
+=======
+
+The UmbrellaPipeline is made available under the MIT License. 
 
 Indices and tables
 ==================

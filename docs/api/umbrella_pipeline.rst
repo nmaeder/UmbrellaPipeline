@@ -1,7 +1,5 @@
-.. currentmodule:: UmbrellaPipeline
-
-SystemInfo
-==========
+UmbrellaPipeline Wrapper
+========================
 
 .. autosummary::
    :toctree: generated/

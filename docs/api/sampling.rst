@@ -1,7 +1,6 @@
-.. currentmodule:: UmbrellaPipeline.sampling
-
 Sampling
 ========
+
 
 .. autosummary::
    :toctree: generated/
@@ -16,7 +15,8 @@ Helper functions needed for the sampling Class to fully work.
 Sampling Helper
 ~~~~~~~~~~~~~~~~
 
-:toctree: generated/
-:maxdepth: 1
+autosummary
+   :toctree: generated/
+   :nosignatures:
 
    sampling_helper

@@ -1,9 +1,13 @@
-.. currentmodule:: UmbrellaPipeline.utils
-
 Utils
 =====
 
-:toctree:
-:maxdepth: 1
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-    
+   ~utils.cg_parser
+   ~utils.coordinates
+   ~utils.indices
+   ~utils.time
+   ~utils.bash
+   ~utils.exceptions
