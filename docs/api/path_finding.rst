@@ -1,3 +1,5 @@
+.. currentmodule:: UmbrellaPipeline.path_finding
+
 Path Finding
 ============
 
@@ -6,9 +8,9 @@ Path Finding
    :template: class.rst
    :nosignatures:
 
-   ~path_finding.escape_room.TreeEscapeRoom
-   ~path_finding.node.TreeNode
-   ~path_finding.tree.Tree
-   ~path_finding.grid.Grid
-   ~path_finding.queue.Queue
+   ~escape_room.TreeEscapeRoom
+   ~node.TreeNode
+   ~tree.Tree
+   ~grid.Grid
+   ~queue.Queue
     

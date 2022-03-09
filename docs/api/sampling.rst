@@ -1,16 +1,22 @@
+.. currentmodule:: UmbrellaPipeline.sampling
+
 Sampling
 ========
 
 .. autosummary::
    :toctree: generated/
-   :template: class
+   :template: class.rst
+   :nosignatures:
 
-   ~sampling.sampling.UmbrellaSampling
-   ~sampling.sampling.SamplingCluster
+   ~sampling.UmbrellaSampling
+   ~sampling.SamplingCluster
 
 Helper functions needed for the sampling Class to fully work.
 
-.. autosummary::
-   :toctree: generated/
+Sampling Helper
+~~~~~~~~~~~~~~~~
 
-   ~sampling.sampling_helper
+:toctree: generated/
+:maxdepth: 1
+
+   sampling_helper

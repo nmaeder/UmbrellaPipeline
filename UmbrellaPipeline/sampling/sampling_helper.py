@@ -15,7 +15,7 @@ except:
 logger = logging.getLogger(__name__)
 
 from UmbrellaPipeline.utils import (
-    SimulationProperties,
+    SimulationParameters,
     SystemInfo,
     get_backbone_indices,
     gen_pbc_box,
@@ -67,7 +67,7 @@ def add_ligand_restraint(
 
 def add_barostat(
     system: mm.openmm.System,
-    properties: SimulationProperties,
+    properties: SimulationParameters,
     membrane_barostat: bool = False,
     frequency: int = 25,
 ) -> mm.openmm.System:
@@ -76,7 +76,7 @@ def add_barostat(
 
     Args:
         system (mm.openmm.System): openmm system to add the barostat to.
-        properties (SimulationProperties): simulation properties object containint temperature and pressure.
+        properties (SimulationParameters): simulation properties object containint temperature and pressure.
         membrane_barostat (bool, optional): true if you want to use a membrane_barostat. Defaults to False.
         frequency (int, optional): update frequency for the barostat. Defaults to 25.
 
@@ -452,7 +452,7 @@ def extract_nonbonded_parameters(
 
 def create_openmm_system(
     system_info: SystemInfo,
-    simulation_properties: SimulationProperties,
+    simulation_parameters: SimulationParameters,
     nonbonded_method: app.forcefield = app.PME,
     nonbonded_cutoff: unit.Quantity = 1.2 * unit.nanometer,
     switch_distance: unit.Quantity = 1 * unit.nanometer,
@@ -488,7 +488,7 @@ def create_openmm_system(
             raise ValueError("barostat can either be None, 'membrane' or 'isotropic'.")
         add_barostat(
             system=openmm_system,
-            properties=simulation_properties,
+            properties=simulation_parameters,
             membrane_barostat=mem,
         )
 
@@ -496,7 +496,7 @@ def create_openmm_system(
         add_ligand_restraint(
             system=openmm_system,
             atom_group=system_info.ligand_indices,
-            force_constant=simulation_properties.force_constant,
+            force_constant=simulation_parameters.force_constant,
             positions=path[0],
         )
 

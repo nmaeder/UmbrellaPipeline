@@ -512,7 +512,7 @@ def test_tree_path_partitioning():
 
 def test_load_path():
     pmf = PMFCalculator(
-        simulation_properties=pipeline.simulation_parameters,
+        simulation_parameters=pipeline.simulation_parameters,
         simulation_system=pipeline.system_info,
         trajectory_directory="UmbrellaPipeline/data",
         original_path_interval=1 * unit.nanometer,
@@ -525,7 +525,7 @@ def test_load_path():
 
 def test_pymbar_pmf():
     pmf = PMFCalculator(
-        simulation_properties=pipeline.simulation_parameters,
+        simulation_parameters=pipeline.simulation_parameters,
         simulation_system=pipeline.system_info,
         trajectory_directory="UmbrellaPipeline/data",
         original_path_interval=1 * unit.nanometer,
@@ -535,5 +535,3 @@ def test_pymbar_pmf():
     b = pmf.load_sampled_coordinates()
     p, e = pmf.calculate_pmf()
     assert len(a) == len(p)
-
-

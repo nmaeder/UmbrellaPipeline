@@ -15,7 +15,7 @@ except:
 
 from UmbrellaPipeline.path_finding import TreeNode, Tree, TreeEscapeRoom
 from UmbrellaPipeline.utils import (
-    SimulationProperties,
+    SimulationParameters,
     SystemInfo,
     get_center_of_mass_coordinates,
 )
@@ -28,7 +28,7 @@ class PMFCalculator:
 
     def __init__(
         self,
-        simulation_properties: SimulationProperties,
+        simulation_parameters: SimulationParameters,
         simulation_system: SystemInfo,
         trajectory_directory: str,
         original_path_interval: unit.Quantity,
@@ -38,14 +38,14 @@ class PMFCalculator:
     ) -> None:
         """
         Args:
-            simulation_properties (SimulationProperties): [description]
+            simulation_parameters (SimulationParameters): [description]
             simulation_system (SystemInfo): [description]
             trajectory_directory (str): [description]
             original_path_interval (unit.Quantity): [description]
             path_coordinates (List[unit.Quantity], optional): [description]. Defaults to [].
             n_bins (int, optional): [description]. Defaults to None.
         """
-        self.simulation_properties = simulation_properties
+        self.simulation_parameters = simulation_parameters
         self.system_info = simulation_system
         self.trajectory_directory = trajectory_directory.rstrip("/")
 
@@ -55,13 +55,13 @@ class PMFCalculator:
         self.n_bins = n_bins if n_bins else self.n_windows
         self.path_coordinates = path_coordinates
         self.path_interval = original_path_interval
-        self.n_frames_tot = self.n_windows * self.simulation_properties.number_of_frames
+        self.n_frames_tot = self.n_windows * self.simulation_parameters.number_of_frames
 
         self.use_kcal = False
 
         self.kT = (
             unit.BOLTZMANN_CONSTANT_kB
-            * self.simulation_properties.temperature
+            * self.simulation_parameters.temperature
             * unit.AVOGADRO_CONSTANT_NA
         ).value_in_unit(unit.kilocalorie_per_mole)
 
@@ -72,8 +72,6 @@ class PMFCalculator:
         self.pmf: np.ndarray
         self.pmf_error: np.ndarray
         self.calculate_pmf = self.calculate_pmf_pymbar
-
-
 
     def parse_trajectories(self) -> None:
         """
@@ -96,7 +94,7 @@ class PMFCalculator:
                             indices=self.system_info.ligand_indices,
                             masses=self.masses,
                         )
-                        for frame in range(self.simulation_properties.number_of_frames)
+                        for frame in range(self.simulation_parameters.number_of_frames)
                     ]
                 )
                 for i in coordinates:
@@ -107,7 +105,7 @@ class PMFCalculator:
         self.n_windows = len(self.path_coordinates)
         if self.n_bins == 0:
             self.n_bins = self.n_windows
-        self.n_frames_tot = self.n_windows * self.simulation_properties.number_of_frames
+        self.n_frames_tot = self.n_windows * self.simulation_parameters.number_of_frames
 
     def load_original_path(self, fname: str = None) -> List[unit.Quantity]:
         """
@@ -173,16 +171,16 @@ class PMFCalculator:
         """
         N_k = (
             np.ones([self.n_windows], np.int32)
-            * self.simulation_properties.number_of_frames
+            * self.simulation_parameters.number_of_frames
         )
         pos0_k = np.zeros([self.n_windows, 3], np.float64)
         pos_kn = np.zeros(
-            [self.n_windows, self.simulation_properties.number_of_frames, 3], np.float64
+            [self.n_windows, self.simulation_parameters.number_of_frames, 3], np.float64
         )
         u_kn = np.zeros(
-            [self.n_windows, self.simulation_properties.number_of_frames], np.float64
+            [self.n_windows, self.simulation_parameters.number_of_frames], np.float64
         )
-        force_constant = self.simulation_properties.force_constant.value_in_unit(
+        force_constant = self.simulation_parameters.force_constant.value_in_unit(
             unit.kilocalorie_per_mole * unit.nanometer**-2
         )
 
@@ -194,9 +192,9 @@ class PMFCalculator:
         window = 0
         frame = 0
         for it, p in enumerate(self.sampled_coordinates):
-            if it % self.simulation_properties.number_of_frames == 0 and it != 0:
+            if it % self.simulation_parameters.number_of_frames == 0 and it != 0:
                 window += 1
-            if frame % self.simulation_properties.number_of_frames == 0:
+            if frame % self.simulation_parameters.number_of_frames == 0:
                 frame = 0
             pos_kn[window][frame][0] = p.x
             pos_kn[window][frame][1] = p.y
@@ -209,14 +207,14 @@ class PMFCalculator:
             [
                 self.n_windows,
                 self.n_windows,
-                self.simulation_properties.number_of_frames,
+                self.simulation_parameters.number_of_frames,
             ],
             np.float64,
         )
 
         for k in range(self.n_windows):
             for l in range(self.n_windows):
-                for n in range(self.simulation_properties.number_of_frames):
+                for n in range(self.simulation_parameters.number_of_frames):
                     dx = pos_kn[l][n][0] - pos0_k[k][0]
                     dy = pos_kn[l][n][1] - pos0_k[k][1]
                     dz = pos_kn[l][n][2] - pos0_k[k][2]
@@ -228,13 +226,13 @@ class PMFCalculator:
         bins = self.path_coordinates
         nbins = self.n_windows
         tree = Tree(bins)
-        bin_kn = np.zeros([self.n_windows, self.simulation_properties.number_of_frames])
+        bin_kn = np.zeros([self.n_windows, self.simulation_parameters.number_of_frames])
         for k in range(self.n_windows):
-            indlow = 0 + k * self.simulation_properties.number_of_frames
+            indlow = 0 + k * self.simulation_parameters.number_of_frames
             indhigh = (
-                self.simulation_properties.number_of_frames
+                self.simulation_parameters.number_of_frames
                 - 1
-                + k * self.simulation_properties.number_of_frames
+                + k * self.simulation_parameters.number_of_frames
             )
             indicator = np.array(
                 [
@@ -248,7 +246,6 @@ class PMFCalculator:
 
         results = mbar.computePMF(u_kn, bin_kn, nbins, return_dict=True)
         return results["f_i"], results["df_i"]
-
 
     def plot(
         self,

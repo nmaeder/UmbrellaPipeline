@@ -1,8 +1,9 @@
+.. currentmodule:: UmbrellaPipeline.utils
+
 Utils
 =====
 
-.. autosummary::
-    :toctree: generated/
-    :nosignatures:
+:toctree:
+:maxdepth: 1
 
-    ~utils  
+    

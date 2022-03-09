@@ -4,9 +4,7 @@ Installation
 At the moment, only installation is only possible from source code. For this, either manually downoload the files or clone the github repo.
 Use
 
-```
-python setup.py install
-```
+``python setup.py install``
 
 Before installation make sure you have install all the requirements:
 

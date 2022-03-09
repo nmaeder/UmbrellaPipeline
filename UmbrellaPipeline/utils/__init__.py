@@ -16,7 +16,7 @@ from .cg_parser import (
     parse_params,
     gen_pbc_box,
 )
-from .simulation_properties import SimulationProperties
+from .simulation_parameters import SimulationParameters
 from .system_info import SystemInfo
 from .time import display_time
 

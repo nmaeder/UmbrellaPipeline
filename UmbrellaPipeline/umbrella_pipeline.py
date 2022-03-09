@@ -11,7 +11,7 @@ from UmbrellaPipeline.sampling import (
     SamplingCluster,
 )
 from UmbrellaPipeline.utils import (
-    SimulationProperties,
+    SimulationParameters,
     SystemInfo,
     get_center_of_mass_coordinates,
 )
@@ -23,6 +23,7 @@ from UmbrellaPipeline.path_finding import (
 )
 
 logger = logging.getLogger(__name__)
+
 
 class UmbrellaPipeline:
     """
@@ -37,7 +38,7 @@ class UmbrellaPipeline:
         toppar_stream_file: str,
         toppar_directory: str,
         ligand_residue_name: str,
-        simulation_properties: SimulationProperties = SimulationProperties(),
+        simulation_parameters: SimulationParameters = SimulationParameters(),
         only_run_production: bool = False,
         verbosity: int = 0,
     ) -> None:
@@ -48,9 +49,9 @@ class UmbrellaPipeline:
             toppar_stream_file (str): toppar str file provided by charmm-gui. Don't move it around beforehand.
             toppar_directory (str): toppar directory provided by charmm-gui
             ligand_residue_name (str): name of the ligand that you want to pull out.
-            simulation_properties (SimulationProperties, optional): Simulation property object. refer to the README for further info. Defaults to SimulationProperties().
+            simulation_parameters (SimulationParameters, optional): Simulation property object. refer to the README for further info. Defaults to SimulationParameters().
         """
-        self.simulation_parameters = simulation_properties
+        self.simulation_parameters = simulation_parameters
         self.system_info = SystemInfo(
             psf_file=psf_file,
             crd_file=crd_file,
