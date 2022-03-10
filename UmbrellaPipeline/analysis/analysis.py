@@ -29,30 +29,27 @@ class PMFCalculator:
     def __init__(
         self,
         simulation_parameters: SimulationParameters,
-        simulation_system: SystemInfo,
+        system_info: SystemInfo,
         trajectory_directory: str,
         original_path_interval: unit.Quantity,
         path_coordinates: List[unit.Quantity] = [],
-        n_bins: int = None,
-        solver: Literal = "pymbar",
     ) -> None:
         """
         Args:
             simulation_parameters (SimulationParameters): [description]
-            simulation_system (SystemInfo): [description]
+            system_info (SystemInfo): [description]
             trajectory_directory (str): [description]
             original_path_interval (unit.Quantity): [description]
             path_coordinates (List[unit.Quantity], optional): [description]. Defaults to [].
-            n_bins (int, optional): [description]. Defaults to None.
         """
         self.simulation_parameters = simulation_parameters
-        self.system_info = simulation_system
+        self.system_info = system_info
         self.trajectory_directory = trajectory_directory.rstrip("/")
 
         self.masses = self.system_info.psf_object.createSystem(self.system_info.params)
 
         self.n_windows = len(path_coordinates)
-        self.n_bins = n_bins if n_bins else self.n_windows
+        self.n_bins = self.n_windows
         self.path_coordinates = path_coordinates
         self.path_interval = original_path_interval
         self.n_frames_tot = self.n_windows * self.simulation_parameters.number_of_frames
@@ -169,6 +166,14 @@ class PMFCalculator:
         Returns:
             Tuple[np.ndarray, np.ndarray]: the calculated forces per bin and the stdeviation estimate.
         """
+        if not self.path_coordinates:
+            self.load_original_path()
+        if not self.sampled_coordinates:
+            try:
+                self.load_sampled_coordinates()
+            except:
+                self.parse_trajectories()
+
         N_k = (
             np.ones([self.n_windows], np.int32)
             * self.simulation_parameters.number_of_frames
@@ -181,7 +186,7 @@ class PMFCalculator:
             [self.n_windows, self.simulation_parameters.number_of_frames], np.float64
         )
         force_constant = self.simulation_parameters.force_constant.value_in_unit(
-            unit.kilocalorie_per_mole * unit.nanometer**-2
+            unit.kilocalorie_per_mole * unit.nanometer ** -2
         )
 
         for it, p in enumerate(self.path_coordinates):
@@ -219,7 +224,7 @@ class PMFCalculator:
                     dy = pos_kn[l][n][1] - pos0_k[k][1]
                     dz = pos_kn[l][n][2] - pos0_k[k][2]
                 u_kln[k][l][n] = (
-                    0.5 * force_constant * (dx**2 + dy**2 + dz**2) / self.kT
+                    0.5 * force_constant * (dx ** 2 + dy ** 2 + dz ** 2) / self.kT
                 )
 
         mbar = pymbar.MBAR(u_kln, N_k, verbose=True)

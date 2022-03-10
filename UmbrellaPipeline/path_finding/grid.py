@@ -14,8 +14,6 @@ from UmbrellaPipeline.path_finding import GridNode
 
 
 class Grid:
-
-
     def __init__(
         self,
         x: int = 0,
@@ -99,14 +97,14 @@ class Grid:
     ):
         """
         Constructor for grid. takes in psf and crd files generated from charmmgui and generates a grid where all points with a protein atom are true. every other gridpoint is False.
-        
+
         Args:
             crdfile (str): give either path to crd file as string or an openmm.app.CharmmCrdFile object.
             psffile (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
             gridsize (unit.QuantityorList[unit.Quantity], optional): [description]. Defaults to .01*unit.nanometer.
             vdw_radius (unit.Quantity, optional): VDW radius of the protein atoms in the grid. Defaults to .12*unit.nanometer.
             add_vdw (bool, optional): Whether or not the protein atoms should have a VDW radius in the grid. Defaults to True.
-        
+
         Returns:
             Grid: Boolean grid where protein positions are True.
         """
@@ -159,7 +157,7 @@ class Grid:
                 ):
                     if dx == dy == dz == 0:
                         continue
-                    if math.sqrt(dx**2 + dy**2 + dz**2) > numadd[0]:
+                    if math.sqrt(dx ** 2 + dy ** 2 + dz ** 2) > numadd[0]:
                         continue
                     grid[x - dx][y - dy][z - dz] = True
                     grid[x - dx][y - dy][z + dz] = True
@@ -175,12 +173,12 @@ class Grid:
     def node_from_files(self, psf: str, crd: str, name: str) -> GridNode:
         """
         calculates the centroid coordinates of the ligand and returns the grid node closest to the centriod Cordinates.
-        
+
         Args:
             psf (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
             crd (str): give either path to crd file as string or an openmm.app.CharmmCrdFile object.
             name (str): name of the residue that is the starting point.
-        
+
         Returns:
             Node: grid node closest to ligand centroid.
         TODO: add support for center of mass -> more complicated since it needs an initialized system.
@@ -210,11 +208,11 @@ class Grid:
     ) -> bool:
         """
         returns Value of gridcell.
-        
+
         Args:
             node (Node, optional): Node type object. Defaults to None.
             coordinates (List[int], optional): Node coordinates. Defaults to None.
-        
+
         Returns:
             bool: value of gridcell
         """
@@ -232,11 +230,11 @@ class Grid:
     ) -> bool:
         """
         Checks if a Node is within the grid.
-        
+
         Args:
             node (Node, optional): Node type object. Defaults to None.
             coordinates (List[int], optional): grid cell coordinates. Defaults to None.
-        
+
         Returns:
             bool: True if Node is within grid
         """
@@ -255,11 +253,11 @@ class Grid:
     ) -> bool:
         """
         Returns true if a gridcell is occupied with a protien atom.
-        
+
         Args:
             node (Node, optional): Node type object. Defaults to None.
             coordinates (List[int], optional): grid cell coordinates. Defaults to None.
-        
+
         Returns:
             bool: True if position is occupied by protein
         """
@@ -270,11 +268,11 @@ class Grid:
     ) -> float:
         """
         calculates diagonal distance between node and destination.
-        
+
         Args:
             node (GridNode): point a
             destination (GridNode): point b
-        
+
         Returns:
             float: diagonal distance estimate
         """
@@ -355,7 +353,7 @@ class Grid:
         return unit.Quantity(value=ret, unit=u)
 
     def cartesian_coordinates_of_node(self, node: GridNode) -> unit.Quantity:
-        """        
+        """
         returns the cartesian coordinates of a node in a grid.
 
         Args:
@@ -383,7 +381,7 @@ class Grid:
     def to_cartesian_coordinates(self) -> List[float]:
         """
         returns list of cartesian coordinates that are true in the grid.
-        
+
         Returns:
             List[float]: List of cartesian coordinates with value true.
         """

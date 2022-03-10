@@ -39,7 +39,7 @@ def get_residue_indices(
     include_hydrogens: bool = True,
 ) -> List[int]:
     """
-    Returns a list of indices that correspond to a given residue in the crd file. If you do not give a residue name, 
+    Returns a list of indices that correspond to a given residue in the crd file. If you do not give a residue name,
     the indices of all the protein atoms are given.
 
     Args:

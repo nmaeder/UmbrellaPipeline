@@ -82,7 +82,7 @@ def test_add_harmonic_restraint():
     ind = get_residue_indices(
         atom_list=pipeline.system_info.psf_object.atom_list, name="unl"
     )
-    fc = 10 * unit.kilocalorie_per_mole / (unit.angstrom**2)
+    fc = 10 * unit.kilocalorie_per_mole / (unit.angstrom ** 2)
     pos = Vec3(
         x=1 * unit.angstrom,
         y=2 * unit.angstrom,
@@ -512,7 +512,7 @@ def test_tree_path_partitioning():
 def test_load_path():
     pmf = PMFCalculator(
         simulation_parameters=pipeline.simulation_parameters,
-        simulation_system=pipeline.system_info,
+        system_info=pipeline.system_info,
         trajectory_directory="UmbrellaPipeline/data",
         original_path_interval=1 * unit.nanometer,
     )
@@ -525,10 +525,9 @@ def test_load_path():
 def test_pymbar_pmf():
     pmf = PMFCalculator(
         simulation_parameters=pipeline.simulation_parameters,
-        simulation_system=pipeline.system_info,
+        system_info=pipeline.system_info,
         trajectory_directory="UmbrellaPipeline/data",
         original_path_interval=1 * unit.nanometer,
-        solver="pymbar",
     )
     a = pmf.load_original_path()
     b = pmf.load_sampled_coordinates()
