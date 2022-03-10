@@ -31,7 +31,7 @@ The trajectories are analysed and the PMF is calculated using pymbar.
 
 ## How-To
 
-Visit the [Documentation](https://umbrellapipeline.readthedocs.io/en/docs/).
+Visit the [Documentation](https://umbrellapipeline.readthedocs.io/).
 
 ## Requirements
 
