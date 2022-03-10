@@ -4,7 +4,6 @@ from UmbrellaPipeline.path_finding import Node
 
 
 class Queue:
-
     def __init__(self, existing_list: List[Node] = None) -> None:
         """
         Basic class to implement the priority queue used in the the Escape Room Algorithm.

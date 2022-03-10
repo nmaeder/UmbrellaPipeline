@@ -82,7 +82,7 @@ def test_add_harmonic_restraint():
     ind = get_residue_indices(
         atom_list=pipeline.system_info.psf_object.atom_list, name="unl"
     )
-    fc = 10 * unit.kilocalorie_per_mole / (unit.angstrom**2)
+    fc = 10 * unit.kilocalorie_per_mole / (unit.angstrom ** 2)
     pos = Vec3(
         x=1 * unit.angstrom,
         y=2 * unit.angstrom,

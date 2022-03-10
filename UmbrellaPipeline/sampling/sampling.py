@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 
 
 class UmbrellaSampling:
-
     def __init__(
         self,
         simulation_parameters: SimulationParameters,
@@ -163,11 +162,11 @@ class UmbrellaSampling:
         constraints: app.forcefield = app.HBonds,
     ):
         """
-        This function runs the umbrella sampling itself. 
+        This function runs the umbrella sampling itself.
 
         Args:
             path (unit.Quantity): Path generated along wich the Umbrella Sampling is Conducted.
-            state (mm.State): State retrieved from the Equilibration. 
+            state (mm.State): State retrieved from the Equilibration.
             nonbonded_method (app.forcefield, optional): which nonbonded method to use. Specify as an openmm.app object. Defaults to app.PME.
             nonbonded_cutoff (unit.Quantity, optional): which nonbonded cutoff to use. Defaults to 1.2*unit.nanometer.
             switch_distance (unit.Quantity, optional): Switch distance for the nonbonded cutoff. Defaults to 1*unit.nanometer.
@@ -281,7 +280,7 @@ class SamplingCluster(UmbrellaSampling):
 
         At the moment it is not possible to run equilibration and production in one go. After the equilibration has finished, you will have to run the submit_production.sh script generated to submit all the
         jobs for the production run.
-    
+
         Args:
             simulation_parameter (SimulationParameters): simulation_property object.
             path (List[unit.Quantity]): path for the ligand to walk through.
@@ -317,7 +316,6 @@ class SamplingCluster(UmbrellaSampling):
         self.commands: List[str] = []
         self.simulation_output: List[str] = []
         self.write_scripts = self.write_sge_scripts
-
 
     def write_sge_scripts(self, path: unit.Quantity) -> str:
         """
@@ -363,7 +361,6 @@ class SamplingCluster(UmbrellaSampling):
             self.commands.append(f"qsub {script_path}")
         return self.commands
 
-
     def write_production_starter(self, commands: List[str]) -> str:
         """
         Writes a bash file, that submits all production jobs.
@@ -399,7 +396,7 @@ class SamplingCluster(UmbrellaSampling):
             switch_distance (unit.Quantity, optional): Switch distance for the nonbonded cutoff. Defaults to 1*unit.nanometer.
             rigid_water (bool, optional): Wheter to use rigid water in the simulation. Defaults to True.
             constraints (app.forcefield, optional): Constraints you want to use in the Simulation. Defaults to app.HBonds.
-        
+
         Returns:
             Tuple[mm.State, str]: [description]
         """
@@ -426,12 +423,12 @@ class SamplingCluster(UmbrellaSampling):
         constraints: app.forcefield = app.HBonds,
     ) -> List[str]:
         """
-        This will not run the jobs but create everything needed for the Umbrella sampling to run. 
+        This will not run the jobs but create everything needed for the Umbrella sampling to run.
         to submit the actualy job, run the script that is return by this function.
 
-        Args:        
+        Args:
             path (unit.Quantity): Path generated along wich the Umbrella Sampling is Conducted.
-            state (mm.State): State retrieved from the Equilibration. 
+            state (mm.State): State retrieved from the Equilibration.
             nonbonded_method (app.forcefield, optional): which nonbonded method to use. Specify as an openmm.app object. Defaults to app.PME.
             nonbonded_cutoff (unit.Quantity, optional): which nonbonded cutoff to use. Defaults to 1.2*unit.nanometer.
             switch_distance (unit.Quantity, optional): Switch distance for the nonbonded cutoff. Defaults to 1*unit.nanometer.

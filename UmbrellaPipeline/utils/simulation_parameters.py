@@ -3,22 +3,21 @@ from typing import Tuple
 
 
 class SimulationParameters:
-
     def __init__(
         self,
         temperature: u.Quantity = 310 * u.kelvin,
         pressure: u.Quantity = 1 * u.bar,
         time_step: u.Quantity = 2 * u.femtoseconds,
-        force_constant: u.Quantity = 100 * u.kilocalorie_per_mole / (u.angstrom**2),
+        force_constant: u.Quantity = 100 * u.kilocalorie_per_mole / (u.angstrom ** 2),
         friction_coefficient: u.Quantity = 1 / u.picosecond,
         n_equilibration_steps: int = 500000,
         n_production_steps: int = 2500000,
         write_out_frequency: int = 5000,
     ) -> None:
         """
-        This class store all simulation parameters that are used for the umbrella simulations and checks their validity. 
+        This class store all simulation parameters that are used for the umbrella simulations and checks their validity.
         Make sure to give all the parameters in the correct unit.Quantity! See this docstring for more information about the
-        dimensionality an input should have. 
+        dimensionality an input should have.
 
         Args:
             temperature (u.Quantity, optional): Temperature at which the Umbrella Simulation is run. Defaults to 310*u.kelvin.
@@ -28,7 +27,7 @@ class SimulationParameters:
             friction_coefficient (u.Quantity, optional): friction coefficient used in the Langevin integrator.dataclass Defaults to 1/u.picosecond.
             n_equilibration_steps (int, optional): Number of equilibration steps per Lamba. Defaults to 500000.
             n_production_steps (int, optional): Number of production steps per Lamda. Defaults to 2500000.
-        
+
         Raises:
             TypeError: This is raised if a A value with a wrong unit is given.
         """
@@ -114,7 +113,7 @@ class SimulationParameters:
     def force_constant(self, value: u.Quantity) -> None:
         try:
             self._force_constant = value.in_units_of(
-                u.kilocalorie_per_mole * u.angstrom**-2
+                u.kilocalorie_per_mole * u.angstrom ** -2
             )
         except (TypeError, AttributeError):
             raise TypeError(
@@ -124,7 +123,7 @@ class SimulationParameters:
     @friction_coefficient.setter
     def friction_coefficient(self, value: u.Quantity) -> None:
         try:
-            self._friction_coefficient = value.in_units_of(u.picosecond**-1)
+            self._friction_coefficient = value.in_units_of(u.picosecond ** -1)
         except (TypeError, AttributeError):
             raise TypeError("Friction Coefficient has to be in units of inverse time!")
 

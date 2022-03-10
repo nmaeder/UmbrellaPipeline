@@ -166,7 +166,7 @@ def add_backbone_restraints(
     positions: unit.Quantity,
     system: mm.openmm.System,
     atom_list: app.internal.charmm.topologyobjects.AtomList,
-    force_constant: unit.Quantity = 10 * unit.kilocalorie_per_mole / unit.angstrom**2,
+    force_constant: unit.Quantity = 10 * unit.kilocalorie_per_mole / unit.angstrom ** 2,
 ) -> mm.openmm.System:
     """Adds a CustomExternalForce object to your systems force list. it will not restrain at this point, since the force constant is set to 0.
     Use activate_backbone_restraints() to set the restraints active.
@@ -463,7 +463,7 @@ def create_openmm_system(
     switch_distance: unit.Quantity = 1 * unit.nanometer,
     rigid_water: bool = True,
     constraints: app.forcefield = app.HBonds,
-    barostat: Literal = 'isotropic',
+    barostat: Literal = "isotropic",
     ligand_restraint: bool = False,
     path: unit.Quantity = None,
     bb_restraints: bool = False,
@@ -522,7 +522,7 @@ def create_openmm_system(
 
     if ligand_restraint:
         if not isinstance(path, List):
-            path=[path] 
+            path = [path]
         add_ligand_restraint(
             system=openmm_system,
             atom_group=system_info.ligand_indices,

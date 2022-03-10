@@ -96,7 +96,7 @@ class Tree:
         Args:
             node (TreeNode): point a
             destination (TreeNode): point b
-            
+
         Returns:
             float: euclidean distance
         """
