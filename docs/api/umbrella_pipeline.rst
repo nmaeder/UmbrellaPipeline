@@ -1,5 +1,5 @@
-UmbrellaPipeline Wrapper
-========================
+UmbrellaPipeline 
+================
 
 .. autosummary::
    :toctree: generated/

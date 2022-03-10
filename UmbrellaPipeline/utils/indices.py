@@ -39,11 +39,12 @@ def get_residue_indices(
     include_hydrogens: bool = True,
 ) -> List[int]:
     """
-    Returns a list of indices that correspond to a given residue in the crd file. only give atom list if you want all the protein residues.
+    Returns a list of indices that correspond to a given residue in the crd file. If you do not give a residue name, 
+    the indices of all the protein atoms are given.
 
     Args:
-        atom_list (app.internal.charmm.topologyobjects.AtomList): atom list that should be searched.
-        name (List[str]orstr, optional): residue name. if none is given, the atom list is searched for amino acid residues. Defaults to aa_list.
+        atom_list (app.internal.charmm.topologyobjects.AtomList): atom list that should be searched for indices.
+        name (List[str]orstr, optional): residue name to be searched for. if none is given, the atom list is searched for amino acid residues. Defaults to AA.
 
     Returns:
         List[int]: list of indices in the crd file.
@@ -67,7 +68,7 @@ def get_backbone_indices(
     atom_list: app.internal.charmm.topologyobjects.AtomList,
 ) -> List[int]:
     """
-    Returns list of protein backbone indices. will also return every other
+    Returns list of protein backbone indices.
 
     Args:
         atom_list (app.internal.charmm.topologyobjects.AtomList): [description]

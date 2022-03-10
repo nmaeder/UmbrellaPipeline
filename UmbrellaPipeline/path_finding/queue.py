@@ -4,14 +4,11 @@ from UmbrellaPipeline.path_finding import Node
 
 
 class Queue:
-    """
-    Basic class to implement the priority queue used in the the Escape Room Algorithm.
-    It uses the heap implementation by heapq.
-
-    """
 
     def __init__(self, existing_list: List[Node] = None) -> None:
         """
+        Basic class to implement the priority queue used in the the Escape Room Algorithm.
+        It uses the heap implementation by heapq.
         Creates either an empty or turns an existing List into a priority Queue
 
         Args:

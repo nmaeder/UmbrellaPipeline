@@ -8,7 +8,7 @@ UmbrellaPipeline Module
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 This is the main module provided. It combines the submodules listed below, and makes quick and easy use of this tool possible. Of course, you don't need to 
-use this tool like this, but you can use the sub-modules how you want. See :docs:`examples` for more details.
+use this tool like this, but you can use the sub-modules how you want. 
 
 .. toctree::
    :maxdepth: 1

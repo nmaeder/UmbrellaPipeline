@@ -26,10 +26,6 @@ logger = logging.getLogger(__name__)
 
 
 class EscapeRoom3D:
-    """
-    Base class for the EscapeRoom3d algorithm
-    """
-
     def __init__(
         self,
         start: GridNode or TreeNode,
@@ -57,6 +53,13 @@ class GridEscapeRoom(EscapeRoom3D):
         grid: Grid,
         start: GridNode,
     ) -> None:
+        """
+        This is the Grid implementation of the EscapeRoom Algorithm. Deprecated and not suggested to use.
+
+        Args:
+            grid (Grid): _description_
+            start (GridNode): _description_
+        """
         super().__init__(start=start)
         self.grid = grid
         self.shortest_path: List[GridNode] = []
@@ -69,8 +72,10 @@ class GridEscapeRoom(EscapeRoom3D):
         Checks wether the given node has the distance to the neares True grid point.
         node.distance_to_wall is in "node units" so the distance is divided by the gridcell size to get its value in "grid units" as well.
         If no distance is given, the end point is reached when node is outside the grid
+
         Args:
             node (GridNode): node to be checked
+
         Returns:
             bool: Returns true if input node is the destination.
         """
@@ -83,6 +88,7 @@ class GridEscapeRoom(EscapeRoom3D):
     def backtrace_path(self) -> List[GridNode]:
         """
         removes all the unsuccesfull path legs and returns the direct path from start to end. Does only make sense to run with or after self.escape_room
+
         Returns:
             List[GridNode]: direct path from self.start to self.end
         """
@@ -98,17 +104,13 @@ class GridEscapeRoom(EscapeRoom3D):
     def create_child(self, neighbour: List[int], parent: GridNode) -> GridNode:
         """
         Create child at neighbour position of parent.
-        Parameters
-        ----------
-        neighbour : List[int]
-            neighbour position
-        parent : GridNode
-            parent node
 
-        Returns
-        -------
-        GridNode
-            child node at neighbour position if position is inside grid, else none.
+        Args:
+            neighbour (List[int]): neighbour position
+        parent (GridNode): parent node
+
+        Returns:
+            GridNode: child node at neighbour position if position is inside grid, else none.
         """
         try:
             child = GridNode.from_coords(
@@ -123,9 +125,11 @@ class GridEscapeRoom(EscapeRoom3D):
     def generate_successors(self, parent: GridNode) -> List[GridNode]:
         """
         generates possible successors for the a star grid
+
         Args:
             parent (GridNode): parent Node
             pathsize (int): diameter of path that has to be free
+
         Returns:
             List[GridNode]: list of possible successor nodes
         """
@@ -144,17 +148,13 @@ class GridEscapeRoom(EscapeRoom3D):
     def is_child_good(self, child: GridNode, open_list: List[GridNode]) -> None:
         """
         Checks if there is already a child in open list or shortest path that has the same position but had a shorter way to get there.
-        Parameters
-        ----------
-        child : GridNode
-            child to be checked.
-        open_list : List[GridNode]
-            list to search beneath self.shortest_path
 
-        Returns
-        -------
-        [type]
-            [description]
+        Args:
+            child (GridNode): child to be checked.
+            open_list (List[GridNode]): list to search beneath self.shortest_path
+
+        Returns:
+            bool: wheter a child is good or not
         """
         if any((list_entry == child) for list_entry in open_list):
             return False
@@ -168,9 +168,11 @@ class GridEscapeRoom(EscapeRoom3D):
     ) -> List[GridNode]:
         """
         lets a slightly addapted (greedier) version of the A* star algorithm search for the shortest path between start end end point.
+
         Args:
             backtrace (bool): set to false if you want the function to return all searched nodes instead of the shortet path: Defaults to True
             distance (unit.Quantity): If this distance is reached, the algorithm is terminated. if none is given a path is searched until the path leaves the pbc box: Defaults to 2*unit.nanometer
+
         Returns:
             List[GridNode]: shortest path from a to b if class settint backtrace is true. else returns all searched nodes.
         """
@@ -271,8 +273,10 @@ class GridEscapeRoom(EscapeRoom3D):
     def path_to_ccp4(self, filename: str):
         """
         Write out CCP4 density map of the path in the grid. good for visualization in VMD/pymol.
+
         Args:
             filename (str): path the file should be written to.
+
         Returns:
             None: Nothing
         """
@@ -329,9 +333,11 @@ class TreeEscapeRoom(EscapeRoom3D):
     ):
         """
         Checks wheter a node meets the goal criteria.
+
         Args:
             node (TreeNode): [description]
             dist_to_protein (unit.Quantity, optional): [description]. Defaults to 2*unit.nanometer.
+
         Returns:
             [type]: [description]
         """
@@ -349,9 +355,11 @@ class TreeEscapeRoom(EscapeRoom3D):
     ) -> TreeNode:
         """
         Creates a neighbouring node to parent.
+
         Args:
             neighbour (List[int]): position offset to parent
             parent (TreeNode): parent TreeNode
+
         Returns:
             TreeNode: Neighbouring node if its not inside the wall
         """
@@ -381,8 +389,10 @@ class TreeEscapeRoom(EscapeRoom3D):
     ) -> List[TreeNode]:
         """
         Creates a max of 6 neibhbouring nodes for the input node.
+
         Args:
             parent (TreeNode): parent TreeNode
+
         Returns:
             List[TreeNode]: list of possible successor nodes
         """
@@ -403,6 +413,7 @@ class TreeEscapeRoom(EscapeRoom3D):
     ) -> List[TreeNode]:
         """
         removes all the unsuccesfull path legs and returns the direct path from start to end.
+
         Returns:
             List[TreeNode]: path found by the escape room algorithm
         """
@@ -419,10 +430,12 @@ class TreeEscapeRoom(EscapeRoom3D):
     ) -> bool:
         """
         Checks wether a given node was already looked at.
+
         Args:
             child (TreeNode): TreeNode to check
             open_set (Set): open set to search
             closed_map (Dict): closed map to search
+
         Returns:
             bool: True if it already exists
         """
@@ -436,9 +449,11 @@ class TreeEscapeRoom(EscapeRoom3D):
     ) -> List[TreeNode]:
         """
         core function implementing the escape room algorithm
+
         Args:
             distance (u.Quantity, optional): distance to wall that defines the goal. Defaults to 1.5 u.nanometer.
             resolution (u.Quantity, optional): resolution of the searched grid. Defaults to .25 u.nanometer.
+
         Returns:
             List[TreeNode]: List of TreeNodes describing the most accessible path oud of 3D object.
         """
@@ -496,8 +511,10 @@ class TreeEscapeRoom(EscapeRoom3D):
         """
         Generates path of evenly spaced nodes for the sampling. Tree uses grid where diagonal jumps are bigger than nondiagonal jumps, hence this function is needed.
         It can also be used if you want to generated differently spaced paths
+
         Args:
             stepsize (unit.Quantity, optional): Stepsite of the path you want. Defaults to .1*unit.nanometer.
+
         Returns:
             List[TreeNode]: list of path nodes.
         """
@@ -546,6 +563,7 @@ class TreeEscapeRoom(EscapeRoom3D):
     def visualize_path(self, path: unit.Quantity = None):
         """
         Basic visualization of the path generated and the protein.
+
         Args:
             path (unit.Quantity, optional): Specify if you dont want the classes path to be visualized. Defaults to None.
         """
