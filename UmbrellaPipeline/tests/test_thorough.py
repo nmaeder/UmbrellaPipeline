@@ -528,7 +528,6 @@ def test_pymbar_pmf():
         system_info=pipeline.system_info,
         trajectory_directory="UmbrellaPipeline/data",
         original_path_interval=1 * unit.nanometer,
-        solver="pymbar",
     )
     a = pmf.load_original_path()
     b = pmf.load_sampled_coordinates()
