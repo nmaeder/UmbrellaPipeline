@@ -266,7 +266,7 @@ class SamplingCluster(UmbrellaSampling):
     def __init__(
         self,
         simulation_parameter: SimulationParameters,
-        info: SystemInfo,
+        system_info: SystemInfo,
         traj_write_path: str,
         conda_environment: str,
         mail: str = None,
@@ -295,8 +295,8 @@ class SamplingCluster(UmbrellaSampling):
             sge_working_dir (str, optional): the working dir from which you are runnnig this package. Defaults to None.
         """
         super().__init__(
-            simulation_parameter=simulation_parameter,
-            info=info,
+            simulation_parameters=simulation_parameter,
+            system_info=system_info,
             traj_write_path=traj_write_path,
             restrain_protein_backbone=restrain_backbone,
         )

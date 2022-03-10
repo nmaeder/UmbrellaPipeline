@@ -106,12 +106,11 @@ def test_script_writing():
     path = [st, st]
 
     sim = SamplingCluster(
-        properties=pipeline.simulation_parameters,
-        info=pipeline.system_info,
+        simulation_parameter=pipeline.simulation_parameters,
+        system_info=pipeline.system_info,
         traj_write_path=os.path.dirname(__file__),
         conda_environment="openmm",
-        hydra_working_dir=os.path.dirname(__file__),
-        cluster="sge",
+        sge_working_dir=os.path.dirname(__file__),
     )
 
     sim.openmm_system = sim.system_info.psf_object.createSystem(sim.system_info.params)
