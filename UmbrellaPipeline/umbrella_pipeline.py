@@ -161,7 +161,7 @@ class UmbrellaPipeline:
         """
         simulation = SamplingCluster(
             simulation_parameter=self.simulation_parameters,
-            info=self.system_info,
+            system_info=self.system_info,
             traj_write_path=trajectory_path,
             mail=mail,
             log_prefix=log_prefix,
