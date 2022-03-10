@@ -3,10 +3,13 @@ Installation
 
 At the moment, only installation is only possible from source code. For this, either manually downoload the files or clone the github repo.
 Use
-```
-python setup.py install
-```
-Before installation make sure you have install all the requirements
+
+.. code-block:: bash
+
+    $ python setup.py install
+
+Before installation make sure you have install all the requirements:
+
 * python
 * pip
 * numpy
@@ -18,4 +21,3 @@ Before installation make sure you have install all the requirements
 * matplotlib
 * plotly
 * pytest
-* FastMBAR

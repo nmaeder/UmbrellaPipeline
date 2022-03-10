@@ -14,9 +14,7 @@ from UmbrellaPipeline.path_finding import GridNode
 
 
 class Grid:
-    """
-    This class stores the grid and all information relevant for writing out coordinates.
-    """
+
 
     def __init__(
         self,
@@ -29,6 +27,8 @@ class Grid:
         offset: unit.Quantity = unit.Quantity(Vec3(0, 0, 0), unit=unit.nanometer),
     ):
         """
+        This class stores the grid and all information relevant for writing out coordinates.
+
         Args:
             x (int, optional): number of grid cells in x direction. Defaults to 0.
             y (int, optional): number of grid cells in x direction. Defaults to 0.
@@ -99,12 +99,14 @@ class Grid:
     ):
         """
         Constructor for grid. takes in psf and crd files generated from charmmgui and generates a grid where all points with a protein atom are true. every other gridpoint is False.
+        
         Args:
             crdfile (str): give either path to crd file as string or an openmm.app.CharmmCrdFile object.
             psffile (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
             gridsize (unit.QuantityorList[unit.Quantity], optional): [description]. Defaults to .01*unit.nanometer.
             vdw_radius (unit.Quantity, optional): VDW radius of the protein atoms in the grid. Defaults to .12*unit.nanometer.
             add_vdw (bool, optional): Whether or not the protein atoms should have a VDW radius in the grid. Defaults to True.
+        
         Returns:
             Grid: Boolean grid where protein positions are True.
         """
@@ -173,10 +175,12 @@ class Grid:
     def node_from_files(self, psf: str, crd: str, name: str) -> GridNode:
         """
         calculates the centroid coordinates of the ligand and returns the grid node closest to the centriod Cordinates.
+        
         Args:
             psf (str): give either path to psf file as string or an openmm.app.CharmmPsfFile object.
             crd (str): give either path to crd file as string or an openmm.app.CharmmCrdFile object.
             name (str): name of the residue that is the starting point.
+        
         Returns:
             Node: grid node closest to ligand centroid.
         TODO: add support for center of mass -> more complicated since it needs an initialized system.
@@ -206,9 +210,11 @@ class Grid:
     ) -> bool:
         """
         returns Value of gridcell.
+        
         Args:
             node (Node, optional): Node type object. Defaults to None.
             coordinates (List[int], optional): Node coordinates. Defaults to None.
+        
         Returns:
             bool: value of gridcell
         """
@@ -226,9 +232,11 @@ class Grid:
     ) -> bool:
         """
         Checks if a Node is within the grid.
+        
         Args:
             node (Node, optional): Node type object. Defaults to None.
             coordinates (List[int], optional): grid cell coordinates. Defaults to None.
+        
         Returns:
             bool: True if Node is within grid
         """
@@ -245,10 +253,13 @@ class Grid:
     def position_is_blocked(
         self, node: GridNode = None, coordinates: List[int] = None
     ) -> bool:
-        """Returns true if a gridcell is occupied with a protien atom.
+        """
+        Returns true if a gridcell is occupied with a protien atom.
+        
         Args:
             node (Node, optional): Node type object. Defaults to None.
             coordinates (List[int], optional): grid cell coordinates. Defaults to None.
+        
         Returns:
             bool: True if position is occupied by protein
         """
@@ -259,9 +270,11 @@ class Grid:
     ) -> float:
         """
         calculates diagonal distance between node and destination.
+        
         Args:
             node (GridNode): point a
             destination (GridNode): point b
+        
         Returns:
             float: diagonal distance estimate
         """
@@ -278,6 +291,9 @@ class Grid:
 
     def get_distance_to_protein(self, node: GridNode) -> float:
         """
+        Calculates the distance to the nearest neighboring protein point.
+
+
         Args:
             node (GridNode): [description]
 
@@ -304,6 +320,7 @@ class Grid:
     def to_ccp4(self, filename: str):
         """
         Write out CCP4 density map of the grid. good for visualization in VMD/pymol.
+
         Args:
             filename (str): path the file should be written to.
         Returns:
@@ -338,23 +355,18 @@ class Grid:
         return unit.Quantity(value=ret, unit=u)
 
     def cartesian_coordinates_of_node(self, node: GridNode) -> unit.Quantity:
-        """
+        """        
         returns the cartesian coordinates of a node in a grid.
 
-        Parameters
-        ----------
-        node : GridNode
-            node you want the cartesian coordinates from
+        Args:
+            node (GridNode): node you want the cartesian coordinates from
 
-        Returns
-        -------
-        unit.Quantity
-            cartesian coordinates of the node.
 
-        Raises
-        ------
-        ValueError
-            if given node is outside the grid
+        Raises:
+            ValueError: cartesian coordinates of the node.
+
+        Returns:
+            unit.Quantity: if given node is outside the grid
         """
         if not self.position_is_valid(node):
             raise ValueError("Node outside of grid!")
@@ -371,6 +383,7 @@ class Grid:
     def to_cartesian_coordinates(self) -> List[float]:
         """
         returns list of cartesian coordinates that are true in the grid.
+        
         Returns:
             List[float]: List of cartesian coordinates with value true.
         """

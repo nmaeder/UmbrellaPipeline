@@ -15,7 +15,7 @@ except:
 logger = logging.getLogger(__name__)
 
 from UmbrellaPipeline.utils import (
-    SimulationProperties,
+    SimulationParameters,
     SystemInfo,
     get_backbone_indices,
     gen_pbc_box,
@@ -67,7 +67,7 @@ def add_ligand_restraint(
 
 def add_barostat(
     system: mm.openmm.System,
-    properties: SimulationProperties,
+    properties: SimulationParameters,
     membrane_barostat: bool = False,
     frequency: int = 25,
 ) -> mm.openmm.System:
@@ -76,7 +76,7 @@ def add_barostat(
 
     Args:
         system (mm.openmm.System): openmm system to add the barostat to.
-        properties (SimulationProperties): simulation properties object containint temperature and pressure.
+        properties (SimulationParameters): simulation properties object containint temperature and pressure.
         membrane_barostat (bool, optional): true if you want to use a membrane_barostat. Defaults to False.
         frequency (int, optional): update frequency for the barostat. Defaults to 25.
 
@@ -205,10 +205,12 @@ def scale(
     """
     Returns a scaled value between initial and final value, dependent on lamda.
     if lamda is zero, initial value is returned, if 1 is given, final value is returned.
+
     Args:
         initial_value (unit.Quantity): initial value.
         final_value (unit.Quantity): final value
         lamda (float): value between 0 and 1 to scale between the two values.
+
     Returns:
         unit.Quantity: scaled value between initial and final value
     """
@@ -220,6 +222,9 @@ def ghost_ligand(simulation: app.Simulation, ligand_indices: List[int]) -> None:
     """
     converts all ligand atoms to dummy atoms by setting VDW as well as Coulomb parameters to zero.
 
+    Args:
+        simulation (app.Simulation): openmm Simulation object.
+        ligand_indices (List[int]): List with ligand indices
     """
     for force in simulation.context.getSystem().getForces():
         if type(force).__name__ == "NonbondedForce":
@@ -353,7 +358,7 @@ def update_restraint(
         nr_steps=nr_steps,
     )
     logger.info(
-        f"Restraint position updated to x={path[window].x} y={path[window].y} z={path[window].z}"
+        f"Restraint position updated to x={position.x} y={position.y} z={position.z}"
     )
     return simulation
 
@@ -452,18 +457,41 @@ def extract_nonbonded_parameters(
 
 def create_openmm_system(
     system_info: SystemInfo,
-    simulation_properties: SimulationProperties,
+    simulation_parameters: SimulationParameters,
     nonbonded_method: app.forcefield = app.PME,
     nonbonded_cutoff: unit.Quantity = 1.2 * unit.nanometer,
     switch_distance: unit.Quantity = 1 * unit.nanometer,
     rigid_water: bool = True,
     constraints: app.forcefield = app.HBonds,
-    barostat: Literal = None,
+    barostat: Literal = 'isotropic',
     ligand_restraint: bool = False,
     path: unit.Quantity = None,
     bb_restraints: bool = False,
     positions: unit.Quantity = None,
 ) -> mm.openmm.System:
+    """
+    This creates an openmm Simulation object with all the extra forces specified.
+
+    Args:
+        system_info (SystemInfo): SystemInfo object for your simulation
+        simulation_parameters (SimulationParameters): SimulationParameters object for your simulation
+        nonbonded_method (app.forcefield, optional): Nonbonded method to be used. Defaults to app.PME.
+        nonbonded_cutoff (unit.Quantity, optional): Nonbonded Cutoff to be used. Defaults to 1.2*unit.nanometer.
+        switch_distance (unit.Quantity, optional): Switching Distance for the nonbonded Cutoff to be used. Defaults to 1*unit.nanometer.
+        rigid_water (bool, optional): Wheter to use Rigid Water. Defaults to True.
+        constraints (app.forcefield, optional): Wheter to use Constraints, by default Bonds to hydrogen are constrained.. Defaults to app.HBonds.
+        barostat (Literal, optional): Wheter to use a isotropic or a membrane barostat. Either give 'isotropic' or 'membrane' if you want a barostat added. Defaults to None.
+        ligand_restraint (bool, optional): Wheter to restrain the ligand that is specified in the systemInfo object. Defaults to False.
+        path (unit.Quantity, optional): position of the ligand restraint. Defaults to None.
+        bb_restraints (bool, optional): Wheter to restrain the protein backbone. Defaults to False.
+        positions (unit.Quantity, optional): If you want other positions for the protein backbone restraint than the ones in the systemInfo object. Defaults to None.
+
+    Raises:
+        ValueError: _description_
+
+    Returns:
+        mm.openmm.System: _description_
+    """
     pos = positions if positions else system_info.crd_object.positions
     if not system_info.psf_object.boxLengths:
         gen_pbc_box(
@@ -488,15 +516,17 @@ def create_openmm_system(
             raise ValueError("barostat can either be None, 'membrane' or 'isotropic'.")
         add_barostat(
             system=openmm_system,
-            properties=simulation_properties,
+            properties=simulation_parameters,
             membrane_barostat=mem,
         )
 
     if ligand_restraint:
+        if not isinstance(path, List):
+            path=[path] 
         add_ligand_restraint(
             system=openmm_system,
             atom_group=system_info.ligand_indices,
-            force_constant=simulation_properties.force_constant,
+            force_constant=simulation_parameters.force_constant,
             positions=path[0],
         )
 

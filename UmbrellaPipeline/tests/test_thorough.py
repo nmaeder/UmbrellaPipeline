@@ -325,7 +325,7 @@ def test_sampling():
         platformProperties=props,
     )
     simulation.context.setPositions(pipeline.system_info.crd_object.positions)
-    simulation.minimizeEnergy(maxItearations=100)
+    simulation.minimizeEnergy(maxIterations=50)
     simulation.step(5)
 
 
@@ -512,7 +512,7 @@ def test_tree_path_partitioning():
 
 def test_load_path():
     pmf = PMFCalculator(
-        simulation_properties=pipeline.simulation_parameters,
+        simulation_parameters=pipeline.simulation_parameters,
         simulation_system=pipeline.system_info,
         trajectory_directory="UmbrellaPipeline/data",
         original_path_interval=1 * unit.nanometer,
@@ -525,25 +525,11 @@ def test_load_path():
 
 def test_pymbar_pmf():
     pmf = PMFCalculator(
-        simulation_properties=pipeline.simulation_parameters,
+        simulation_parameters=pipeline.simulation_parameters,
         simulation_system=pipeline.system_info,
         trajectory_directory="UmbrellaPipeline/data",
         original_path_interval=1 * unit.nanometer,
         solver="pymbar",
-    )
-    a = pmf.load_original_path()
-    b = pmf.load_sampled_coordinates()
-    p, e = pmf.calculate_pmf()
-    assert len(a) == len(p)
-
-
-def test_fastmbar_pmf():
-    pmf = PMFCalculator(
-        simulation_properties=pipeline.simulation_parameters,
-        simulation_system=pipeline.system_info,
-        trajectory_directory="UmbrellaPipeline/data",
-        original_path_interval=1 * unit.nanometer,
-        solver="fastmbar",
     )
     a = pmf.load_original_path()
     b = pmf.load_sampled_coordinates()

@@ -4,13 +4,13 @@ from UmbrellaPipeline.path_finding import Node
 
 
 class Queue:
-    """
-    Basic class to implement the priority queue for the A* and the Escape Room Algorithm.
-    """
 
     def __init__(self, existing_list: List[Node] = None) -> None:
         """
+        Basic class to implement the priority queue used in the the Escape Room Algorithm.
+        It uses the heap implementation by heapq.
         Creates either an empty or turns an existing List into a priority Queue
+
         Args:
             existing_list (List[Node], optional): Give a list you want to turn into a priority queue. Defaults to None.
         """
@@ -23,6 +23,7 @@ class Queue:
     def push(self, value: Node) -> None:
         """
         Adds an element to the priority queue
+
         Args:
             value (Node): element to add.
         """
@@ -34,6 +35,7 @@ class Queue:
     def pop(self) -> Node:
         """
         Gets and removes the 0th element from the Queue
+
         Raises:
             IndexError: Raised when the queue is empty.
         Returns:

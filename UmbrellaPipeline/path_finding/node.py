@@ -1,6 +1,5 @@
 from typing import List
 import openmm.unit as u
-from openmm import Vec3
 
 
 class Node:

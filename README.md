@@ -7,7 +7,7 @@ UmbrellaPipeline
 
 Umbrella Sampling Pipeline for PMF of Protein Ligand Unbinding
 
-## Theory
+## What it does and how it works
 
 This package estimates the sterically least hindered protein ligand dissociation pathway, conducts umbrella sampling along this pathway and subsequently calculates the Potential of Mean Force (PMF) for the protein ligand unbinding. No alignement of the protein cavity or manually placing ligands necessary.
 
@@ -25,13 +25,13 @@ All sampling is done using openmm. After a equilibration period, the ligand is t
 
 ### PMF Calculations
 
-The trajectories are analysed and the PMF is calculated using either pymbar or FastMBAR.
+The trajectories are analysed and the PMF is calculated using pymbar.
 
 <img src="docs/_static/pmf.png" alt="drawing" width="400"/>
 
 ## How-To
 
-Visit the [Documentation](readthedocs.io).
+Visit the [Documentation](https://umbrellapipeline.readthedocs.io/en/docs/).
 
 ## Requirements
 
@@ -44,7 +44,6 @@ Visit the [Documentation](readthedocs.io).
 - pymbar
 - matplotlib
 - plotly
-- FastMBAR
 - gemmi
 
 ## Installation

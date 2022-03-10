@@ -9,15 +9,13 @@ from UmbrellaPipeline.path_finding import TreeNode
 
 
 class Tree:
-    """
-    This class stores the KDTree and all information relevant for writing out coordinates.
-    """
-
     def __init__(
         self,
         coordinates: u.Quantity or List[u.Quantity] or List[float],
     ):
         """
+        This class stores the KDTree and all information relevant for writing out coordinates.
+
         Args:
             coordinates (u.Quantity or List[u.Quantity] or List[float]): List of coordinates to be added to the tree
         """
@@ -49,11 +47,14 @@ class Tree:
     ):
         """
         creates a k-d tree out of positions and a psf file. only takes the protein (and membrane) atom from the positions.
+
         Args:
             positions (u.Quantity or app.CharmmCrdFile): positions as unit.Quantity or as path to .crd file
             psf (str or app.CharmmPsfFile): path to psf file or CharmmPsfFile object
+
         Raises:
-            ValueError: _description_
+            ValueError: Raised if the positions for the kdtree are not given as an unit.Quantity
+
         Returns:
             Tree: k-d tree created from input given.
         """
@@ -90,10 +91,12 @@ class Tree:
         node: TreeNode, destination: TreeNode
     ) -> u.Quantity:
         """
-        calculates euclidean distance between node and destination.
+        calculates euclidean distance between two Nodes.
+
         Args:
             node (TreeNode): point a
             destination (TreeNode): point b
+            
         Returns:
             float: euclidean distance
         """
@@ -115,10 +118,12 @@ class Tree:
         node: TreeNode, destination: TreeNode
     ) -> u.Quantity:
         """
-        calculates diagonal distance between node and destination.
+        calculates diagonal distance between two Nodes.
+
         Args:
             node (TreeNode): point a
             destination (TreeNode): point b
+
         Returns:
             float: diagonal distance
         """
@@ -141,11 +146,13 @@ class Tree:
         vdw_radius: float = 0.12,
     ) -> u.Quantity:
         """
-        Returns the distance to the nearest wall.
+        Returns the distance to the nearest wall using the kd tree.
+
         Args:
             node (TreeNode, optional): TreeNode for which to get the nearest distance. Defaults to None.
             coordinates (List[float], optional): position in 3d space to get the nearest distance. Defaults to None.
             vdw_radius (u.Quantity, optional): Radius to set for  walls.. Defaults to 0.12*u.nanometer.
+
         Returns:
             u.Quantity: Distance to the nearest wall.
         """
@@ -158,8 +165,10 @@ class Tree:
     def get_nearest_neighbour_index(self, coords: u.Quantity) -> int:
         """
         Returns the index of the nearest neighbour in the tree. used for the PMFCalculator binning.
+
         Args:
             coords (u.Quantity): coordinate for which to get the nearest neighbour
+
         Returns:
             (int): index of the nearest neighbour in the tree.
         """

@@ -19,6 +19,5 @@ dependencies:
   - pytest-cov
   - codecov
     # Pip-only installs
-  - pip:
-    - FastMBAR
+
 
