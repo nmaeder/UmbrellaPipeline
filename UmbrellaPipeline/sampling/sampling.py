@@ -19,11 +19,6 @@ from UmbrellaPipeline.utils import (
     gen_pbc_box,
 )
 
-try:
-    from typing import Literal
-except:
-    from typing_extensions import Literal
-
 logger = logging.getLogger(__name__)
 
 

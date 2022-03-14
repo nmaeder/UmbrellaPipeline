@@ -13,11 +13,14 @@ class Queue:
         Args:
             existing_list (List[Node], optional): Give a list you want to turn into a priority queue. Defaults to None.
         """
-        try:
-            self.queue = existing_list
-            heapify(existing_list)
-        except:
+        if existing_list is None:
             self.queue = []
+        else:
+            try:
+                self.queue = existing_list
+                heapify(existing_list)
+            except TypeError as te:
+                raise te
 
     def push(self, value: Node) -> None:
         """

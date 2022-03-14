@@ -1,19 +1,12 @@
 from typing import List, Tuple
 import numpy as np
-import openmmtools
 from openmm import Vec3, unit
 import mdtraj, pymbar
 
 import matplotlib as mtl
 import matplotlib.pyplot as plt
 
-try:
-    from typing import Literal
-except:
-    from typing_extensions import Literal
-
-
-from UmbrellaPipeline.path_finding import TreeNode, Tree, TreeEscapeRoom
+from UmbrellaPipeline.path_finding import Tree
 from UmbrellaPipeline.utils import (
     SimulationParameters,
     SystemInfo,

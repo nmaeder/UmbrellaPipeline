@@ -119,7 +119,7 @@ class SystemInfo:
 
     @ligand_name.setter
     def ligand_name(self, value: str) -> None:
-        if value == None:
+        if value is None:
             raise ValueError("LigandName cannot be None")
         else:
             self._ligand_name = value

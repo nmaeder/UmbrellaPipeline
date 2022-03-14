@@ -1,14 +1,7 @@
-import sys
 from typing import List
-import logging
 import openmm as mm
 from openmm import unit
 import logging, os
-
-try:
-    from typing import Literal
-except:
-    from typing_extensions import Literal
 
 from UmbrellaPipeline.sampling import (
     UmbrellaSampling,
@@ -167,7 +160,7 @@ class UmbrellaPipeline:
             log_prefix=log_prefix,
             gpu=gpu,
             conda_environment=conda_environment,
-            hydra_working_dir=sge_working_dir,
+            sge_working_dir=sge_working_dir,
             restrain_backbone=restrain_backbone,
         )
 
@@ -175,7 +168,6 @@ class UmbrellaPipeline:
         logger.info("Equilibration finished.")
         self.path = self.generate_path(
             positions=state.getPositions(),
-            system=simulation.simulation.context.getSystem(),
             path_interval=window_spacing,
         )
         logger.info("path for production created.")
@@ -207,10 +199,9 @@ class UmbrellaPipeline:
         logger.info("Equilibration finished.")
         self.path = self.generate_path(
             positions=self.state.getPositions(),
-            system=simulation.simulation.context.getSystem(),
             path_interval=window_spacing,
         )
         logger.info("path for production created.")
         simulation.run_production(path=self.path, state=self.state)
         logger.info("production simulation started!")
-        self.run_analysis(self, trajectory_path=trajectory_path)
+        self.run_analysis(trajectory_path=trajectory_path)

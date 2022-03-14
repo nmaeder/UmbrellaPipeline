@@ -146,7 +146,7 @@ class SimulationParameters:
 
     @write_out_frequency.setter
     def write_out_frequency(self, value: int) -> None:
-        assert value > 0, "Output frequency cannot be negative!"
+        assert value >= 0, "Output frequency cannot be negative!"
         try:
             if value == 0:
                 self._write_out_frequency = self.n_production_steps

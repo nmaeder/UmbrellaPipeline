@@ -15,8 +15,7 @@ Helper functions needed for the sampling Class to fully work.
 Sampling Helper
 ~~~~~~~~~~~~~~~~
 
-autosummary
-   :toctree: generated/
-   :nosignatures:
+.. autosummary:: 
+   :toctree:
 
    sampling_helper
