@@ -162,10 +162,7 @@ class PMFCalculator:
         if not self.path_coordinates:
             self.load_original_path()
         if not self.sampled_coordinates:
-            try:
-                self.load_sampled_coordinates()
-            except:
-                self.parse_trajectories()
+            self.load_sampled_coordinates()
 
         N_k = (
             np.ones([self.n_windows], np.int32)

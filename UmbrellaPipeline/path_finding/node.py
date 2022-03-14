@@ -90,18 +90,26 @@ class TreeNode(Node):
         parent=None,
     ) -> None:
         super().__init__(
-            x=x,
-            y=y,
-            z=z,
-            distance_to_wall=distance_to_wall,
-            parent=parent
+            x=x, y=y, z=z, distance_to_wall=distance_to_wall, parent=parent
         )
 
     def __hash__(self) -> int:
         return hash((self.x, self.y, self.z))
 
+    def __eq__(self, o: object) -> bool:
+        return self.get_coordinates() == o.get_coordinates()
+
     def __lt__(self, other: object) -> bool:
         return self.distance_to_wall > other.distance_to_wall
+
+    def __gt__(self, other: object) -> bool:
+        return self.distance_to_wall < other.distance_to_wall
+
+    def __le__(self, other: object) -> bool:
+        return self.distance_to_wall >= other.distance_to_wall
+
+    def __ge__(self, other: object) -> bool:
+        return self.distance_to_wall <= other.distance_to_wall
 
     @classmethod
     def from_coords(cls, coords, distance_to_wall: float = 0.1, parent: object = None):
@@ -145,8 +153,8 @@ class GridNode(Node):
             y=y,
             z=z,
             distance_to_wall=distance_to_wall,
+            parent=parent,
         )
-        self.parent: GridNode = parent
 
     @classmethod
     def from_coords(cls, coords: List[int]):

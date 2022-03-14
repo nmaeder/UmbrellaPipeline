@@ -411,8 +411,8 @@ def deserialize_state(path: str) -> mm.State:
     try:
         with open(file=path, mode="r") as f:
             state = mm.openmm.XmlSerializer.deserialize(f.read())
-    except:
-        FileNotFoundError
+    except (FileNotFoundError, ValueError) as e:
+        raise e
     logger.info(f"State deserialized from {path}.")
     return state
 
