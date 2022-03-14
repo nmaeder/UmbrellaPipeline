@@ -8,7 +8,7 @@ path_classifiers:
   library:
     - versioneer.py  # Set Versioneer.py to an external "library" (3rd party code)
     - setup.py
-    - UmbrellaPipeline/data/*
+    - UmbrellaPipeline/data/unl/ligandrtf.py
     - devtools/*
   generated:
     - UmbrellaPipeline/_version.py

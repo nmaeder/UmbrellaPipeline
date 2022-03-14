@@ -31,7 +31,7 @@ class UmbrellaPipeline:
         system_info: SystemInfo = None,
         simulation_parameters: SimulationParameters = SimulationParameters(),
         only_run_production: bool = False,
-        verbosity: int = 10,
+        verbosity: int = logging.INFO,
     ) -> None:
         """
         This is the main class of the Umbrella pipeline. It lets you genereta a ligand unbinding pathway,

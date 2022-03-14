@@ -45,6 +45,7 @@ pipeline = UmbrellaPipeline(
 
 
 def test_genbox():
+
     assert pipeline.system_info.psf_object.boxVectors == None
     minC = gen_pbc_box(
         psf=pipeline.system_info.psf_object,

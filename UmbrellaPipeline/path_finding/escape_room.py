@@ -1,4 +1,5 @@
 import copy, time, logging, math
+from multiprocessing.sharedctypes import Value
 from typing import List, Dict, Set, Tuple
 import gemmi
 import numpy as np
@@ -315,7 +316,7 @@ class TreeEscapeRoom(EscapeRoom3D):
                 indices=system_info.ligand_indices,
                 masses=system_info.psf_object.system,
             ).value_in_unit(unit.nanometer)
-        except:
+        except AttributeError:
             _ = system_info.psf_object.createSystem(system_info.params)
             start = get_center_of_mass_coordinates(
                 positions=positions,
@@ -376,7 +377,7 @@ class TreeEscapeRoom(EscapeRoom3D):
             return TreeNode.from_coords(
                 coords=child_position, distance_to_wall=distance_to_wall, parent=parent
             )
-        except:
+        except ValueError:
             pass
 
     def generate_successors(
