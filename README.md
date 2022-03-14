@@ -4,6 +4,7 @@ UmbrellaPipeline
 [![GitHub Actions Build Status](https://github.com/nmaeder/UmbrellaPipeline/workflows/CI/badge.svg)](https://github.com/nmaeder/UmbrellaPipeline/actions?query=workflow%3ACI)
 [![codecov](https://codecov.io/gh/nmaeder/UmbrellaPipeline/branch/main/graph/badge.svg)](https://codecov.io/gh/nmaeder/UmbrellaPipeline/branch/main)
 [![Documentation Status](https://readthedocs.org/projects/umbrellapipeline/badge/?version=latest)](https://umbrellapipeline.readthedocs.io/)
+[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/nmaeder/UmbrellaPipeline.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/nmaeder/UmbrellaPipeline/context:python)
 
 Umbrella Sampling Pipeline for PMF of Protein Ligand Unbinding
 
