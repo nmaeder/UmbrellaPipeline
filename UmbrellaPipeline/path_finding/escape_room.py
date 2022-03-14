@@ -1,5 +1,4 @@
 import copy, time, logging, math
-from multiprocessing.sharedctypes import Value
 from typing import List, Dict, Set, Tuple
 import gemmi
 import numpy as np
