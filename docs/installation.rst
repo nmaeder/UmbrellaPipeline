@@ -21,3 +21,9 @@ Before installation make sure you have install all the requirements:
 * matplotlib
 * plotly
 * pytest
+
+To run all the tests (can take up to 5 minutes), go to the root directory of the package and run:
+
+.. code-block:: bash
+
+    $ pytest -v UmbrellaPipeline/tests
