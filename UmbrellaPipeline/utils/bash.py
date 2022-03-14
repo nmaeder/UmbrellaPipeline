@@ -26,7 +26,6 @@ def execute_bash(
     Returns:
         str: stdout of the bash console
     """
-    stderr, stdout = None, None
 
     if isinstance(command, str):
         command = command.split()

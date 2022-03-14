@@ -9,7 +9,7 @@ import logging
 
 try:
     from typing import Literal
-except:
+except ImportError:
     from typing_extensions import Literal
 
 logger = logging.getLogger(__name__)
@@ -391,7 +391,7 @@ def serialize_state(state: mm.State, path: str) -> str:
         assert state.getPositions() is not None
         assert state.getVelocities() is not None
     except AssertionError:
-        TypeError("State has to contain velocities and positions.")
+        raise TypeError("State has to contain velocities and positions.")
     with open(file=path, mode="w") as f:
         f.write(mm.openmm.XmlSerializer.serialize(state))
 

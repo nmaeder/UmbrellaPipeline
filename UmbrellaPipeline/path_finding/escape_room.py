@@ -191,8 +191,6 @@ class GridEscapeRoom(EscapeRoom3D):
                 # prioritize the node that is the fartest from any protein atom. -> will eventually lead out of the case as long as the goal distance is alrge enough.
                 if node.distance_to_wall > q.distance_to_wall:
                     q = node
-                    # if two nodes are equally large apart from the protein, take the one that took less traveling to get there.
-                    q = node
             open_list.remove(q)
             children = self.generate_successors(parent=q)
             for child in children:
@@ -301,8 +299,8 @@ class TreeEscapeRoom(EscapeRoom3D):
         tree: Tree,
         start: unit.Quantity,
     ) -> None:
+        super().__init__(start=start)
         self.tree = tree
-        self.start = start
         self.shortest_path: List[TreeNode] = []
         self.resolution = 0.01
 

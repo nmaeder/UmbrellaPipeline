@@ -94,14 +94,11 @@ class TreeNode(Node):
             y=y,
             z=z,
             distance_to_wall=distance_to_wall,
+            parent=parent
         )
-        self.parent: TreeNode = parent
 
     def __hash__(self) -> int:
         return hash((self.x, self.y, self.z))
-
-    def __eq__(self, other: object) -> bool:
-        return self.get_grid_coordinates() == other.get_grid_coordinates()
 
     def __lt__(self, other: object) -> bool:
         return self.distance_to_wall > other.distance_to_wall
