@@ -237,6 +237,8 @@ class PMFCalculator:
                 bin_kn[k][n] = bin
 
         results = mbar.computePMF(u_kn, bin_kn, nbins, return_dict=True)
+        self.pmf = results["f_i"]
+        self.pmf_error = results["df_i"]
         return results["f_i"], results["df_i"]
 
     def plot(
