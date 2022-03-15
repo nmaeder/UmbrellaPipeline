@@ -573,11 +573,11 @@ class TreeEscapeRoom(EscapeRoom3D):
             )
         except AttributeError:
             path = [
-                [
+                Vec3(
                     i.x * self.resolution + self.start.x,
                     i.y * self.resolution + self.start.y,
                     i.z * self.resolution + self.start.z,
-                ]
+                )
                 for i in self.shortest_path
             ]
             df = pd.DataFrame(pos, columns=list("xyz"))
