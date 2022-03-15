@@ -572,7 +572,14 @@ class TreeEscapeRoom(EscapeRoom3D):
                 columns=list("xyz"),
             )
         except AttributeError:
-            pos = [p.value_in_unit(unit.nanometer) for p in pos]
+            path = [
+                [
+                    i.x * self.resolution + self.start.x,
+                    i.y * self.resolution + self.start.y,
+                    i.z * self.resolution + self.start.z,
+                ]
+                for i in self.shortest_path
+            ]
             df = pd.DataFrame(pos, columns=list("xyz"))
         df2 = pd.DataFrame(self.tree.tree.data, columns=list("abc"))
         a = px.scatter_3d(data_frame=df, x="x", y="y", z="z")
