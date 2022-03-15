@@ -566,10 +566,14 @@ class TreeEscapeRoom(EscapeRoom3D):
             path (unit.Quantity, optional): Specify if you dont want the classes path to be visualized. Defaults to None.
         """
         pos = path if path else self.shortest_path
-        df = pd.DataFrame(
-            pos.value_in_unit(unit.nanometer),
-            columns=list("xyz"),
-        )
+        try:
+            df = pd.DataFrame(
+                pos.value_in_unit(unit.nanometer),
+                columns=list("xyz"),
+            )
+        except AttributeError:
+            pos = [p.value_in_unit(unit.nanometer) for p in pos]
+            df = pd.DataFrame(pos, columns=list("xyz"))
         df2 = pd.DataFrame(self.tree.tree.data, columns=list("abc"))
         a = px.scatter_3d(data_frame=df, x="x", y="y", z="z")
         a.add_trace(
