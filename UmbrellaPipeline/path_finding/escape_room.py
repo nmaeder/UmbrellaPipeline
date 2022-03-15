@@ -580,7 +580,7 @@ class TreeEscapeRoom(EscapeRoom3D):
                 )
                 for i in self.shortest_path
             ]
-            df = pd.DataFrame(pos, columns=list("xyz"))
+            df = pd.DataFrame(path, columns=list("xyz"))
         df2 = pd.DataFrame(self.tree.tree.data, columns=list("abc"))
         a = px.scatter_3d(data_frame=df, x="x", y="y", z="z")
         a.add_trace(
