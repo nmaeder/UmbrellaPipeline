@@ -31,6 +31,7 @@ from UmbrellaPipeline.utils import (
     parse_params,
     execute_bash,
     execute_bash_parallel,
+    display_time,
 )
 
 warnings.filterwarnings(action="ignore")
@@ -43,6 +44,13 @@ pipeline = UmbrellaPipeline(
     crd_file="UmbrellaPipeline/data/step5_input.crd",
 )
 
+def test_time():
+    assert display_time(0) == "00:00"
+    assert display_time(59) == "00:59"
+    assert display_time(60) == "00:01:00"
+    assert display_time(61) == "00:01:01"
+    assert display_time(44530) == "00:12:22:10"
+    assert display_time(-33) == "-00:33"
 
 def test_genbox():
 

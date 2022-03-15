@@ -16,6 +16,7 @@ from UmbrellaPipeline.path_finding import (
     GridEscapeRoom,
     TreeEscapeRoom,
 )
+from UmbrellaPipeline.analysis import PMFCalculator
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ class UmbrellaPipeline:
         system_info: SystemInfo = None,
         simulation_parameters: SimulationParameters = SimulationParameters(),
         only_run_production: bool = False,
+        window_spacing: unit.Quantity = 0.1 * unit.nanometer,
         verbosity: int = logging.INFO,
     ) -> None:
         """
@@ -68,11 +70,12 @@ class UmbrellaPipeline:
         self.equilibrate = not only_run_production
         self.state: mm.State
         logger.setLevel(verbosity)
+        self.window_spacing = window_spacing
 
     def generate_path(
         self,
         distance_to_protein: unit.Quantity = 1.5 * unit.nanometer,
-        path_interval=0.1 * unit.nanometer,
+        path_interval: unit.Quantity = None,
         use_grid: bool = False,
         positions: unit.Quantity = None,
     ) -> List[unit.Quantity]:
@@ -96,6 +99,8 @@ class UmbrellaPipeline:
             pos = positions
         else:
             pos = self.system_info.crd_object.positions
+
+        path_interval = path_interval if path_interval else self.window_spacing
 
         if not use_grid:
             self.escape_room = TreeEscapeRoom.from_files(
@@ -125,7 +130,13 @@ class UmbrellaPipeline:
         return self.path
 
     def run_analysis(self, trajectory_path: str):
-        pass
+        calculator = PMFCalculator(
+            simulation_parameters=self.simulation_parameters,
+            system_info=self.system_info,
+            trajectory_directory=trajectory_path,
+            original_path_interval=self.window_spacing,
+        )
+        return calculator.calculate_pmf()
 
     def run_simulations_sun_grid_engine(
         self,

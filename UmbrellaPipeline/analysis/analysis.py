@@ -44,6 +44,7 @@ class PMFCalculator:
         self.n_windows = len(path_coordinates)
         self.n_bins = self.n_windows
         self.path_coordinates = path_coordinates
+        self.sampled_coordinates: np.ndarray = None
         self.path_interval = original_path_interval
         self.n_frames_tot = self.n_windows * self.simulation_parameters.number_of_frames
 
@@ -54,10 +55,6 @@ class PMFCalculator:
             * self.simulation_parameters.temperature
             * unit.AVOGADRO_CONSTANT_NA
         ).value_in_unit(unit.kilocalorie_per_mole)
-
-        self.A: np.ndarray
-        self.B: np.ndarray
-        self.sampled_coordinates: np.ndarray
 
         self.pmf: np.ndarray
         self.pmf_error: np.ndarray
@@ -160,9 +157,9 @@ class PMFCalculator:
             Tuple[np.ndarray, np.ndarray]: the calculated forces per bin and the stdeviation estimate.
         """
         if not self.path_coordinates:
-            self.load_original_path()
+            self.path_coordinates = self.load_original_path()
         if not self.sampled_coordinates:
-            self.load_sampled_coordinates()
+            self.sampled_coordinates = self.load_sampled_coordinates()
 
         N_k = (
             np.ones([self.n_windows], np.int32)
@@ -240,6 +237,8 @@ class PMFCalculator:
                 bin_kn[k][n] = bin
 
         results = mbar.computePMF(u_kn, bin_kn, nbins, return_dict=True)
+        self.pmf = results["f_i"]
+        self.pmf_error = results["df_i"]
         return results["f_i"], results["df_i"]
 
     def plot(
@@ -258,9 +257,7 @@ class PMFCalculator:
             dpi (float, optional): desired resolution. Defaults to 300.
             cumulative (bool, optional): wheter to plot the cumulative pmf values or . Defaults to False.
         """
-        energy_unit = " [kcal per mole]" if self.use_kcal else " [kJ per mole]"
-        if self.in_rt:
-            energy_unit = ""
+
         pmf_center = np.linspace(
             start=0,
             stop=(self.n_windows * self.path_interval).value_in_unit(unit.nanometer),
@@ -269,15 +266,20 @@ class PMFCalculator:
         )
         y = self.pmf if not cumulative else np.cumsum(self.pmf)
         y_error = self.pmf_error if not cumulative else np.cumsum(self.pmf_error)
-        fig = plt.figure()
-        plt.plot(pmf_center, y)
-        plt.errorbar(pmf_center, y, yerr=y_error, fmt="-o")
-        plt.xlim(
-            pmf_center[0],
-            pmf_center[-1],
+
+        fig = plt.figure(dpi=900)
+        plt.errorbar(
+            pmf_center,
+            y,
+            yerr=y_error,
+            fmt="-",
+            ecolor="k",
+            barsabove=True,
+            elinewidth=0.8,
         )
-        plt.xlabel("Ligand distance from binding pocked [nm]")
-        plt.ylabel(f"Relative free energy{energy_unit}")
+        plt.xlabel("Distance traveled along Dissociation Pathway [nm]")
+        plt.ylabel("PMF in kT")
+
         if filename:
             if not filename.endswith(f".{format}"):
                 filename += f".{format}"
@@ -296,9 +298,6 @@ class PMFCalculator:
             format (str, optional): format of the saved file. Defaults to "svg".
             dpi (float, optional): resolution of the saved file. Defaults to 300.
         """
-        energy_unit = " [kcal per mole]" if self.use_kcal else " [kJ per mole]"
-        if self.in_rt:
-            energy_unit = ""
         mtl.use("Agg")
         pmf_center = np.linspace(
             start=0,
@@ -306,14 +305,18 @@ class PMFCalculator:
             num=self.n_bins,
             endpoint=False,
         )
-        fig = plt.figure()
-        plt.errorbar(pmf_center, self.pmf, yerr=self.pmf_error, fmt="-o")
-        plt.xlim(
-            pmf_center[0],
-            pmf_center[-1],
+        fig = plt.figure(dpi=900)
+        plt.errorbar(
+            pmf_center,
+            y,
+            yerr=y_error,
+            fmt="-",
+            ecolor="k",
+            barsabove=True,
+            elinewidth=0.8,
         )
-        plt.xlabel("Ligand distance from binding pocked [nm]")
-        plt.ylabel(f"Relative free energy{energy_unit}")
+        plt.xlabel("Distance traveled along Dissociation Pathway [nm]")
+        plt.ylabel("PMF in kT")
         if filename:
             if not filename.endswith(f".{format}"):
                 filename += f".{format}"

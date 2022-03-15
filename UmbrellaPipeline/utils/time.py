@@ -8,20 +8,29 @@ def display_time(seconds: float) -> str:
     Returns:
         str: formatted time.
     """
+
     ret = ""
-    tot = seconds
+    sign = ""
+    if seconds < 0:
+        tot = abs(seconds)
+        sign = "-"
+    else:
+        tot = seconds
     intervals = [
-        (604800, 0),
-        (86400, 0),
-        (3600, 0),
-        (60, 0),
-        (1, 0),
+        604800,
+        86400,
+        3600,
+        60,
+        1,
     ]
-    for number, count in intervals:
-        while tot >= number:
+    for inter in intervals:
+        count = 0
+        while tot >= inter:
             count += 1
-            tot -= number
+            tot -= inter
         if count:
             ret += f"{count:02d}:"
+        if inter == 1 and count == 0:
+            ret += f"{count:02d}:"
     ret = ret.rstrip(":")
-    return f"00:{ret}"
+    return f"{sign}00:{ret}"
