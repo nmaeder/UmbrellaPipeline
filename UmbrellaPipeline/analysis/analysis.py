@@ -266,15 +266,20 @@ class PMFCalculator:
         )
         y = self.pmf if not cumulative else np.cumsum(self.pmf)
         y_error = self.pmf_error if not cumulative else np.cumsum(self.pmf_error)
-        fig = plt.figure()
-        plt.plot(pmf_center, y)
-        plt.errorbar(pmf_center, y, yerr=y_error, fmt="-o")
-        plt.xlim(
-            pmf_center[0],
-            pmf_center[-1],
+
+        fig = plt.figure(dpi=900)
+        plt.errorbar(
+            pmf_center,
+            y,
+            yerr=y_error,
+            fmt="-",
+            ecolor="k",
+            barsabove=True,
+            elinewidth=0.8,
         )
-        plt.xlabel("Ligand distance covered on unbinding pathway [nm]")
-        plt.ylabel(f"Relative free energy [kT]")
+        plt.xlabel("Distance traveled along Dissociation Pathway [nm]")
+        plt.ylabel("PMF in kT")
+
         if filename:
             if not filename.endswith(f".{format}"):
                 filename += f".{format}"
@@ -300,14 +305,18 @@ class PMFCalculator:
             num=self.n_bins,
             endpoint=False,
         )
-        fig = plt.figure()
-        plt.errorbar(pmf_center, self.pmf, yerr=self.pmf_error, fmt="-o")
-        plt.xlim(
-            pmf_center[0],
-            pmf_center[-1],
+        fig = plt.figure(dpi=900)
+        plt.errorbar(
+            pmf_center,
+            y,
+            yerr=y_error,
+            fmt="-",
+            ecolor="k",
+            barsabove=True,
+            elinewidth=0.8,
         )
-        plt.xlabel("Ligand distance from binding pocked [nm]")
-        plt.ylabel(f"Relative free energy [kT]")
+        plt.xlabel("Distance traveled along Dissociation Pathway [nm]")
+        plt.ylabel("PMF in kT")
         if filename:
             if not filename.endswith(f".{format}"):
                 filename += f".{format}"
