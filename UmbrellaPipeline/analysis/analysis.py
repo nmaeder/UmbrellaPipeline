@@ -44,6 +44,7 @@ class PMFCalculator:
         self.n_windows = len(path_coordinates)
         self.n_bins = self.n_windows
         self.path_coordinates = path_coordinates
+        self.sampled_coordinates: np.ndarray = None
         self.path_interval = original_path_interval
         self.n_frames_tot = self.n_windows * self.simulation_parameters.number_of_frames
 
@@ -54,10 +55,6 @@ class PMFCalculator:
             * self.simulation_parameters.temperature
             * unit.AVOGADRO_CONSTANT_NA
         ).value_in_unit(unit.kilocalorie_per_mole)
-
-        self.A: np.ndarray
-        self.B: np.ndarray
-        self.sampled_coordinates: np.ndarray
 
         self.pmf: np.ndarray
         self.pmf_error: np.ndarray
