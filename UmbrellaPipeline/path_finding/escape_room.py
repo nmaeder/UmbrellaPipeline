@@ -565,7 +565,7 @@ class TreeEscapeRoom(EscapeRoom3D):
         Args:
             path (unit.Quantity, optional): Specify if you dont want the classes path to be visualized. Defaults to None.
         """
-        pos = path if path else self.get_path_for_sampling()
+        pos = path if path else self.shortest_path
         df = pd.DataFrame(
             pos.value_in_unit(unit.nanometer),
             columns=list("xyz"),
