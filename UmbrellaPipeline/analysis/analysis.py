@@ -255,9 +255,7 @@ class PMFCalculator:
             dpi (float, optional): desired resolution. Defaults to 300.
             cumulative (bool, optional): wheter to plot the cumulative pmf values or . Defaults to False.
         """
-        energy_unit = " [kcal per mole]" if self.use_kcal else " [kJ per mole]"
-        if self.in_rt:
-            energy_unit = ""
+
         pmf_center = np.linspace(
             start=0,
             stop=(self.n_windows * self.path_interval).value_in_unit(unit.nanometer),
@@ -273,8 +271,8 @@ class PMFCalculator:
             pmf_center[0],
             pmf_center[-1],
         )
-        plt.xlabel("Ligand distance from binding pocked [nm]")
-        plt.ylabel(f"Relative free energy{energy_unit}")
+        plt.xlabel("Ligand distance covered on unbinding pathway [nm]")
+        plt.ylabel(f"Relative free energy [kT]")
         if filename:
             if not filename.endswith(f".{format}"):
                 filename += f".{format}"
@@ -293,9 +291,6 @@ class PMFCalculator:
             format (str, optional): format of the saved file. Defaults to "svg".
             dpi (float, optional): resolution of the saved file. Defaults to 300.
         """
-        energy_unit = " [kcal per mole]" if self.use_kcal else " [kJ per mole]"
-        if self.in_rt:
-            energy_unit = ""
         mtl.use("Agg")
         pmf_center = np.linspace(
             start=0,
@@ -310,7 +305,7 @@ class PMFCalculator:
             pmf_center[-1],
         )
         plt.xlabel("Ligand distance from binding pocked [nm]")
-        plt.ylabel(f"Relative free energy{energy_unit}")
+        plt.ylabel(f"Relative free energy [kT]")
         if filename:
             if not filename.endswith(f".{format}"):
                 filename += f".{format}"
