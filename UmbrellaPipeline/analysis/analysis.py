@@ -160,9 +160,9 @@ class PMFCalculator:
             Tuple[np.ndarray, np.ndarray]: the calculated forces per bin and the stdeviation estimate.
         """
         if not self.path_coordinates:
-            self.load_original_path()
+            self.path_coordinates = self.load_original_path()
         if not self.sampled_coordinates:
-            self.load_sampled_coordinates()
+            self.sampled_coordinates = self.load_sampled_coordinates()
 
         N_k = (
             np.ones([self.n_windows], np.int32)
